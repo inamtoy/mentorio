@@ -66,14 +66,21 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      # Two non-superuser, non-owner roles, mirroring backend/README.md's
-      # "One-time Postgres role setup" exactly — migrations themselves run
-      # as the `postgres` superuser (see the Migrate step below), same as
-      # real local dev (table-owner privilege is needed for CREATE SCHEMA/
-      # RLS functions; a plain educore_app-as-owner migrate was tried first
-      # and failed: several apps' 0004_seed_permissions migrations query
-      # via the auth_bypass_rls alias *during* migrate, before either app
-      # role has any grant on the schema that migration just created).
+      # Mirrors backend/README.md's "One-time Postgres role setup":
+      # educore_app owns the test database and runs migrate directly (same
+      # as real local dev). educore_auth_bypass is separately granted
+      # *membership* in educore_app below (not just table/schema grants) —
+      # Postgres role-membership privilege inheritance is live, not a
+      # point-in-time snapshot, so educore_auth_bypass automatically gets
+      # access to every schema/table educore_app creates *as it creates
+      # them*, which is what several apps' 0004_seed_permissions migrations
+      # need: they query via the auth_bypass_rls connection alias *during*
+      # migrate, before a one-time post-migrate GRANT step would ever run.
+      # (An earlier attempt ran migrate as the `postgres` superuser instead
+      # — bypassing grants entirely — but that made this step hang
+      # indefinitely in CI for reasons never root-caused; this role-
+      # membership approach avoids superuser entirely and keeps migrate
+      # running as the same educore_app role real dev uses.)
       DJANGO_SETTINGS_MODULE: config.settings.test
       DJANGO_SECRET_KEY: ci-only-secret-key-not-used-anywhere-real
       DB_HOST: localhost
@@ -103,38 +110,36 @@ jobs:
       - name: Create app roles + test database
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
-          CREATE ROLE educore_app LOGIN PASSWORD 'ci-app-password';
+          CREATE ROLE educore_app LOGIN PASSWORD 'ci-app-password' CREATEDB;
           CREATE ROLE educore_auth_bypass LOGIN PASSWORD 'ci-auth-bypass-password' BYPASSRLS;
-          CREATE DATABASE test_educore_test;
+          GRANT educore_app TO educore_auth_bypass;
           SQL
+          PGPASSWORD=ci-app-password psql -h localhost -U educore_app -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE test_educore_test OWNER educore_app;'
 
-      # Runs as postgres (table-owner/superuser privilege), not educore_app
-      # — matches real local dev (see backend/README.md's own setup notes)
-      # and is required for RLS-function creation either way. Table
-      # ownership no longer matters for RLS correctness (every RLS table
-      # already uses FORCE ROW LEVEL SECURITY specifically so an owning
-      # role isn't silently exempt — see foundation/migrations/0004_rls.py)
-      # — it only matters for *grants*, which neither app role has yet at
-      # this point, and several apps' seed-permission migrations query
-      # via the SEPARATE auth_bypass_rls connection alias mid-migrate
-      # (e.g. attendance/migrations/0004_seed_permissions.py), so both
-      # DATABASES["default"] and DATABASES["auth_bypass_rls"] need to
-      # resolve to postgres here — overriding only DB_USER/DB_PASSWORD
-      # leaves the auth_bypass_rls alias still pointed at the ungranted
-      # educore_auth_bypass role and this fails in exactly the same way.
-      - name: Migrate test database (as postgres superuser)
-        env:
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-          DB_AUTH_BYPASS_USER: postgres
-          DB_AUTH_BYPASS_PASSWORD: postgres
+      # Runs as educore_app, the database owner — same role real local dev
+      # migrates as. This alone used to fail: several apps'
+      # 0004_seed_permissions migrations query via the *separate*
+      # auth_bypass_rls connection alias (role educore_auth_bypass)
+      # mid-migrate, before a one-time post-migrate GRANT step would ever
+      # run. Fixed above, not here: `GRANT educore_app TO
+      # educore_auth_bypass` makes educore_auth_bypass inherit
+      # educore_app's privileges live, as they're created — including on
+      # schemas/tables this very migrate run is about to create — so no
+      # mid-migrate permission gap exists. (BYPASSRLS itself is a role
+      # attribute, not a privilege grant, so it's unaffected by this
+      # membership — educore_auth_bypass still bypasses RLS as before.)
+      - name: Migrate test database
         run: uv run python manage.py migrate
 
+      # educore_app already has everything as the table owner; this is only
+      # for educore_auth_bypass's *own* login session during the actual
+      # test run (the role-membership inheritance above covers privileges,
+      # but explicit REFERENCES wasn't otherwise granted, and this doubles
+      # as a defensive belt-and-suspenders check that inheritance alone
+      # didn't quietly leave a gap).
       - name: Grant app roles access on test database
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -d test_educore_test -v ON_ERROR_STOP=1 <<SQL
-          GRANT USAGE ON SCHEMA ${EDUCORE_SCHEMAS} TO educore_app;
-          GRANT SELECT, INSERT, UPDATE, DELETE, REFERENCES ON ALL TABLES IN SCHEMA ${EDUCORE_SCHEMAS} TO educore_app;
           GRANT USAGE ON SCHEMA ${EDUCORE_SCHEMAS} TO educore_auth_bypass;
           GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ${EDUCORE_SCHEMAS} TO educore_auth_bypass;
           SQL

@@ -21,12 +21,13 @@ import { usePlatformBrandingQuery } from "@/lib/queries/settings";
 import { seedLocaleCookieIfUnset } from "@/i18n/locales";
 
 // The login page is deliberately NOT translated/switchable — always
-// Uzbek, hardcoded, no useTranslations()/LanguageSwitcher here. The
+// English, hardcoded, no useTranslations()/LanguageSwitcher here. The
 // interface-language feature lives entirely in the Student portal's
 // Settings page (post-login); this screen is the one fixed reference
 // point every account sees identically regardless of what they later
 // pick. See the user's explicit call on this over the original design
-// (which had a switcher here too).
+// (which had a switcher here too; the fixed language was originally
+// Uzbek, changed to English on a later explicit request).
 
 // ─── Role → portal routing ─────────────────────────────────────────────────────
 
@@ -48,7 +49,6 @@ export default function LoginPage() {
   // same values foundation.services.DEFAULT_GENERAL_SETTINGS ships with.
   const { data: branding } = usePlatformBrandingQuery();
   const platformName = branding?.platformName || "Mentorio";
-  const tagline = branding?.tagline || "Mentorio hisobingizga kiring";
   // Same default the backend itself ships (see DEFAULT_GENERAL_SETTINGS)
   // — shown immediately on first paint instead of the Zap-icon placeholder
   // flashing for the brief moment before the branding query resolves.
@@ -63,8 +63,8 @@ export default function LoginPage() {
 
   function validate() {
     const errs: typeof errors = {};
-    if (!login.trim()) errs.login = "Login talab qilinadi.";
-    if (!password) errs.password = "Parol talab qilinadi.";
+    if (!login.trim()) errs.login = "Login is required.";
+    if (!password) errs.password = "Password is required.";
     return errs;
   }
 
@@ -79,7 +79,7 @@ export default function LoginPage() {
       const user = await loginRequest(login.trim(), password);
       const portal = user.role ? ROLE_PORTAL_MAP[user.role] : undefined;
       if (!portal) {
-        setErrors({ general: "Hisobingiz uchun hali portalga kirish huquqi yo'q. Administratoringizga murojaat qiling." });
+        setErrors({ general: "Your account doesn't have access to a portal yet. Please contact your administrator." });
         return;
       }
       // Seeds the post-login portal's interface language from the account's
@@ -97,7 +97,7 @@ export default function LoginPage() {
       if (cookieChanged) router.refresh();
       setTimeout(() => router.push(portal), 500);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.";
+      const message = err instanceof ApiError ? err.message : "Something went wrong. Please try again.";
       setErrors({ general: message });
     } finally {
       setLoading(false);
@@ -111,7 +111,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logoUrl} alt={platformName} className="h-10 max-w-[220px] object-contain" />
+          <img src={logoUrl} alt={platformName} className="h-16 max-w-[300px] object-contain" />
         </div>
 
         {/* Card */}
@@ -119,8 +119,7 @@ export default function LoginPage() {
 
           {/* Header */}
           <div className="mb-7 text-center">
-            <h2 className="text-2xl font-bold text-slate-900">Xush kelibsiz</h2>
-            <p className="text-sm text-slate-500 mt-1">{tagline}</p>
+            <h2 className="text-2xl font-bold text-slate-900">Welcome back</h2>
           </div>
 
           {/* General error */}
@@ -135,7 +134,7 @@ export default function LoginPage() {
           {success && (
             <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-100 rounded-xl p-3.5 mb-5">
               <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-              <p className="text-sm text-emerald-700 font-medium">Muvaffaqiyatli kirildi! Yo&apos;naltirilmoqda…</p>
+              <p className="text-sm text-emerald-700 font-medium">Signed in successfully! Redirecting…</p>
             </div>
           )}
 
@@ -149,7 +148,7 @@ export default function LoginPage() {
               <Input
                 type="text"
                 autoComplete="username"
-                placeholder="Loginingizni kiriting"
+                placeholder="Enter your login ID"
                 icon={<User className="h-4 w-4" />}
                 value={login}
                 onChange={(e) => { setLogin(e.target.value); setErrors((p) => ({ ...p, login: undefined })); }}
@@ -162,12 +161,12 @@ export default function LoginPage() {
             {/* Password field */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-medium text-slate-700">Parol</label>
+                <label className="text-sm font-medium text-slate-700">Password</label>
                 <a
                   href="#"
                   className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
                 >
-                  Parolni unutdingizmi?
+                  Forgot password?
                 </a>
               </div>
               <div className="relative">
@@ -187,7 +186,7 @@ export default function LoginPage() {
                   onClick={() => setShowPassword((s) => !s)}
                   disabled={loading || success}
                   className="absolute right-3 top-[22px] -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors disabled:pointer-events-none"
-                  aria-label={showPassword ? "Parolni yashirish" : "Parolni ko'rsatish"}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -198,7 +197,7 @@ export default function LoginPage() {
             <Checkbox
               checked={rememberMe}
               onCheckedChange={setRememberMe}
-              label="Meni 30 kun eslab qol"
+              label="Remember me for 30 days"
             />
 
             {/* Sign In button */}
@@ -212,11 +211,11 @@ export default function LoginPage() {
               {success ? (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  Kirildi
+                  Signed in
                 </>
               ) : (
                 <>
-                  Kirish
+                  Sign in
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}

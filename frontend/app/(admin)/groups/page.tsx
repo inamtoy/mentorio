@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { DataTable, Column } from "@/components/ui/data-table";
+import { Pagination } from "@/components/ui/pagination";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { toast } from "@/lib/store/toast-store";
-import { useDeleteGroupMutation, useGroupsQuery } from "@/lib/queries/groups";
+import { useDeleteGroupMutation, useGroupsPageQuery, useGroupsQuery } from "@/lib/queries/groups";
 import type { Group, GroupStatus } from "@/lib/api/groups";
 import { ApiError } from "@/lib/api/client";
 import { Users, BookOpen } from "lucide-react";
@@ -44,27 +45,45 @@ export default function GroupsPage() {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<GroupStatus | "">("");
+  const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [deletingGroup, setDeletingGroup] = useState<Group | null>(null);
 
+  // Stat cards read from the full (unpaginated) list — same tradeoff as the
+  // Admin Students/Teachers pages. The table below gets its own, separate,
+  // single-page query.
+  const { data: allGroups } = useGroupsQuery({ organizationId: organizationId ?? "" });
+  const statsList = allGroups ?? [];
+  const totalEnrolled = statsList.reduce((s, g) => s + g.enrolled_count, 0);
+  const totalCapacity = statsList.reduce((s, g) => s + g.max_students, 0);
+
   const {
-    data: groups,
+    data: groupsPage,
     isLoading,
     isError,
     error,
-  } = useGroupsQuery({
+  } = useGroupsPageQuery({
     organizationId: organizationId ?? "",
     status: statusFilter || undefined,
     search: search || undefined,
+    page,
   });
   const deleteMutation = useDeleteGroupMutation();
 
-  const list = groups ?? [];
+  const list = groupsPage?.results ?? [];
   const selectedGroup = list.find((g) => g.id === selectedId) ?? null;
-  const totalEnrolled = list.reduce((s, g) => s + g.enrolled_count, 0);
-  const totalCapacity = list.reduce((s, g) => s + g.max_students, 0);
+
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function updateStatusFilter(value: GroupStatus | "") {
+    setStatusFilter(value);
+    setPage(1);
+  }
 
   function openEdit(group: Group) {
     setEditingGroup(group);
@@ -147,7 +166,7 @@ export default function GroupsPage() {
     <div className="space-y-6">
       <PageHeader
         title={t("pageTitle")}
-        subtitle={t("pageSubtitleCount", { count: list.length })}
+        subtitle={t("pageSubtitleCount", { count: statsList.length })}
         actions={
           <Button
             onClick={() => {
@@ -162,7 +181,7 @@ export default function GroupsPage() {
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label={t("statTotalGroups")} value={list.length} icon={<Users2 className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
+        <StatCard label={t("statTotalGroups")} value={statsList.length} icon={<Users2 className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
         <StatCard label={t("statTotalEnrolled")} value={totalEnrolled} icon={<Users className="h-5 w-5 text-blue-600" />} iconBg="bg-blue-50" />
         <StatCard label={t("statTotalCapacity")} value={totalCapacity} icon={<BookOpen className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
         <StatCard label={t("statOccupancyRate")} value={totalCapacity ? `${Math.round((totalEnrolled / totalCapacity) * 100)}%` : "0%"} icon={<Clock className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
@@ -171,11 +190,11 @@ export default function GroupsPage() {
       <Card
         noPadding
         title={t("allGroupsTitle")}
-        subtitle={t("groupsCount", { count: list.length })}
+        subtitle={t("groupsCount", { count: groupsPage?.totalCount ?? 0 })}
         actions={
           <div className="flex items-center gap-2">
-            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchPlaceholder")} />
-            <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as GroupStatus | "")} className="w-36" />
+            <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t("searchPlaceholder")} />
+            <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => updateStatusFilter(e.target.value as GroupStatus | "")} className="w-36" />
           </div>
         }
       >
@@ -184,13 +203,20 @@ export default function GroupsPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t("loadErrorFallback")}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !groupsPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t("loadingGroups")}
           </div>
         ) : (
-          <DataTable columns={COLUMNS} data={list} keyField="id" emptyMessage={t("noGroupsFound")} onRowClick={(row) => setSelectedId(row.id)} />
+          <>
+            <DataTable columns={COLUMNS} data={list} keyField="id" emptyMessage={t("noGroupsFound")} onRowClick={(row) => setSelectedId(row.id)} />
+            {groupsPage && groupsPage.pageCount > 1 && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={groupsPage.pageCount} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

@@ -7,18 +7,29 @@ import {
   getMyGroupMemberships,
   getStudentGroupMemberships,
   listGroups,
+  listGroupsPage,
   removeGroupMember,
   updateGroup,
   type GroupInput,
+  type ListGroupsPageParams,
   type ListGroupsParams,
 } from "@/lib/api/groups";
 
 const groupsKey = (params: ListGroupsParams) => ["groups", params] as const;
+const groupsPageKey = (params: ListGroupsPageParams) => ["groups-page", params] as const;
 
 export function useGroupsQuery(params: ListGroupsParams) {
   return useQuery({
     queryKey: groupsKey(params),
     queryFn: () => listGroups(params),
+  });
+}
+
+export function useGroupsPageQuery(params: ListGroupsPageParams) {
+  return useQuery({
+    queryKey: groupsPageKey(params),
+    queryFn: () => listGroupsPage(params),
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -70,6 +81,7 @@ export function useCreateGroupMutation() {
     mutationFn: (input: GroupInput) => createGroup(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["groups"] });
+      queryClient.invalidateQueries({ queryKey: ["groups-page"] });
     },
   });
 }
@@ -80,6 +92,7 @@ export function useUpdateGroupMutation() {
     mutationFn: ({ groupId, input }: { groupId: string; input: Partial<GroupInput> }) => updateGroup(groupId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["groups"] });
+      queryClient.invalidateQueries({ queryKey: ["groups-page"] });
     },
   });
 }
@@ -90,6 +103,7 @@ export function useDeleteGroupMutation() {
     mutationFn: (groupId: string) => deleteGroup(groupId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["groups"] });
+      queryClient.invalidateQueries({ queryKey: ["groups-page"] });
     },
   });
 }
@@ -102,6 +116,7 @@ export function useAddGroupMemberMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group-members"] });
       queryClient.invalidateQueries({ queryKey: ["groups"] });
+      queryClient.invalidateQueries({ queryKey: ["groups-page"] });
     },
   });
 }
@@ -113,6 +128,7 @@ export function useRemoveGroupMemberMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group-members"] });
       queryClient.invalidateQueries({ queryKey: ["groups"] });
+      queryClient.invalidateQueries({ queryKey: ["groups-page"] });
     },
   });
 }

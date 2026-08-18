@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 import type { CourseLevel } from "@/lib/api/courses";
 
 export type GroupStatus = "forming" | "active" | "completed" | "cancelled" | "archived";
@@ -58,6 +58,10 @@ export interface ListGroupsParams {
   search?: string;
 }
 
+// Fetches every matching row — appropriate for the many callers that need
+// the full set client-side (group pickers in form dialogs, a teacher's own
+// groups on their dashboard/profile, roster lookups), NOT for the top-level
+// Admin Groups list page, which uses listGroupsPage below instead.
 export async function listGroups(params: ListGroupsParams): Promise<Group[]> {
   const query = new URLSearchParams({ organization: params.organizationId });
   if (params.course) query.set("course", params.course);
@@ -66,6 +70,24 @@ export async function listGroups(params: ListGroupsParams): Promise<Group[]> {
   if (params.search) query.set("search", params.search);
 
   return fetchAllPages<Group>("/api/v1/groups/", query);
+}
+
+export interface ListGroupsPageParams extends ListGroupsParams {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The real-pagination counterpart to listGroups above — used by the Admin
+ * Groups list page, which renders a `<Pagination>` control and only ever
+ * needs the current page's rows. */
+export async function listGroupsPage(params: ListGroupsPageParams): Promise<Page<Group>> {
+  const query = new URLSearchParams({ organization: params.organizationId });
+  if (params.course) query.set("course", params.course);
+  if (params.teacher) query.set("teacher", params.teacher);
+  if (params.status) query.set("status", params.status);
+  if (params.search) query.set("search", params.search);
+
+  return fetchPage<Group>("/api/v1/groups/", query, params.page ?? 1, params.pageSize);
 }
 
 export async function getGroupMembers(groupId: string): Promise<GroupMember[]> {

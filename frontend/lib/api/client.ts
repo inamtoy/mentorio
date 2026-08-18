@@ -139,6 +139,37 @@ export interface PaginatedEnvelope<T> {
  * independent — a 10-page list costs ~2 round-trips of wall-clock time
  * instead of ~10.
  */
+export interface Page<T> {
+  results: T[];
+  page: number;
+  pageCount: number;
+  totalCount: number;
+}
+
+/**
+ * Fetches exactly one page — the real, UI-driven counterpart to
+ * `fetchAllPages` below. Use this for any top-level "list page" that has
+ * (or should have) its own `<Pagination>` control: the caller owns the
+ * `page` state, passes it in, and gets back enough metadata
+ * (`pageCount`/`totalCount`) to render the control and a "N results"
+ * label. This is the actual fix for the truncation bug class
+ * `fetchAllPages` patches over by hiding it (see that function's own
+ * comment) — a list that's genuinely too big for one page-load should
+ * page through it in the UI, not fetch it all into memory at once.
+ */
+export async function fetchPage<T>(path: string, query: URLSearchParams, page: number, pageSize = 20): Promise<Page<T>> {
+  const q = new URLSearchParams(query);
+  q.set("page_size", String(pageSize));
+  q.set("page", String(page));
+  const data = await apiFetch<PaginatedEnvelope<T>>(`${path}?${q}`);
+  return {
+    results: data.results,
+    page: data.pagination.page,
+    pageCount: data.pagination.pages,
+    totalCount: data.pagination.count,
+  };
+}
+
 export async function fetchAllPages<T>(path: string, query: URLSearchParams): Promise<T[]> {
   const withPage = (page: number) => {
     const q = new URLSearchParams(query);

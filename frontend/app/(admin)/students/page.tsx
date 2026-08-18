@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { DataTable, Column } from "@/components/ui/data-table";
+import { Pagination } from "@/components/ui/pagination";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/lib/store/toast-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { useDeleteStudentMutation, useStudentsQuery } from "@/lib/queries/students";
+import { useDeleteStudentMutation, useStudentsPageQuery, useStudentsQuery } from "@/lib/queries/students";
 import type { StudentProfile, StudentStatus } from "@/lib/api/students";
 import { ApiError } from "@/lib/api/client";
 import { Users, UserCheck, UserX, Clock } from "lucide-react";
@@ -41,32 +42,53 @@ export default function StudentsPage() {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StudentStatus | "">("");
+  const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentProfile | null>(null);
   const [deletingStudent, setDeletingStudent] = useState<StudentProfile | null>(null);
 
+  // Stat cards read from the full (unpaginated) list — still safe/bounded
+  // (see lib/api/students.ts's own comment on fetchAllPages here), and
+  // gives exact status-breakdown counts without a dedicated backend
+  // aggregate endpoint. The table below is the part that actually
+  // benefits from real pagination (fewer DOM rows, faster paint, no
+  // multi-hundred-row fetch just to show one page), so it gets its own,
+  // separate, single-page query.
+  const { data: allStudents } = useStudentsQuery({ organizationId: organizationId ?? "" });
+  const statsList = allStudents ?? [];
+  const stats = {
+    total: statsList.length,
+    active: statsList.filter((s) => s.status === "active").length,
+    inactive: statsList.filter((s) => s.status === "inactive" || s.status === "on_leave").length,
+    pending: statsList.filter((s) => s.status === "pending").length,
+  };
+
   const {
-    data: students,
+    data: studentsPage,
     isLoading,
     isError,
     error,
-  } = useStudentsQuery({
+  } = useStudentsPageQuery({
     organizationId: organizationId ?? "",
     status: statusFilter || undefined,
     search: search || undefined,
+    page,
   });
   const deleteMutation = useDeleteStudentMutation();
 
-  const list = students ?? [];
+  const list = studentsPage?.results ?? [];
   const selectedStudent = list.find((s) => s.id === selectedId) ?? null;
 
-  const stats = {
-    total: list.length,
-    active: list.filter((s) => s.status === "active").length,
-    inactive: list.filter((s) => s.status === "inactive" || s.status === "on_leave").length,
-    pending: list.filter((s) => s.status === "pending").length,
-  };
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function updateStatusFilter(value: StudentStatus | "") {
+    setStatusFilter(value);
+    setPage(1);
+  }
 
   const COLUMNS: Column<StudentProfile>[] = [
     {
@@ -144,14 +166,14 @@ export default function StudentsPage() {
       <Card
         noPadding
         title={t("allStudentsTitle")}
-        subtitle={t("showingCount", { count: list.length })}
+        subtitle={t("showingCount", { count: studentsPage?.totalCount ?? 0 })}
         actions={
           <div className="flex items-center gap-2">
-            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchPlaceholder")} />
+            <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t("searchPlaceholder")} />
             <Select
               options={STATUS_OPTIONS}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StudentStatus | "")}
+              onChange={(e) => updateStatusFilter(e.target.value as StudentStatus | "")}
               className="w-36"
             />
           </div>
@@ -162,19 +184,26 @@ export default function StudentsPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t("loadErrorFallback")}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !studentsPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t("loadingStudents")}
           </div>
         ) : (
-          <DataTable
-            columns={COLUMNS}
-            data={list}
-            keyField="id"
-            emptyMessage={t("noStudentsFound")}
-            onRowClick={(row) => setSelectedId(row.id)}
-          />
+          <>
+            <DataTable
+              columns={COLUMNS}
+              data={list}
+              keyField="id"
+              emptyMessage={t("noStudentsFound")}
+              onRowClick={(row) => setSelectedId(row.id)}
+            />
+            {studentsPage && studentsPage.pageCount > 1 && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={studentsPage.pageCount} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

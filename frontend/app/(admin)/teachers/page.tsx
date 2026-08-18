@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { DataTable, Column } from "@/components/ui/data-table";
+import { Pagination } from "@/components/ui/pagination";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/lib/store/toast-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { useDeleteTeacherMutation, useTeachersQuery } from "@/lib/queries/teachers";
+import { useDeleteTeacherMutation, useTeachersPageQuery, useTeachersQuery } from "@/lib/queries/teachers";
 import type { TeacherProfile, TeacherStatus } from "@/lib/api/teachers";
 import { ApiError } from "@/lib/api/client";
 import { GraduationCap, UserCheck, UserX, Clock } from "lucide-react";
@@ -47,32 +48,49 @@ export default function TeachersPage() {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TeacherStatus | "">("");
+  const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<TeacherProfile | null>(null);
   const [deletingTeacher, setDeletingTeacher] = useState<TeacherProfile | null>(null);
 
+  // Stat cards read from the full (unpaginated) list — same tradeoff as the
+  // Admin Students page. The table below gets its own, separate,
+  // single-page query instead.
+  const { data: allTeachers } = useTeachersQuery({ organizationId: organizationId ?? "" });
+  const statsList = allTeachers ?? [];
+  const stats = {
+    total: statsList.length,
+    active: statsList.filter((t) => t.status === "active").length,
+    inactive: statsList.filter((t) => t.status === "inactive" || t.status === "on_leave" || t.status === "terminated").length,
+    pending: statsList.filter((t) => t.status === "pending").length,
+  };
+
   const {
-    data: teachers,
+    data: teachersPage,
     isLoading,
     isError,
     error,
-  } = useTeachersQuery({
+  } = useTeachersPageQuery({
     organizationId: organizationId ?? "",
     status: statusFilter || undefined,
     search: search || undefined,
+    page,
   });
   const deleteMutation = useDeleteTeacherMutation();
 
-  const list = teachers ?? [];
+  const list = teachersPage?.results ?? [];
   const selectedTeacher = list.find((t) => t.id === selectedId) ?? null;
 
-  const stats = {
-    total: list.length,
-    active: list.filter((t) => t.status === "active").length,
-    inactive: list.filter((t) => t.status === "inactive" || t.status === "on_leave" || t.status === "terminated").length,
-    pending: list.filter((t) => t.status === "pending").length,
-  };
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function updateStatusFilter(value: TeacherStatus | "") {
+    setStatusFilter(value);
+    setPage(1);
+  }
 
   const COLUMNS: Column<TeacherProfile>[] = [
     {
@@ -156,14 +174,14 @@ export default function TeachersPage() {
       <Card
         noPadding
         title={t("allTeachersTitle")}
-        subtitle={t("showingCount", { count: list.length })}
+        subtitle={t("showingCount", { count: teachersPage?.totalCount ?? 0 })}
         actions={
           <div className="flex items-center gap-2">
-            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchPlaceholder")} />
+            <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t("searchPlaceholder")} />
             <Select
               options={STATUS_OPTIONS}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as TeacherStatus | "")}
+              onChange={(e) => updateStatusFilter(e.target.value as TeacherStatus | "")}
               className="w-36"
             />
           </div>
@@ -174,19 +192,26 @@ export default function TeachersPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t("loadErrorFallback")}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !teachersPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t("loadingTeachers")}
           </div>
         ) : (
-          <DataTable
-            columns={COLUMNS}
-            data={list}
-            keyField="id"
-            emptyMessage={t("noTeachersFound")}
-            onRowClick={(row) => setSelectedId(row.id)}
-          />
+          <>
+            <DataTable
+              columns={COLUMNS}
+              data={list}
+              keyField="id"
+              emptyMessage={t("noTeachersFound")}
+              onRowClick={(row) => setSelectedId(row.id)}
+            />
+            {teachersPage && teachersPage.pageCount > 1 && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={teachersPage.pageCount} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

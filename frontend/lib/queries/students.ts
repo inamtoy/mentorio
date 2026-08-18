@@ -4,8 +4,10 @@ import {
   deleteStudent,
   getStudentParents,
   listStudents,
+  listStudentsPage,
   updateStudent,
   type CreateStudentInput,
+  type ListStudentsPageParams,
   type ListStudentsParams,
   type UpdateStudentInput,
 } from "@/lib/api/students";
@@ -14,11 +16,20 @@ import { findRoleBySlug, listRoles } from "@/lib/api/roles";
 export { useUserQuery } from "@/lib/queries/users";
 
 const studentsKey = (params: ListStudentsParams) => ["students", params] as const;
+const studentsPageKey = (params: ListStudentsPageParams) => ["students-page", params] as const;
 
 export function useStudentsQuery(params: ListStudentsParams) {
   return useQuery({
     queryKey: studentsKey(params),
     queryFn: () => listStudents(params),
+  });
+}
+
+export function useStudentsPageQuery(params: ListStudentsPageParams) {
+  return useQuery({
+    queryKey: studentsPageKey(params),
+    queryFn: () => listStudentsPage(params),
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -47,6 +58,7 @@ export function useCreateStudentMutation() {
     mutationFn: (input: CreateStudentInput) => createStudent(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: ["students-page"] });
     },
   });
 }
@@ -58,6 +70,7 @@ export function useUpdateStudentMutation() {
       updateStudent(profileId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: ["students-page"] });
     },
   });
 }
@@ -68,6 +81,7 @@ export function useDeleteStudentMutation() {
     mutationFn: (profileId: string) => deleteStudent(profileId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: ["students-page"] });
     },
   });
 }

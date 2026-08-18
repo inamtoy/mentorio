@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 
 export type StudentStatus = "active" | "inactive" | "graduated" | "expelled" | "transferred" | "on_leave" | "pending";
 export type Gender = "male" | "female" | "other";
@@ -51,6 +51,11 @@ export interface ListStudentsParams {
   search?: string;
 }
 
+// Fetches every matching row — appropriate for the several callers that
+// need to search/find within the full set client-side (a student portal
+// page finding its own logged-in user's profile, Finance's invoice-form
+// student picker, Groups' enrollment lookup), NOT for a top-level "browse
+// the student list" table page. Those use listStudentsPage below instead.
 export async function listStudents(params: ListStudentsParams): Promise<StudentProfile[]> {
   const query = new URLSearchParams();
   if (params.organizationId) query.set("organization", params.organizationId);
@@ -58,6 +63,23 @@ export async function listStudents(params: ListStudentsParams): Promise<StudentP
   if (params.search) query.set("search", params.search);
 
   return fetchAllPages<StudentProfile>("/api/v1/students/", query);
+}
+
+export interface ListStudentsPageParams extends ListStudentsParams {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The real-pagination counterpart to listStudents above — used by the
+ * Admin/Super-Admin Students list pages, which render a `<Pagination>`
+ * control and only ever need the current page's rows. */
+export async function listStudentsPage(params: ListStudentsPageParams): Promise<Page<StudentProfile>> {
+  const query = new URLSearchParams();
+  if (params.organizationId) query.set("organization", params.organizationId);
+  if (params.status) query.set("status", params.status);
+  if (params.search) query.set("search", params.search);
+
+  return fetchPage<StudentProfile>("/api/v1/students/", query, params.page ?? 1, params.pageSize);
 }
 
 export async function getStudentParents(studentProfileId: string): Promise<StudentParent[]> {

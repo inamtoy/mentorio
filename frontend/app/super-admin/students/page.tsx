@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Eye, Users, UserCheck, UserX, AlertCircle, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { SearchInput, Select } from '@/components/ui/input';
 import { DataTable, Column } from '@/components/ui/data-table';
+import { Pagination } from '@/components/ui/pagination';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,7 @@ import {
   DialogBody,
 } from '@/components/ui/dialog';
 import { useOrganizationsQuery } from '@/lib/queries/organizations';
-import { useStudentsQuery } from '@/lib/queries/students';
+import { useStudentsPageQuery, useStudentsQuery } from '@/lib/queries/students';
 import type { StudentProfile, StudentStatus } from '@/lib/api/students';
 import { ApiError } from '@/lib/api/client';
 import { formatLocalizedDate } from '@/i18n/date-locale';
@@ -57,25 +58,43 @@ export default function StudentsPage() {
   const [search, setSearch] = useState('');
   const [organizationId, setOrganizationId] = useState('');
   const [status, setStatus] = useState<StudentStatus | ''>('');
+  const [page, setPage] = useState(1);
   const [viewingStudent, setViewingStudent] = useState<StudentProfile | null>(null);
 
   const { data: centers } = useOrganizationsQuery();
-  const { data: students, isLoading, isError, error } = useStudentsQuery({
+
+  // Stats read from the full platform-wide list — same "cheap, bounded,
+  // always-correct" tradeoff as the Admin Students page (see that file's
+  // comment); the table below is the part carrying the real "thousands of
+  // students" scale risk, so it gets real single-page pagination instead.
+  const { data: allStudents } = useStudentsQuery({});
+  const totalStudents = (allStudents ?? []).length;
+  const activeStudents = (allStudents ?? []).filter((s) => s.status === 'active').length;
+  const otherStudents = totalStudents - activeStudents;
+
+  const { data: studentsPage, isLoading, isError, error } = useStudentsPageQuery({
     organizationId: organizationId || undefined,
     status: status || undefined,
+    search: search || undefined,
+    page,
   });
 
   const centerOptions = [{ value: '', label: t('allCentersPlaceholder') }, ...(centers ?? []).map((c) => ({ value: c.id, label: c.name }))];
 
-  const list = students ?? [];
-  const totalStudents = list.length;
-  const activeStudents = list.filter((s) => s.status === 'active').length;
-  const otherStudents = totalStudents - activeStudents;
+  const list = studentsPage?.results ?? [];
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return list.filter((s) => !q || s.user_full_name.toLowerCase().includes(q) || s.user_login_id.toLowerCase().includes(q));
-  }, [list, search]);
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+  function updateOrganizationId(value: string) {
+    setOrganizationId(value);
+    setPage(1);
+  }
+  function updateStatus(value: StudentStatus | '') {
+    setStatus(value);
+    setPage(1);
+  }
 
   const columns: Column<StudentProfile>[] = [
     {
@@ -120,12 +139,12 @@ export default function StudentsPage() {
       <Card
         noPadding
         title={t('allStudentsTitle')}
-        subtitle={t('studentsOfCount', { filtered: filtered.length, total: totalStudents })}
+        subtitle={t('studentsOfCount', { filtered: studentsPage?.totalCount ?? 0, total: totalStudents })}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('searchPlaceholder')} className="w-52" />
-            <Select value={organizationId} onChange={(e) => setOrganizationId(e.target.value)} options={centerOptions} />
-            <Select value={status} onChange={(e) => setStatus(e.target.value as StudentStatus | '')} options={STATUS_OPTIONS} />
+            <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t('searchPlaceholder')} className="w-52" />
+            <Select value={organizationId} onChange={(e) => updateOrganizationId(e.target.value)} options={centerOptions} />
+            <Select value={status} onChange={(e) => updateStatus(e.target.value as StudentStatus | '')} options={STATUS_OPTIONS} />
           </div>
         }
       >
@@ -134,13 +153,20 @@ export default function StudentsPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t('loadErrorFallback')}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !studentsPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('loadingStudents')}
           </div>
         ) : (
-          <DataTable<StudentProfile> columns={columns} data={filtered} keyField="id" emptyMessage={t('noStudentsFound')} />
+          <>
+            <DataTable<StudentProfile> columns={columns} data={list} keyField="id" emptyMessage={t('noStudentsFound')} />
+            {studentsPage && studentsPage.pageCount > 1 && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={studentsPage.pageCount} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

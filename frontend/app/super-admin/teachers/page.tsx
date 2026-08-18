@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   GraduationCap,
@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { SearchInput, Select } from '@/components/ui/input';
 import { DataTable, Column } from '@/components/ui/data-table';
+import { Pagination } from '@/components/ui/pagination';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/lib/store/toast-store';
 import { useOrganizationsQuery } from '@/lib/queries/organizations';
-import { useTeachersQuery, useUpdateTeacherMutation } from '@/lib/queries/teachers';
+import { useTeachersPageQuery, useTeachersQuery, useUpdateTeacherMutation } from '@/lib/queries/teachers';
 import type { TeacherProfile, TeacherStatus, EmploymentType } from '@/lib/api/teachers';
 import { ApiError } from '@/lib/api/client';
 import { formatLocalizedDate } from '@/i18n/date-locale';
@@ -70,28 +71,45 @@ export default function TeachersPage() {
   const [search, setSearch] = useState('');
   const [organizationId, setOrganizationId] = useState('');
   const [status, setStatus] = useState<TeacherStatus | ''>('');
+  const [page, setPage] = useState(1);
   const [viewingTeacher, setViewingTeacher] = useState<TeacherProfile | null>(null);
   const [suspendingId, setSuspendingId] = useState<string | null>(null);
   const updateMutation = useUpdateTeacherMutation();
 
   const { data: centers } = useOrganizationsQuery();
-  const { data: teachers, isLoading, isError, error } = useTeachersQuery({
+
+  // Stats read from the full platform-wide list — same tradeoff as the
+  // Super-Admin Students page; the table below carries the real scale risk
+  // and gets real single-page pagination instead.
+  const { data: allTeachers } = useTeachersQuery({});
+  const totalTeachers = (allTeachers ?? []).length;
+  const activeTeachers = (allTeachers ?? []).filter((t) => t.status === 'active').length;
+  const inactiveTeachers = totalTeachers - activeTeachers;
+  const avgExperience = totalTeachers > 0 ? (allTeachers ?? []).reduce((sum, t) => sum + t.experience_years, 0) / totalTeachers : 0;
+
+  const { data: teachersPage, isLoading, isError, error } = useTeachersPageQuery({
     organizationId: organizationId || undefined,
     status: status || undefined,
+    search: search || undefined,
+    page,
   });
 
   const centerOptions = [{ value: '', label: t('allCentersPlaceholder') }, ...(centers ?? []).map((c) => ({ value: c.id, label: c.name }))];
 
-  const list = teachers ?? [];
-  const totalTeachers = list.length;
-  const activeTeachers = list.filter((t) => t.status === 'active').length;
-  const inactiveTeachers = list.filter((t) => t.status !== 'active').length;
-  const avgExperience = list.length > 0 ? list.reduce((sum, t) => sum + t.experience_years, 0) / list.length : 0;
+  const list = teachersPage?.results ?? [];
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return list.filter((t) => !q || t.user_full_name.toLowerCase().includes(q) || t.user_login_id.toLowerCase().includes(q));
-  }, [list, search]);
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+  function updateOrganizationId(value: string) {
+    setOrganizationId(value);
+    setPage(1);
+  }
+  function updateStatus(value: TeacherStatus | '') {
+    setStatus(value);
+    setPage(1);
+  }
 
   async function handleSuspendToggle(teacher: TeacherProfile) {
     setSuspendingId(teacher.id);
@@ -169,18 +187,18 @@ export default function TeachersPage() {
       <Card
         noPadding
         title={t('allTeachersTitle')}
-        subtitle={t('teachersOfCount', { filtered: filtered.length, total: totalTeachers })}
+        subtitle={t('teachersOfCount', { filtered: teachersPage?.totalCount ?? 0, total: totalTeachers })}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('searchPlaceholder')} className="w-52" />
-            <Select value={organizationId} onChange={(e) => setOrganizationId(e.target.value)} options={centerOptions} />
-            <Select value={status} onChange={(e) => setStatus(e.target.value as TeacherStatus | '')} options={STATUS_OPTIONS} />
+            <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t('searchPlaceholder')} className="w-52" />
+            <Select value={organizationId} onChange={(e) => updateOrganizationId(e.target.value)} options={centerOptions} />
+            <Select value={status} onChange={(e) => updateStatus(e.target.value as TeacherStatus | '')} options={STATUS_OPTIONS} />
             {(search || organizationId || status) && (
               <button
                 onClick={() => {
-                  setSearch('');
-                  setOrganizationId('');
-                  setStatus('');
+                  updateSearch('');
+                  updateOrganizationId('');
+                  updateStatus('');
                 }}
                 className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
               >
@@ -195,13 +213,20 @@ export default function TeachersPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t('loadErrorFallback')}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !teachersPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('loadingTeachers')}
           </div>
         ) : (
-          <DataTable<TeacherProfile> columns={columns} data={filtered} keyField="id" emptyMessage={t('noTeachersFound')} />
+          <>
+            <DataTable<TeacherProfile> columns={columns} data={list} keyField="id" emptyMessage={t('noTeachersFound')} />
+            {teachersPage && teachersPage.pageCount > 1 && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={teachersPage.pageCount} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

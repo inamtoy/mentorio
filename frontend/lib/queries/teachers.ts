@@ -6,9 +6,11 @@ import {
   getTeacherSalaries,
   getTeacherSpecializations,
   listTeachers,
+  listTeachersPage,
   updateTeacher,
   type CreateTeacherInput,
   type CreateTeacherSalaryInput,
+  type ListTeachersPageParams,
   type ListTeachersParams,
   type UpdateTeacherInput,
 } from "@/lib/api/teachers";
@@ -18,11 +20,20 @@ import { useAuthStore } from "@/lib/store/auth-store";
 export { useUserQuery } from "@/lib/queries/users";
 
 const teachersKey = (params: ListTeachersParams) => ["teachers", params] as const;
+const teachersPageKey = (params: ListTeachersPageParams) => ["teachers-page", params] as const;
 
 export function useTeachersQuery(params: ListTeachersParams) {
   return useQuery({
     queryKey: teachersKey(params),
     queryFn: () => listTeachers(params),
+  });
+}
+
+export function useTeachersPageQuery(params: ListTeachersPageParams) {
+  return useQuery({
+    queryKey: teachersPageKey(params),
+    queryFn: () => listTeachersPage(params),
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -73,6 +84,7 @@ export function useCreateTeacherMutation() {
     mutationFn: (input: CreateTeacherInput) => createTeacher(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teachers"] });
+      queryClient.invalidateQueries({ queryKey: ["teachers-page"] });
     },
   });
 }
@@ -84,6 +96,7 @@ export function useUpdateTeacherMutation() {
       updateTeacher(profileId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teachers"] });
+      queryClient.invalidateQueries({ queryKey: ["teachers-page"] });
     },
   });
 }
@@ -104,6 +117,7 @@ export function useDeleteTeacherMutation() {
     mutationFn: (profileId: string) => deleteTeacher(profileId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["teachers"] });
+      queryClient.invalidateQueries({ queryKey: ["teachers-page"] });
     },
   });
 }

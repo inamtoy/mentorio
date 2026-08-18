@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 import type { Gender } from "@/lib/api/students";
 
 export type TeacherStatus = "active" | "inactive" | "on_leave" | "terminated" | "pending";
@@ -64,6 +64,10 @@ export interface ListTeachersParams {
   search?: string;
 }
 
+// Fetches every matching row — appropriate for callers that need the full
+// set client-side (a teacher portal page finding its own logged-in user's
+// profile, Groups' teacher picker), NOT for a top-level "browse the
+// teacher list" table page. Those use listTeachersPage below instead.
 export async function listTeachers(params: ListTeachersParams): Promise<TeacherProfile[]> {
   const query = new URLSearchParams();
   if (params.organizationId) query.set("organization", params.organizationId);
@@ -71,6 +75,23 @@ export async function listTeachers(params: ListTeachersParams): Promise<TeacherP
   if (params.search) query.set("search", params.search);
 
   return fetchAllPages<TeacherProfile>("/api/v1/teachers/", query);
+}
+
+export interface ListTeachersPageParams extends ListTeachersParams {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The real-pagination counterpart to listTeachers above — used by the
+ * Admin/Super-Admin Teachers list pages, which render a `<Pagination>`
+ * control and only ever need the current page's rows. */
+export async function listTeachersPage(params: ListTeachersPageParams): Promise<Page<TeacherProfile>> {
+  const query = new URLSearchParams();
+  if (params.organizationId) query.set("organization", params.organizationId);
+  if (params.status) query.set("status", params.status);
+  if (params.search) query.set("search", params.search);
+
+  return fetchPage<TeacherProfile>("/api/v1/teachers/", query, params.page ?? 1, params.pageSize);
 }
 
 export async function getTeacherSpecializations(teacherProfileId: string): Promise<TeacherSpecialization[]> {

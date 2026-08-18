@@ -139,19 +139,45 @@ jobs:
       # attribute, not a privilege grant, so it's unaffected by this
       # membership — educore_auth_bypass still bypasses RLS as before.)
       # Wrapped in `timeout` — this step has hung indefinitely (not failed)
-      # on prior CI runs for reasons not yet root-caused, and GitHub's own
-      # API only exposes step logs once a step *finishes* (confirmed: an
-      # in-progress job's /logs endpoint 404s), so a genuine hang here was
-      # previously undebuggable — no way to see which migration it stuck
-      # on. This turns a silent multi-minute hang into a fast, loud
-      # failure with the same partial "Applying x.0001... OK" progress
-      # output manage.py migrate already prints per-migration, revealing
-      # exactly where it stopped. Local repro (a truly fresh DB, not
-      # --reuse-db) got through the full migration set in under 3s per
-      # migration with no hang at any point once each schema's grants were
-      # in place — so if this trips, the cause is CI-environment-specific,
-      # not a migration itself looping.
+      # on every CI run so far, consistently at the exact same point:
+      # foundation.0010_organization_subscription_plan_fk (the first
+      # migration after billing's own — everything from foundation.0000
+      # through billing.0004_seed_plans applies in ~2s total, then nothing
+      # for 3+ minutes). That migration's RunPython is the first to call
+      # foundation/migrations/0010's own _sync_auth_bypass_rls_to_default()
+      # helper, which closes and re-points the auth_bypass_rls connection
+      # before querying through it — the same helper attendance.0004 and
+      # others use without incident earlier in the same run, so it's not
+      # obviously that code path itself. GitHub's job-logs API only serves
+      # a step's logs once it *finishes* (confirmed: an in-progress job's
+      # /logs endpoint 404s), so a genuine hang here was previously
+      # undebuggable at all; `timeout` turns it into a fast, loud failure
+      # with the same partial "Applying x.0001... OK" progress output
+      # manage.py migrate already prints per-migration, which is what
+      # pinpointed the exact migration above. PGOPTIONS' statement_timeout
+      # is a second, finer-grained diagnostic layered on top: if this is a
+      # genuine Postgres-side lock wait (not a client-side network hang),
+      # Postgres itself will cancel the stuck statement at 30s and report
+      # *why* (e.g. "canceling statement due to statement timeout" with
+      # the blocking query), instead of the outer `timeout` just killing
+      # the process with no server-side context 150s later. Local repro (a
+      # truly fresh DB, not --reuse-db) got through the full migration set,
+      # this one included, in seconds with no hang anywhere once each
+      # schema's grants were in place — so this is CI-environment-specific,
+      # not the migration's own Python logic looping.
       - name: Migrate test database
+        env:
+          # Two different failure shapes, two different libpq env vars:
+          # PGCONNECT_TIMEOUT bounds a stuck *connect()* (new physical
+          # connection never establishing — plausible given the hang
+          # starts exactly where a migration first opens a fresh
+          # auth_bypass_rls connection after closing the old one);
+          # PGOPTIONS' statement_timeout bounds a stuck *already-connected*
+          # session (a genuine server-side lock wait). Whichever one fires
+          # (or neither, if the outer `timeout 180` is what ultimately
+          # kills it) narrows down which of the two this actually is.
+          PGCONNECT_TIMEOUT: "20"
+          PGOPTIONS: "-c statement_timeout=30000"
         run: timeout 180 uv run python manage.py migrate
 
       # educore_app already has everything as the table owner; this is only

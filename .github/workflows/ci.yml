@@ -28,15 +28,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # '20' (this workflow's original pin) shipped an npm too old for
-          # this repo's lockfile — `npm ci` failed with "Missing: @emnapi/
-          # runtime@1.11.3 from lock file" and similar for a few other
-          # optional/platform-specific entries, even though the lockfile
-          # and package.json are genuinely in sync (confirmed locally: a
-          # fresh `npm install --package-lock-only` makes zero changes).
-          # 'lts/*' tracks whatever's current Node LTS instead of a pin
-          # that silently drifts out of sync with local dev's npm version
-          # over time.
+          # 'lts/*' instead of a hard '20' pin, just so this doesn't
+          # silently drift stale over time — not itself what fixed `npm
+          # ci` failing here (see the actual fix: package-lock.json's own
+          # commit).
           node-version: 'lts/*'
           cache: npm
           cache-dependency-path: frontend/package-lock.json

@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 
 export type AttendanceStatus = "present" | "absent" | "late" | "excused" | "early_leave" | "sick";
 
@@ -28,6 +28,7 @@ export interface ListAttendanceParams {
   dateFrom?: string;
   dateTo?: string;
   status?: AttendanceStatus;
+  search?: string;
 }
 
 // Unscoped (no group/studentProfile) callers are responsible for their own
@@ -48,7 +49,7 @@ export interface ListAttendanceParams {
 // that specific case, applied at the query-hook layer rather than here so
 // single-group "view this group's full attendance history" pages are
 // unaffected.
-export async function listAttendance(params: ListAttendanceParams): Promise<AttendanceRecord[]> {
+function attendanceQuery(params: ListAttendanceParams): URLSearchParams {
   const query = new URLSearchParams({ organization: params.organizationId });
   if (params.group) query.set("group", params.group);
   if (params.studentProfile) query.set("student_profile", params.studentProfile);
@@ -56,8 +57,26 @@ export async function listAttendance(params: ListAttendanceParams): Promise<Atte
   if (params.dateFrom) query.set("date_from", params.dateFrom);
   if (params.dateTo) query.set("date_to", params.dateTo);
   if (params.status) query.set("status", params.status);
+  if (params.search) query.set("search", params.search);
+  return query;
+}
 
-  return fetchAllPages<AttendanceRecord>("/api/v1/attendance/", query);
+export async function listAttendance(params: ListAttendanceParams): Promise<AttendanceRecord[]> {
+  return fetchAllPages<AttendanceRecord>("/api/v1/attendance/", attendanceQuery(params));
+}
+
+export interface ListAttendancePageParams extends ListAttendanceParams {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The real-pagination counterpart to listAttendance above — used by the
+ * Admin Attendance list page, which renders a `<Pagination>` control and
+ * only ever needs the current page's rows (still within the same bounded
+ * 30-day default window that page already applies — this doesn't relax
+ * that bound, it just stops fetching every page of it up front). */
+export async function listAttendancePage(params: ListAttendancePageParams): Promise<Page<AttendanceRecord>> {
+  return fetchPage<AttendanceRecord>("/api/v1/attendance/", attendanceQuery(params), params.page ?? 1, params.pageSize);
 }
 
 export interface MarkAttendanceInput {

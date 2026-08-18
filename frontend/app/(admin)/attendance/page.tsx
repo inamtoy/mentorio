@@ -5,12 +5,13 @@ import { useTranslations, useLocale } from "next-intl";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { DataTable, Column } from "@/components/ui/data-table";
+import { Pagination } from "@/components/ui/pagination";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
 import { SearchInput, Select } from "@/components/ui/input";
 import { StatCard } from "@/components/ui/stat-card";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { useAttendanceQuery } from "@/lib/queries/attendance";
+import { useAttendancePageQuery, useAttendanceQuery } from "@/lib/queries/attendance";
 import { useGroupsQuery } from "@/lib/queries/groups";
 import type { AttendanceRecord, AttendanceStatus } from "@/lib/api/attendance";
 import { ApiError } from "@/lib/api/client";
@@ -75,25 +76,48 @@ export default function AttendancePage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "">("");
   const [groupFilter, setGroupFilter] = useState("");
+  const [page, setPage] = useState(1);
 
   const [dateFrom] = useState(() => daysFromTodayIso(-RECENT_WINDOW_DAYS));
   const { data: groups } = useGroupsQuery({ organizationId: organizationId ?? "" });
+
+  // Stats + the Low Attendance widget read the full (still 30-day-bounded)
+  // list — unaffected by the table's own filters/pagination below, same
+  // tradeoff as the other converted list pages.
+  const { data: records } = useAttendanceQuery({
+    organizationId: organizationId ?? "",
+    dateFrom,
+  });
+  const list = records ?? [];
+
   const {
-    data: records,
+    data: attendancePage,
     isLoading,
     isError,
     error,
-  } = useAttendanceQuery({
+  } = useAttendancePageQuery({
     organizationId: organizationId ?? "",
     status: statusFilter || undefined,
     group: groupFilter || undefined,
+    search: search || undefined,
     dateFrom,
+    page,
   });
 
-  const list = records ?? [];
-  const filtered = list.filter(
-    (r) => !search || r.student_name.toLowerCase().includes(search.toLowerCase())
-  );
+  const tableRows = attendancePage?.results ?? [];
+
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+  function updateStatusFilter(value: AttendanceStatus | "") {
+    setStatusFilter(value);
+    setPage(1);
+  }
+  function updateGroupFilter(value: string) {
+    setGroupFilter(value);
+    setPage(1);
+  }
 
   const GROUP_OPTIONS = [
     { value: "", label: t("allGroupsOption") },
@@ -144,12 +168,12 @@ export default function AttendancePage() {
           className="lg:col-span-2"
           noPadding
           title={t("attendanceRecordsTitle")}
-          subtitle={t("recordsCount", { count: filtered.length })}
+          subtitle={t("recordsCount", { count: attendancePage?.totalCount ?? 0 })}
           actions={
             <div className="flex items-center gap-2">
-              <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchStudentPlaceholder")} />
-              <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as AttendanceStatus | "")} className="w-32" />
-              <Select options={GROUP_OPTIONS} value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="w-36" />
+              <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t("searchStudentPlaceholder")} />
+              <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => updateStatusFilter(e.target.value as AttendanceStatus | "")} className="w-32" />
+              <Select options={GROUP_OPTIONS} value={groupFilter} onChange={(e) => updateGroupFilter(e.target.value)} className="w-36" />
             </div>
           }
         >
@@ -158,13 +182,20 @@ export default function AttendancePage() {
               <AlertCircle className="h-4 w-4" />
               {error instanceof ApiError ? error.message : t("loadErrorFallback")}
             </div>
-          ) : isLoading ? (
+          ) : isLoading && !attendancePage ? (
             <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
               <Loader2 className="h-4 w-4 animate-spin" />
               {t("loadingAttendance")}
             </div>
           ) : (
-            <DataTable columns={COLUMNS} data={filtered} keyField="id" emptyMessage={t("noRecordsFound")} />
+            <>
+              <DataTable columns={COLUMNS} data={tableRows} keyField="id" emptyMessage={t("noRecordsFound")} />
+              {attendancePage && attendancePage.pageCount > 1 && (
+                <div className="py-4 border-t border-slate-50">
+                  <Pagination page={page} pageCount={attendancePage.pageCount} onPageChange={setPage} />
+                </div>
+              )}
+            </>
           )}
         </Card>
 

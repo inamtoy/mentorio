@@ -3,7 +3,9 @@ import {
   createAttendance,
   deleteAttendance,
   listAttendance,
+  listAttendancePage,
   updateAttendance,
+  type ListAttendancePageParams,
   type ListAttendanceParams,
   type MarkAttendanceInput,
 } from "@/lib/api/attendance";
@@ -16,6 +18,15 @@ export function useAttendanceQuery(params: ListAttendanceParams) {
     queryKey: attendanceKey(params),
     queryFn: () => listAttendance(params),
     enabled: !!params.organizationId,
+  });
+}
+
+export function useAttendancePageQuery(params: ListAttendancePageParams) {
+  return useQuery({
+    queryKey: ["attendance-page", params],
+    queryFn: () => listAttendancePage(params),
+    enabled: !!params.organizationId,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -65,6 +76,7 @@ export function useCreateAttendanceMutation() {
     mutationFn: (input: MarkAttendanceInput) => createAttendance(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-page"] });
     },
   });
 }
@@ -76,6 +88,7 @@ export function useUpdateAttendanceMutation() {
       updateAttendance(attendanceId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-page"] });
     },
   });
 }
@@ -86,6 +99,7 @@ export function useDeleteAttendanceMutation() {
     mutationFn: (attendanceId: string) => deleteAttendance(attendanceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-page"] });
     },
   });
 }

@@ -22,6 +22,7 @@ class AttendanceViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     serializer_class = AttendanceSerializer
     permission_classes = [HasModulePermission]
     filterset_class = AttendanceFilter
+    search_fields = ["student_profile__user__first_name", "student_profile__user__last_name"]
     entity_type = "attendance"
     permission_map = ATTENDANCE_PERMISSION_MAP
 

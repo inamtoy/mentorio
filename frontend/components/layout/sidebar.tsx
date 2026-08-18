@@ -89,8 +89,8 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       {/* Logo */}
       <div className="flex items-center h-16 px-4 border-b border-slate-100 gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element -- static local asset, matches the plain <img> convention already used for branding.logoUrl on the login page */}
-        <img src="/logo.png" alt="Mentorio" className="flex-shrink-0 h-9 w-9 object-contain rounded-xl" />
-        <span className={cn("text-lg font-bold text-slate-900 tracking-tight", collapsed && "lg:hidden")}>
+        <img src="/logo.png" alt="Mentorio" className="flex-shrink-0 h-12 w-12 object-contain rounded-xl" />
+        <span className={cn("text-xl font-bold text-slate-900 tracking-tight", collapsed && "lg:hidden")}>
           Mentorio
         </span>
         <button

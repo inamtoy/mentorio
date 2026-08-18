@@ -3,8 +3,10 @@ import {
   createOrganization,
   deleteOrganization,
   listOrganizations,
+  listOrganizationsPage,
   suspendOrganization,
   updateOrganization,
+  type ListOrganizationsPageParams,
   type ListOrganizationsParams,
   type OrganizationInput,
 } from "@/lib/api/organizations";
@@ -16,12 +18,21 @@ export function useOrganizationsQuery(params: ListOrganizationsParams = {}) {
   });
 }
 
+export function useOrganizationsPageQuery(params: ListOrganizationsPageParams = {}) {
+  return useQuery({
+    queryKey: ["organizations-page", params],
+    queryFn: () => listOrganizationsPage(params),
+    placeholderData: (previous) => previous,
+  });
+}
+
 export function useCreateOrganizationMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: OrganizationInput) => createOrganization(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["organizations-page"] });
     },
   });
 }
@@ -32,6 +43,7 @@ export function useUpdateOrganizationMutation() {
     mutationFn: ({ id, input }: { id: string; input: Partial<OrganizationInput> }) => updateOrganization(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["organizations-page"] });
     },
   });
 }
@@ -42,6 +54,7 @@ export function useSuspendOrganizationMutation() {
     mutationFn: (id: string) => suspendOrganization(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["organizations-page"] });
     },
   });
 }
@@ -52,6 +65,7 @@ export function useDeleteOrganizationMutation() {
     mutationFn: (id: string) => deleteOrganization(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
+      queryClient.invalidateQueries({ queryKey: ["organizations-page"] });
     },
   });
 }

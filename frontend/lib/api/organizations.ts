@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 import type { SubscriptionPlanSummary } from "@/lib/api/billing";
 
 export type OrganizationStatus = "active" | "suspended" | "trial" | "cancelled";
@@ -47,6 +47,10 @@ export interface ListOrganizationsParams {
   search?: string;
 }
 
+// Fetches every matching row — appropriate for the many callers needing
+// the full set client-side (center dropdowns/lookups across most
+// Super-Admin pages), NOT for the top-level Super-Admin Centers list page,
+// which uses listOrganizationsPage below instead.
 export async function listOrganizations(params: ListOrganizationsParams = {}): Promise<Organization[]> {
   const query = new URLSearchParams();
   if (params.status) query.set("status", params.status);
@@ -55,6 +59,24 @@ export async function listOrganizations(params: ListOrganizationsParams = {}): P
   if (params.search) query.set("search", params.search);
 
   return fetchAllPages<Organization>("/api/v1/organizations/", query);
+}
+
+export interface ListOrganizationsPageParams extends ListOrganizationsParams {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The real-pagination counterpart to listOrganizations above — used by
+ * the Super-Admin Centers list page, which renders a `<Pagination>`
+ * control and only ever needs the current page's rows. */
+export async function listOrganizationsPage(params: ListOrganizationsPageParams = {}): Promise<Page<Organization>> {
+  const query = new URLSearchParams();
+  if (params.status) query.set("status", params.status);
+  if (params.subscriptionPlan) query.set("subscription_plan", params.subscriptionPlan);
+  if (params.country) query.set("country", params.country);
+  if (params.search) query.set("search", params.search);
+
+  return fetchPage<Organization>("/api/v1/organizations/", query, params.page ?? 1, params.pageSize);
 }
 
 export interface OrganizationInput {

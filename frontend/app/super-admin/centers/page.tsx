@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -22,10 +22,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { DataTable, Column } from '@/components/ui/data-table';
+import { Pagination } from '@/components/ui/pagination';
 import { Input, SearchInput, Select } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/lib/store/toast-store';
 import {
+  useOrganizationsPageQuery,
   useOrganizationsQuery,
   useCreateOrganizationMutation,
   useUpdateOrganizationMutation,
@@ -117,11 +119,18 @@ export default function CentersPage() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<OrganizationStatus | ''>('');
   const [filterPlan, setFilterPlan] = useState<string>('');
+  const [page, setPage] = useState(1);
   const searchParams = useSearchParams();
 
-  const { data: centers, isLoading, isError, error } = useOrganizationsQuery({
+  // Stats read from the full platform-wide list — same tradeoff as the
+  // other Super-Admin list pages converted to real pagination. The table
+  // below carries the real scale risk and gets its own single-page query.
+  const { data: allCenters } = useOrganizationsQuery({});
+  const { data: centersPage, isLoading, isError, error } = useOrganizationsPageQuery({
     status: filterStatus || undefined,
     subscriptionPlan: filterPlan || undefined,
+    search: search || undefined,
+    page,
   });
   const { data: plans } = useSubscriptionPlansQuery();
   // Two separate option lists sharing the same '' value with different
@@ -150,27 +159,32 @@ export default function CentersPage() {
   if (subscriptionParam && subscriptionParam !== appliedSubscriptionParam) {
     setAppliedSubscriptionParam(subscriptionParam);
     setFilterPlan(subscriptionParam);
+    setPage(1);
   }
 
-  const list = centers ?? [];
+  const list = centersPage?.results ?? [];
 
   // ── Stats ──────────────────────────────────────────────────────────────────
 
-  const total = list.length;
-  const active = list.filter((c) => c.status === 'active').length;
-  const suspended = list.filter((c) => c.status === 'suspended').length;
-  const trial = list.filter((c) => c.status === 'trial').length;
-
-  // ── Filtered data ──────────────────────────────────────────────────────────
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return list.filter(
-      (c) => !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || (c.city ?? '').toLowerCase().includes(q)
-    );
-  }, [list, search]);
+  const total = (allCenters ?? []).length;
+  const active = (allCenters ?? []).filter((c) => c.status === 'active').length;
+  const suspended = (allCenters ?? []).filter((c) => c.status === 'suspended').length;
+  const trial = (allCenters ?? []).filter((c) => c.status === 'trial').length;
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+  function updateFilterStatus(value: OrganizationStatus | '') {
+    setFilterStatus(value);
+    setPage(1);
+  }
+  function updateFilterPlan(value: string) {
+    setFilterPlan(value);
+    setPage(1);
+  }
 
   function handleFormChange<K extends keyof CenterFormData>(field: K, value: CenterFormData[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -383,32 +397,32 @@ export default function CentersPage() {
       {/* Table */}
       <Card noPadding>
         <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-slate-50">
-          <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('searchPlaceholder')} />
+          <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t('searchPlaceholder')} />
           <Select
             value={filterStatus}
             placeholder={t('allStatusesPlaceholder')}
             options={STATUS_OPTIONS}
-            onChange={(e) => setFilterStatus(e.target.value as OrganizationStatus | '')}
+            onChange={(e) => updateFilterStatus(e.target.value as OrganizationStatus | '')}
           />
           <Select
             value={filterPlan}
             placeholder={t('allPlansPlaceholder')}
             options={planFilterOptions}
-            onChange={(e) => setFilterPlan(e.target.value)}
+            onChange={(e) => updateFilterPlan(e.target.value)}
           />
           {(search || filterStatus || filterPlan) && (
             <button
               onClick={() => {
-                setSearch('');
-                setFilterStatus('');
-                setFilterPlan('');
+                updateSearch('');
+                updateFilterStatus('');
+                updateFilterPlan('');
               }}
               className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
             >
               <X className="h-3 w-3" /> {t('clearButton')}
             </button>
           )}
-          <span className="ml-auto text-xs text-slate-400">{t('centersCountLabel', { count: filtered.length })}</span>
+          <span className="ml-auto text-xs text-slate-400">{t('centersCountLabel', { count: centersPage?.totalCount ?? 0 })}</span>
         </div>
 
         {isError ? (
@@ -416,13 +430,20 @@ export default function CentersPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t('loadErrorFallback')}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !centersPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('loadingCenters')}
           </div>
         ) : (
-          <DataTable<Organization> columns={columns} data={filtered} keyField="id" emptyMessage={t('noCentersFound')} />
+          <>
+            <DataTable<Organization> columns={columns} data={list} keyField="id" emptyMessage={t('noCentersFound')} />
+            {centersPage && centersPage.pageCount > 1 && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={centersPage.pageCount} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

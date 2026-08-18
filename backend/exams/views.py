@@ -38,6 +38,7 @@ class ExamViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     serializer_class = ExamSerializer
     permission_classes = [HasModulePermission]
     filterset_class = ExamFilter
+    search_fields = ["title", "group__name"]
     entity_type = "exam"
     permission_map = EXAM_PERMISSION_MAP
 

@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { DataTable, Column } from "@/components/ui/data-table";
+import { Pagination } from "@/components/ui/pagination";
 import { StatusBadge } from "@/components/ui/badge";
 import { SearchInput, Select } from "@/components/ui/input";
 import { StatCard } from "@/components/ui/stat-card";
@@ -13,7 +14,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { toast } from "@/lib/store/toast-store";
 import { useGroupsQuery } from "@/lib/queries/groups";
-import { useDeleteExamMutation, useExamResultsQuery, useExamsQuery } from "@/lib/queries/exams";
+import { useDeleteExamMutation, useExamResultsQuery, useExamsPageQuery, useExamsQuery } from "@/lib/queries/exams";
 import type { Exam, ExamStatus } from "@/lib/api/exams";
 import { ApiError } from "@/lib/api/client";
 import { formatLocalizedDate } from "@/i18n/date-locale";
@@ -41,32 +42,52 @@ export default function ExamsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ExamStatus | "">("");
   const [groupFilter, setGroupFilter] = useState("");
+  const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [deletingExam, setDeletingExam] = useState<Exam | null>(null);
 
   const { data: groups } = useGroupsQuery({ organizationId: organizationId ?? "" });
+
+  // Stats + selectedExam lookup read the full (unpaginated) list — same
+  // tradeoff as the other converted list pages. The table below gets its
+  // own, separate, single-page query.
+  const { data: allExams } = useExamsQuery({ organizationId: organizationId ?? "" });
+  const list = allExams ?? [];
+
   const {
-    data: exams,
+    data: examsPage,
     isLoading,
     isError,
     error,
-  } = useExamsQuery({
+  } = useExamsPageQuery({
     organizationId: organizationId ?? "",
     status: statusFilter || undefined,
     group: groupFilter || undefined,
+    search: search || undefined,
+    page,
   });
   // Unfiltered, org-wide — feeds the average-score stat card and each row's
   // Score column, independent of whatever status/group filter is active.
   const { data: allResults } = useExamResultsQuery({ organizationId: organizationId ?? "" });
   const deleteMutation = useDeleteExamMutation();
 
-  const list = exams ?? [];
-  const filtered = list.filter(
-    (e) => !search || e.title.toLowerCase().includes(search.toLowerCase()) || e.group_name.toLowerCase().includes(search.toLowerCase())
-  );
+  const tableRows = examsPage?.results ?? [];
   const selectedExam = list.find((e) => e.id === selectedId) ?? null;
+
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+  function updateStatusFilter(value: ExamStatus | "") {
+    setStatusFilter(value);
+    setPage(1);
+  }
+  function updateGroupFilter(value: string) {
+    setGroupFilter(value);
+    setPage(1);
+  }
 
   const GROUP_OPTIONS = [{ value: "", label: t("allGroupsOption") }, ...(groups ?? []).map((g) => ({ value: g.id, label: g.name }))];
 
@@ -182,12 +203,12 @@ export default function ExamsPage() {
       <Card
         noPadding
         title={t("allExamsTitle")}
-        subtitle={t("examsCount", { count: filtered.length })}
+        subtitle={t("examsCount", { count: examsPage?.totalCount ?? 0 })}
         actions={
           <div className="flex items-center gap-2">
-            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchPlaceholder")} />
-            <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as ExamStatus | "")} className="w-32" />
-            <Select options={GROUP_OPTIONS} value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="w-40" />
+            <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t("searchPlaceholder")} />
+            <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => updateStatusFilter(e.target.value as ExamStatus | "")} className="w-32" />
+            <Select options={GROUP_OPTIONS} value={groupFilter} onChange={(e) => updateGroupFilter(e.target.value)} className="w-40" />
           </div>
         }
       >
@@ -196,13 +217,20 @@ export default function ExamsPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t("loadErrorFallback")}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !examsPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t("loadingExams")}
           </div>
         ) : (
-          <DataTable columns={COLUMNS} data={filtered} keyField="id" onRowClick={(row) => setSelectedId(row.id)} emptyMessage={t("noExamsFound")} />
+          <>
+            <DataTable columns={COLUMNS} data={tableRows} keyField="id" onRowClick={(row) => setSelectedId(row.id)} emptyMessage={t("noExamsFound")} />
+            {examsPage && examsPage.pageCount > 1 && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={examsPage.pageCount} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

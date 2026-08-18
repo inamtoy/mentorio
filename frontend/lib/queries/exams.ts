@@ -5,14 +5,17 @@ import {
   deleteExam,
   listExamResults,
   listExams,
+  listExamsPage,
   updateExam,
   updateExamResult,
   type ExamInput,
   type ListExamResultsParams,
+  type ListExamsPageParams,
   type ListExamsParams,
 } from "@/lib/api/exams";
 
 const examsKey = (params: ListExamsParams) => ["exams", params] as const;
+const examsPageKey = (params: ListExamsPageParams) => ["exams-page", params] as const;
 const examResultsKey = (params: ListExamResultsParams) => ["examResults", params] as const;
 
 // No `enabled` gate on organizationId — omitting it entirely is a valid,
@@ -29,6 +32,14 @@ export function useExamsQuery(params: ListExamsParams) {
   });
 }
 
+export function useExamsPageQuery(params: ListExamsPageParams) {
+  return useQuery({
+    queryKey: examsPageKey(params),
+    queryFn: () => listExamsPage(params),
+    placeholderData: (previous) => previous,
+  });
+}
+
 export function useExamResultsQuery(params: ListExamResultsParams) {
   return useQuery({
     queryKey: examResultsKey(params),
@@ -42,6 +53,7 @@ export function useCreateExamMutation() {
     mutationFn: (input: ExamInput) => createExam(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exams"] });
+      queryClient.invalidateQueries({ queryKey: ["exams-page"] });
     },
   });
 }
@@ -52,6 +64,7 @@ export function useUpdateExamMutation() {
     mutationFn: ({ id, input }: { id: string; input: Partial<ExamInput> }) => updateExam(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exams"] });
+      queryClient.invalidateQueries({ queryKey: ["exams-page"] });
     },
   });
 }
@@ -65,6 +78,7 @@ export function useDeleteExamMutation() {
     mutationFn: (id: string) => deleteExam(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["exams"] });
+      queryClient.invalidateQueries({ queryKey: ["exams-page"] });
     },
   });
 }

@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 
 export type ExamStatus = "scheduled" | "completed" | "cancelled";
 
@@ -44,17 +44,34 @@ export interface ListExamsParams {
   status?: ExamStatus;
   dateFrom?: string;
   dateTo?: string;
+  search?: string;
 }
 
-export async function listExams(params: ListExamsParams): Promise<Exam[]> {
+function examsQuery(params: ListExamsParams): URLSearchParams {
   const query = new URLSearchParams();
   if (params.organizationId) query.set("organization", params.organizationId);
   if (params.group) query.set("group", params.group);
   if (params.status) query.set("status", params.status);
   if (params.dateFrom) query.set("date_from", params.dateFrom);
   if (params.dateTo) query.set("date_to", params.dateTo);
+  if (params.search) query.set("search", params.search);
+  return query;
+}
 
-  return fetchAllPages<Exam>("/api/v1/exams/", query);
+export async function listExams(params: ListExamsParams): Promise<Exam[]> {
+  return fetchAllPages<Exam>("/api/v1/exams/", examsQuery(params));
+}
+
+export interface ListExamsPageParams extends ListExamsParams {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The real-pagination counterpart to listExams above — used by the Admin
+ * Exams list page, which renders a `<Pagination>` control and only ever
+ * needs the current page's rows. */
+export async function listExamsPage(params: ListExamsPageParams): Promise<Page<Exam>> {
+  return fetchPage<Exam>("/api/v1/exams/", examsQuery(params), params.page ?? 1, params.pageSize);
 }
 
 export interface ExamInput {

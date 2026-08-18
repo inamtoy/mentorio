@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { DataTable, Column } from "@/components/ui/data-table";
+import { Pagination } from "@/components/ui/pagination";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SearchInput, Select } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/lib/store/toast-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { useCoursesQuery, useDeleteCourseMutation } from "@/lib/queries/courses";
+import { useCoursesPageQuery, useCoursesQuery, useDeleteCourseMutation } from "@/lib/queries/courses";
 import type { CourseProfile, CourseLevel, CourseStatus } from "@/lib/api/courses";
 import { ApiError } from "@/lib/api/client";
 import { formatCurrency } from "@/lib/utils";
@@ -41,33 +42,53 @@ export default function CoursesPage() {
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState<CourseLevel | "">("");
   const [statusFilter, setStatusFilter] = useState<CourseStatus | "">("");
+  const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseProfile | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<CourseProfile | null>(null);
 
+  // Stat cards read from the full (unpaginated) list — same tradeoff as the
+  // Admin Students/Teachers/Groups pages. The table below gets its own,
+  // separate, single-page query.
+  const { data: allCourses } = useCoursesQuery({ organizationId: organizationId ?? "" });
+  const statsList = allCourses ?? [];
+  const stats = {
+    total: statsList.length,
+    students: statsList.reduce((sum, c) => sum + c.student_count, 0),
+    lessons: statsList.reduce((sum, c) => sum + (c.total_lessons ?? 0), 0),
+    revenuePotential: statsList.reduce((sum, c) => sum + Number(c.price ?? 0) * c.student_count, 0),
+  };
+
   const {
-    data: courses,
+    data: coursesPage,
     isLoading,
     isError,
     error,
-  } = useCoursesQuery({
+  } = useCoursesPageQuery({
     organizationId: organizationId ?? "",
     status: statusFilter || undefined,
     level: levelFilter || undefined,
     search: search || undefined,
+    page,
   });
   const deleteMutation = useDeleteCourseMutation();
 
-  const list = courses ?? [];
+  const list = coursesPage?.results ?? [];
   const selectedCourse = list.find((c) => c.id === selectedId) ?? null;
 
-  const stats = {
-    total: list.length,
-    students: list.reduce((sum, c) => sum + c.student_count, 0),
-    lessons: list.reduce((sum, c) => sum + (c.total_lessons ?? 0), 0),
-    revenuePotential: list.reduce((sum, c) => sum + Number(c.price ?? 0) * c.student_count, 0),
-  };
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+  function updateLevelFilter(value: CourseLevel | "") {
+    setLevelFilter(value);
+    setPage(1);
+  }
+  function updateStatusFilter(value: CourseStatus | "") {
+    setStatusFilter(value);
+    setPage(1);
+  }
 
   const COLUMNS: Column<CourseProfile>[] = [
     {
@@ -163,12 +184,12 @@ export default function CoursesPage() {
       <Card
         noPadding
         title={t("allCoursesTitle")}
-        subtitle={t("showingCount", { count: list.length })}
+        subtitle={t("showingCount", { count: coursesPage?.totalCount ?? 0 })}
         actions={
           <div className="flex items-center gap-2">
-            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchPlaceholder")} />
-            <Select options={LEVEL_OPTIONS} value={levelFilter} onChange={(e) => setLevelFilter(e.target.value as CourseLevel | "")} className="w-36" />
-            <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as CourseStatus | "")} className="w-36" />
+            <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t("searchPlaceholder")} />
+            <Select options={LEVEL_OPTIONS} value={levelFilter} onChange={(e) => updateLevelFilter(e.target.value as CourseLevel | "")} className="w-36" />
+            <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => updateStatusFilter(e.target.value as CourseStatus | "")} className="w-36" />
           </div>
         }
       >
@@ -177,19 +198,26 @@ export default function CoursesPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t("loadErrorFallback")}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !coursesPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t("loadingCourses")}
           </div>
         ) : (
-          <DataTable
-            columns={COLUMNS}
-            data={list}
-            keyField="id"
-            emptyMessage={t("noCoursesFound")}
-            onRowClick={(row) => setSelectedId(row.id)}
-          />
+          <>
+            <DataTable
+              columns={COLUMNS}
+              data={list}
+              keyField="id"
+              emptyMessage={t("noCoursesFound")}
+              onRowClick={(row) => setSelectedId(row.id)}
+            />
+            {coursesPage && coursesPage.pageCount > 1 && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={coursesPage.pageCount} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

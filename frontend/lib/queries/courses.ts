@@ -3,17 +3,28 @@ import {
   createCourse,
   deleteCourse,
   listCourses,
+  listCoursesPage,
   updateCourse,
   type CourseInput,
+  type ListCoursesPageParams,
   type ListCoursesParams,
 } from "@/lib/api/courses";
 
 const coursesKey = (params: ListCoursesParams) => ["courses", params] as const;
+const coursesPageKey = (params: ListCoursesPageParams) => ["courses-page", params] as const;
 
 export function useCoursesQuery(params: ListCoursesParams) {
   return useQuery({
     queryKey: coursesKey(params),
     queryFn: () => listCourses(params),
+  });
+}
+
+export function useCoursesPageQuery(params: ListCoursesPageParams) {
+  return useQuery({
+    queryKey: coursesPageKey(params),
+    queryFn: () => listCoursesPage(params),
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -23,6 +34,7 @@ export function useCreateCourseMutation() {
     mutationFn: (input: CourseInput) => createCourse(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["courses"] });
+      queryClient.invalidateQueries({ queryKey: ["courses-page"] });
     },
   });
 }
@@ -34,6 +46,7 @@ export function useUpdateCourseMutation() {
       updateCourse(courseId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["courses"] });
+      queryClient.invalidateQueries({ queryKey: ["courses-page"] });
     },
   });
 }
@@ -44,6 +57,7 @@ export function useDeleteCourseMutation() {
     mutationFn: (courseId: string) => deleteCourse(courseId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["courses"] });
+      queryClient.invalidateQueries({ queryKey: ["courses-page"] });
     },
   });
 }

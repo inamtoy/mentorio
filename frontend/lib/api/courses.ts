@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 
 export type CourseStatus = "draft" | "active" | "archived" | "discontinued";
 export type CourseLevel = "beginner" | "intermediate" | "advanced";
@@ -32,6 +32,9 @@ export interface ListCoursesParams {
   search?: string;
 }
 
+// Fetches every matching row — appropriate for callers needing the full set
+// client-side (Groups' course picker), NOT for the top-level Admin Courses
+// list page, which uses listCoursesPage below instead.
 export async function listCourses(params: ListCoursesParams): Promise<CourseProfile[]> {
   const query = new URLSearchParams({ organization: params.organizationId });
   if (params.status) query.set("status", params.status);
@@ -39,6 +42,23 @@ export async function listCourses(params: ListCoursesParams): Promise<CourseProf
   if (params.search) query.set("search", params.search);
 
   return fetchAllPages<CourseProfile>("/api/v1/courses/", query);
+}
+
+export interface ListCoursesPageParams extends ListCoursesParams {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The real-pagination counterpart to listCourses above — used by the
+ * Admin Courses list page, which renders a `<Pagination>` control and only
+ * ever needs the current page's rows. */
+export async function listCoursesPage(params: ListCoursesPageParams): Promise<Page<CourseProfile>> {
+  const query = new URLSearchParams({ organization: params.organizationId });
+  if (params.status) query.set("status", params.status);
+  if (params.level) query.set("level", params.level);
+  if (params.search) query.set("search", params.search);
+
+  return fetchPage<CourseProfile>("/api/v1/courses/", query, params.page ?? 1, params.pageSize);
 }
 
 export interface CourseInput {

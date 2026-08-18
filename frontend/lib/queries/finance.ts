@@ -5,14 +5,17 @@ import {
   createSelfInvoice,
   deleteInvoice,
   listInvoices,
+  listInvoicesPage,
   listPayments,
   type InvoiceInput,
+  type ListInvoicesPageParams,
   type ListInvoicesParams,
   type ListPaymentsParams,
   type PaymentInput,
 } from "@/lib/api/finance";
 
 const invoicesKey = (params: ListInvoicesParams) => ["invoices", params] as const;
+const invoicesPageKey = (params: ListInvoicesPageParams) => ["invoices-page", params] as const;
 const paymentsKey = (params: ListPaymentsParams) => ["payments", params] as const;
 
 export function useInvoicesQuery(params: ListInvoicesParams) {
@@ -20,6 +23,15 @@ export function useInvoicesQuery(params: ListInvoicesParams) {
     queryKey: invoicesKey(params),
     queryFn: () => listInvoices(params),
     enabled: !!params.organizationId,
+  });
+}
+
+export function useInvoicesPageQuery(params: ListInvoicesPageParams) {
+  return useQuery({
+    queryKey: invoicesPageKey(params),
+    queryFn: () => listInvoicesPage(params),
+    enabled: !!params.organizationId,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -37,6 +49,7 @@ export function useCreateInvoiceMutation() {
     mutationFn: (input: InvoiceInput) => createInvoice(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices-page"] });
     },
   });
 }
@@ -47,6 +60,7 @@ export function useDeleteInvoiceMutation() {
     mutationFn: (invoiceId: string) => deleteInvoice(invoiceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices-page"] });
     },
   });
 }
@@ -57,6 +71,7 @@ export function useCreateSelfInvoiceMutation() {
     mutationFn: (groupId: string) => createSelfInvoice(groupId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices-page"] });
     },
   });
 }
@@ -68,6 +83,7 @@ export function useCreatePaymentMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices-page"] });
     },
   });
 }

@@ -31,7 +31,7 @@ class InvoiceViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     serializer_class = InvoiceSerializer
     permission_classes = [HasModulePermission]
     filterset_class = InvoiceFilter
-    search_fields = ["invoice_number"]
+    search_fields = ["invoice_number", "student_profile__user__first_name", "student_profile__user__last_name"]
     entity_type = "invoice"
     permission_map = FINANCE_PERMISSION_MAP
 

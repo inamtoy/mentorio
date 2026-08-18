@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 
 export type InvoiceStatus = "draft" | "pending" | "partially_paid" | "paid" | "overdue" | "cancelled" | "refunded";
 export type PaymentMethod = "cash" | "card" | "bank_transfer" | "online" | "mobile_payment" | "payme" | "click" | "other";
@@ -54,7 +54,7 @@ export interface ListInvoicesParams {
 // date bound — this accumulates a new row every billing cycle for every
 // student with no natural cap. See the Admin Finance page's default date
 // filter for the one such caller in this app.
-export async function listInvoices(params: ListInvoicesParams): Promise<Invoice[]> {
+function invoicesQuery(params: ListInvoicesParams): URLSearchParams {
   const query = new URLSearchParams({ organization: params.organizationId });
   if (params.studentProfile) query.set("student_profile", params.studentProfile);
   if (params.group) query.set("group", params.group);
@@ -62,8 +62,24 @@ export async function listInvoices(params: ListInvoicesParams): Promise<Invoice[
   if (params.search) query.set("search", params.search);
   if (params.dateFrom) query.set("date_from", params.dateFrom);
   if (params.dateTo) query.set("date_to", params.dateTo);
+  return query;
+}
 
-  return fetchAllPages<Invoice>("/api/v1/finance/invoices/", query);
+export async function listInvoices(params: ListInvoicesParams): Promise<Invoice[]> {
+  return fetchAllPages<Invoice>("/api/v1/finance/invoices/", invoicesQuery(params));
+}
+
+export interface ListInvoicesPageParams extends ListInvoicesParams {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The real-pagination counterpart to listInvoices above — used by the
+ * Admin Finance list page, which renders a `<Pagination>` control and only
+ * ever needs the current page's rows (still within the same bounded
+ * 1-year default window that page already applies). */
+export async function listInvoicesPage(params: ListInvoicesPageParams): Promise<Page<Invoice>> {
+  return fetchPage<Invoice>("/api/v1/finance/invoices/", invoicesQuery(params), params.page ?? 1, params.pageSize);
 }
 
 export interface InvoiceInput {

@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { DataTable, Column } from "@/components/ui/data-table";
+import { Pagination } from "@/components/ui/pagination";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { SearchInput, Select } from "@/components/ui/input";
 import { StatCard } from "@/components/ui/stat-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { useInvoicesQuery, usePaymentsQuery, useDeleteInvoiceMutation } from "@/lib/queries/finance";
+import { useInvoicesPageQuery, useInvoicesQuery, usePaymentsQuery, useDeleteInvoiceMutation } from "@/lib/queries/finance";
 import { toast } from "@/lib/store/toast-store";
 import { formatCurrency } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
@@ -65,7 +66,12 @@ export default function FinancePage() {
 
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   const [dateFrom] = useState(() => daysFromTodayIso(-RECENT_WINDOW_DAYS));
-  const { data: invoicesData, isLoading } = useInvoicesQuery({ organizationId: organizationId ?? "", dateFrom });
+
+  // Stats (Total Collected/Pending/Overdue, Paid count) read the full
+  // (still 1-year-bounded) list — unaffected by the table's own
+  // filters/pagination below, same tradeoff as the other converted list
+  // pages.
+  const { data: invoicesData } = useInvoicesQuery({ organizationId: organizationId ?? "", dateFrom });
   const invoices = invoicesData ?? [];
   const { data: paymentsData } = usePaymentsQuery({ organizationId: organizationId ?? "", dateFrom });
   const recentPayments = [...(paymentsData ?? [])]
@@ -75,15 +81,31 @@ export default function FinancePage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
 
-  const filtered = invoices.filter((inv) => {
-    const matchesSearch = !search || inv.student_name.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = !statusFilter || inv.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  const {
+    data: invoicesPage,
+    isLoading,
+  } = useInvoicesPageQuery({
+    organizationId: organizationId ?? "",
+    status: (statusFilter || undefined) as Invoice["status"] | undefined,
+    search: search || undefined,
+    dateFrom,
+    page,
   });
+  const tableRows = invoicesPage?.results ?? [];
+
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+  function updateStatusFilter(value: string) {
+    setStatusFilter(value);
+    setPage(1);
+  }
 
   const selectedInvoice = invoices.find((i) => i.id === selectedId) ?? null;
   const totalRevenue = invoices.reduce((s, i) => s + Number(i.paid_amount), 0);
@@ -189,21 +211,26 @@ export default function FinancePage() {
       <Card
         noPadding
         title={t("invoicesTitle")}
-        subtitle={t("invoicesCount", { count: filtered.length })}
+        subtitle={t("invoicesCount", { count: invoicesPage?.totalCount ?? 0 })}
         actions={
           <div className="flex items-center gap-2">
-            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchStudentPlaceholder")} />
-            <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-40" />
+            <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t("searchStudentPlaceholder")} />
+            <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => updateStatusFilter(e.target.value)} className="w-40" />
           </div>
         }
       >
         <DataTable
           columns={INVOICE_COLUMNS}
-          data={filtered}
+          data={tableRows}
           keyField="id"
           emptyMessage={isLoading ? t("loadingInvoices") : t("noInvoicesFound")}
           onRowClick={(row) => setSelectedId(row.id)}
         />
+        {invoicesPage && invoicesPage.pageCount > 1 && (
+          <div className="py-4 border-t border-slate-50">
+            <Pagination page={page} pageCount={invoicesPage.pageCount} onPageChange={setPage} />
+          </div>
+        )}
       </Card>
 
       {selectedInvoice && (

@@ -28,16 +28,26 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # 'lts/*' instead of a hard '20' pin, just so this doesn't
-          # silently drift stale over time — not itself what fixed `npm
-          # ci` failing here (see the actual fix: package-lock.json's own
-          # commit).
           node-version: 'lts/*'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      # `npm ci` (not `npm install`) was tried first, since it's the usual
+      # CI-correct choice — but it kept failing here with "Missing:
+      # @emnapi/... from lock file" even right after regenerating
+      # package-lock.json, because that regeneration can only ever be run
+      # on Windows (this repo's only local dev machine), and Windows'
+      # own npm never resolves — so never fully records — the nested
+      # optional deps of @tailwindcss/oxide-wasm32-wasi, a Linux-only
+      # dependency chain. No WSL/Docker is available locally to produce a
+      # byte-correct Linux lockfile instead. `npm install` still installs
+      # from the committed lockfile's pinned versions wherever they're
+      # already consistent, and only repairs the platform-specific gaps
+      # `npm ci` refuses to tolerate — an accepted, deliberate loosening
+      # for this one known asymmetry, not a general policy of not trusting
+      # the lockfile.
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Typecheck (tsc --noEmit)
         run: npx tsc --noEmit
@@ -128,8 +138,21 @@ jobs:
       # mid-migrate permission gap exists. (BYPASSRLS itself is a role
       # attribute, not a privilege grant, so it's unaffected by this
       # membership — educore_auth_bypass still bypasses RLS as before.)
+      # Wrapped in `timeout` — this step has hung indefinitely (not failed)
+      # on prior CI runs for reasons not yet root-caused, and GitHub's own
+      # API only exposes step logs once a step *finishes* (confirmed: an
+      # in-progress job's /logs endpoint 404s), so a genuine hang here was
+      # previously undebuggable — no way to see which migration it stuck
+      # on. This turns a silent multi-minute hang into a fast, loud
+      # failure with the same partial "Applying x.0001... OK" progress
+      # output manage.py migrate already prints per-migration, revealing
+      # exactly where it stopped. Local repro (a truly fresh DB, not
+      # --reuse-db) got through the full migration set in under 3s per
+      # migration with no hang at any point once each schema's grants were
+      # in place — so if this trips, the cause is CI-environment-specific,
+      # not a migration itself looping.
       - name: Migrate test database
-        run: uv run python manage.py migrate
+        run: timeout 180 uv run python manage.py migrate
 
       # educore_app already has everything as the table owner; this is only
       # for educore_auth_bypass's *own* login session during the actual

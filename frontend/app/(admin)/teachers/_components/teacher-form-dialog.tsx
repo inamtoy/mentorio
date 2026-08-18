@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Dialog,
@@ -107,22 +107,22 @@ function TeacherFormFields({
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (mode === "edit" && !initialized && userRecord && teacher) {
-      setValues({
-        firstName: userRecord.first_name,
-        lastName: userRecord.last_name,
-        phone: userRecord.phone,
-        gender: userRecord.gender ?? "male",
-        teacherCode: teacher.teacher_code,
-        status: teacher.status,
-        employmentType: teacher.employment_type,
-        specialization: "",
-        salary: 0,
-      });
-      setInitialized(true);
-    }
-  }, [mode, initialized, userRecord, teacher]);
+  // Adjusted during render, not in an effect — same one-time-on-load
+  // pattern as StudentFormDialog's fields component, see its comment.
+  if (mode === "edit" && !initialized && userRecord && teacher) {
+    setInitialized(true);
+    setValues({
+      firstName: userRecord.first_name,
+      lastName: userRecord.last_name,
+      phone: userRecord.phone,
+      gender: userRecord.gender ?? "male",
+      teacherCode: teacher.teacher_code,
+      status: teacher.status,
+      employmentType: teacher.employment_type,
+      specialization: "",
+      salary: 0,
+    });
+  }
 
   function setField<K extends keyof TeacherProfileFormValues>(key: K, value: TeacherProfileFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));

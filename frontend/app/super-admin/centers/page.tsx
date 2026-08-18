@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -139,13 +139,18 @@ export default function CentersPage() {
   const suspendMutation = useSuspendOrganizationMutation();
   const deleteMutation = useDeleteOrganizationMutation();
 
-  useEffect(() => {
-    // Subscriptions page's "View Centers" deep-links with the plan's real
-    // id now (?subscription=<uuid>), not a tier-name string — see
-    // app/super-admin/subscriptions/page.tsx.
-    const planId = searchParams.get('subscription');
-    if (planId) setFilterPlan(planId);
-  }, [searchParams]);
+  // Subscriptions page's "View Centers" deep-links with the plan's real id
+  // now (?subscription=<uuid>), not a tier-name string — see
+  // app/super-admin/subscriptions/page.tsx. Applied during render (once per
+  // distinct incoming value, tracked below) rather than in an effect —
+  // same rationale as the form dialogs' one-time-sync comments elsewhere
+  // in this pagination/lint pass.
+  const subscriptionParam = searchParams.get('subscription');
+  const [appliedSubscriptionParam, setAppliedSubscriptionParam] = useState<string | null>(null);
+  if (subscriptionParam && subscriptionParam !== appliedSubscriptionParam) {
+    setAppliedSubscriptionParam(subscriptionParam);
+    setFilterPlan(subscriptionParam);
+  }
 
   const list = centers ?? [];
 

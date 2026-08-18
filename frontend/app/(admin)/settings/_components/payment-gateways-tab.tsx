@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Save, Trash2, CreditCard } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
@@ -51,19 +51,26 @@ function ProviderCard({ provider, label, needsServiceId, account }: {
       ? { merchantId: account.merchant_id, serviceId: account.service_id ?? "", secretKey: "", isActive: account.is_active }
       : EMPTY_FORM
   );
-  // useState's initializer only runs once — without this, a background
+  // Adjusted during render, not in an effect — React's own endorsed
+  // pattern for "reset/re-sync state when a prop changes" (see "Storing
+  // information from previous renders" in the React docs). A background
   // refetch of the shared gateway-accounts query (window refocus, or
-  // invalidation from saving the sibling provider's card) leaves this
-  // still-mounted card showing stale data instead of the freshly fetched
-  // record. Only re-syncs when the underlying account data actually
-  // changes, so it won't clobber an in-progress edit of unrelated fields.
-  useEffect(() => {
+  // invalidation from saving the sibling provider's card) can leave this
+  // still-mounted card showing stale data otherwise; comparing against a
+  // ref-tracked key and calling setState synchronously mid-render (rather
+  // than post-commit via useEffect) avoids the extra render pass without
+  // clobbering an in-progress edit of unrelated fields between real
+  // account changes.
+  const accountKey = `${account?.id ?? ""}:${account?.merchant_id ?? ""}:${account?.service_id ?? ""}:${account?.is_active ?? ""}`;
+  const [syncedAccountKey, setSyncedAccountKey] = useState(accountKey);
+  if (accountKey !== syncedAccountKey) {
+    setSyncedAccountKey(accountKey);
     setForm(
       account
         ? { merchantId: account.merchant_id, serviceId: account.service_id ?? "", secretKey: "", isActive: account.is_active }
         : EMPTY_FORM
     );
-  }, [account?.id, account?.merchant_id, account?.service_id, account?.is_active]);
+  }
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const saving = createMutation.isPending || updateMutation.isPending;
 

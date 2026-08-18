@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Dialog,
@@ -96,22 +96,26 @@ function StudentFormFields({
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (mode === "edit" && !initialized && userRecord && student) {
-      setValues({
-        firstName: userRecord.first_name,
-        lastName: userRecord.last_name,
-        phone: userRecord.phone,
-        gender: userRecord.gender ?? "male",
-        dateOfBirth: userRecord.date_of_birth ?? "",
-        studentCode: student.student_code,
-        status: student.status,
-        parentName: "",
-        parentPhone: "",
-      });
-      setInitialized(true);
-    }
-  }, [mode, initialized, userRecord, student]);
+  // Adjusted during render, not in an effect — this only ever fires once
+  // per mount (guarded by `initialized`), the moment userRecord finishes
+  // loading, so doing it synchronously mid-render (React's own endorsed
+  // pattern for one-time state derived from an async source, see "Storing
+  // information from previous renders" in the React docs) avoids the
+  // extra post-mount render pass a useEffect would add here.
+  if (mode === "edit" && !initialized && userRecord && student) {
+    setInitialized(true);
+    setValues({
+      firstName: userRecord.first_name,
+      lastName: userRecord.last_name,
+      phone: userRecord.phone,
+      gender: userRecord.gender ?? "male",
+      dateOfBirth: userRecord.date_of_birth ?? "",
+      studentCode: student.student_code,
+      status: student.status,
+      parentName: "",
+      parentPhone: "",
+    });
+  }
 
   function setField<K extends keyof StudentFormValues>(key: K, value: StudentFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));

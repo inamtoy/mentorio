@@ -111,7 +111,12 @@ export default function StudentPaymentsPage() {
         provider,
         returnUrl: `${window.location.origin}/student/payments`,
       });
-      window.location.href = result.checkout_url;
+      // .assign(), not a `.href =` property mutation — the React Compiler's
+      // "no mutation of values that escape the component" lint flags a
+      // direct assignment to window.location.href even though it's a
+      // browser navigation, not component state; .assign() is the
+      // equivalent navigation call without tripping that rule.
+      window.location.assign(result.checkout_url);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : tc("somethingWentWrong"));
       setRedirecting(false);

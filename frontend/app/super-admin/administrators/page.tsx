@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   ShieldCheck,
@@ -24,12 +24,14 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { StatCard } from '@/components/ui/stat-card';
 import { DataTable, Column } from '@/components/ui/data-table';
+import { Pagination } from '@/components/ui/pagination';
 import { Input, SearchInput, Select } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/lib/store/toast-store';
 import { useOrganizationsQuery } from '@/lib/queries/organizations';
 import { useBranchesQuery } from '@/lib/queries/branches';
 import {
+  useAdministratorsPageQuery,
   useAdministratorsQuery,
   useCenterAdminRoleQuery,
   useCreateAdministratorMutation,
@@ -101,38 +103,48 @@ export default function AdministratorsPage() {
   const [search, setSearch] = useState('');
   const [filterCenter, setFilterCenter] = useState('');
   const [filterStatus, setFilterStatus] = useState<AdminStatus | ''>('');
+  const [page, setPage] = useState(1);
 
   const { data: centers } = useOrganizationsQuery();
   const { data: allBranches } = useBranchesQuery({ organization: form.organization || undefined });
   const { data: centerAdminRole } = useCenterAdminRoleQuery(form.organization || undefined);
-  const { data: admins, isLoading, isError, error } = useAdministratorsQuery({
+
+  // Stats read from the full platform-wide list — same tradeoff as the
+  // other Super-Admin list pages converted to real pagination. The table
+  // below carries the real scale risk and gets its own single-page query.
+  const { data: allAdmins } = useAdministratorsQuery({});
+  const total = (allAdmins ?? []).length;
+  const active = (allAdmins ?? []).filter((a) => a.status === 'active').length;
+  const inactiveSuspended = (allAdmins ?? []).filter((a) => a.status === 'inactive' || a.status === 'suspended').length;
+  const withBranch = (allAdmins ?? []).filter((a) => a.branch).length;
+
+  const { data: adminsPage, isLoading, isError, error } = useAdministratorsPageQuery({
     organization: filterCenter || undefined,
     status: filterStatus || undefined,
+    search: search || undefined,
+    page,
   });
   const createMutation = useCreateAdministratorMutation();
   const updateMutation = useUpdateAdministratorMutation();
   const suspendMutation = useSuspendAdministratorMutation();
   const deleteMutation = useDeleteAdministratorMutation();
 
-  const list = admins ?? [];
+  const list = adminsPage?.results ?? [];
   const centerOptions = (centers ?? []).map((c) => ({ value: c.id, label: c.name }));
   const branchOptions = (allBranches ?? []).map((b) => ({ value: b.id, label: b.name }));
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
-
-  const total = list.length;
-  const active = list.filter((a) => a.status === 'active').length;
-  const inactiveSuspended = list.filter((a) => a.status === 'inactive' || a.status === 'suspended').length;
-  const withBranch = list.filter((a) => a.branch).length;
-
-  // ── Filtered data ──────────────────────────────────────────────────────────
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return list.filter(
-      (a) => !q || a.full_name.toLowerCase().includes(q) || a.login_id.toLowerCase().includes(q) || (a.organization_name ?? '').toLowerCase().includes(q)
-    );
-  }, [list, search]);
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+  function updateFilterCenter(value: string) {
+    setFilterCenter(value);
+    setPage(1);
+  }
+  function updateFilterStatus(value: AdminStatus | '') {
+    setFilterStatus(value);
+    setPage(1);
+  }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -388,22 +400,22 @@ export default function AdministratorsPage() {
       <Card noPadding>
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-slate-50">
-          <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('searchPlaceholder')} />
-          <Select value={filterCenter} placeholder={t('allCentersPlaceholder')} options={centerOptions} onChange={(e) => setFilterCenter(e.target.value)} />
-          <Select value={filterStatus} placeholder={t('allStatusesPlaceholder')} options={STATUS_OPTIONS} onChange={(e) => setFilterStatus(e.target.value as AdminStatus | '')} />
+          <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t('searchPlaceholder')} />
+          <Select value={filterCenter} placeholder={t('allCentersPlaceholder')} options={centerOptions} onChange={(e) => updateFilterCenter(e.target.value)} />
+          <Select value={filterStatus} placeholder={t('allStatusesPlaceholder')} options={STATUS_OPTIONS} onChange={(e) => updateFilterStatus(e.target.value as AdminStatus | '')} />
           {(search || filterCenter || filterStatus) && (
             <button
               onClick={() => {
-                setSearch('');
-                setFilterCenter('');
-                setFilterStatus('');
+                updateSearch('');
+                updateFilterCenter('');
+                updateFilterStatus('');
               }}
               className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
             >
               <X className="h-3 w-3" /> {t('clearButton')}
             </button>
           )}
-          <span className="ml-auto text-xs text-slate-400">{t('administratorsCountLabel', { count: filtered.length })}</span>
+          <span className="ml-auto text-xs text-slate-400">{t('administratorsCountLabel', { count: adminsPage?.totalCount ?? 0 })}</span>
         </div>
 
         {isError ? (
@@ -411,13 +423,20 @@ export default function AdministratorsPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t('loadErrorFallback')}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !adminsPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('loadingAdministrators')}
           </div>
         ) : (
-          <DataTable<Administrator> columns={columns} data={filtered} keyField="id" emptyMessage={t('noAdministratorsFound')} />
+          <>
+            <DataTable<Administrator> columns={columns} data={list} keyField="id" emptyMessage={t('noAdministratorsFound')} />
+            {adminsPage && adminsPage.pageCount > 1 && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={adminsPage.pageCount} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

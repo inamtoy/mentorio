@@ -4,9 +4,11 @@ import {
   createAdministrator,
   deleteAdministrator,
   listAdministrators,
+  listAdministratorsPage,
   suspendAdministrator,
   updateAdministrator,
   type AdministratorInput,
+  type ListAdministratorsPageParams,
   type ListAdministratorsParams,
 } from "@/lib/api/administrators";
 
@@ -14,6 +16,14 @@ export function useAdministratorsQuery(params: ListAdministratorsParams = {}) {
   return useQuery({
     queryKey: ["administrators", params],
     queryFn: () => listAdministrators(params),
+  });
+}
+
+export function useAdministratorsPageQuery(params: ListAdministratorsPageParams = {}) {
+  return useQuery({
+    queryKey: ["administrators-page", params],
+    queryFn: () => listAdministratorsPage(params),
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -36,6 +46,7 @@ export function useCreateAdministratorMutation() {
     mutationFn: (input: AdministratorInput) => createAdministrator(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["administrators"] });
+      queryClient.invalidateQueries({ queryKey: ["administrators-page"] });
     },
   });
 }
@@ -46,6 +57,7 @@ export function useUpdateAdministratorMutation() {
     mutationFn: ({ id, input }: { id: string; input: Partial<AdministratorInput> }) => updateAdministrator(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["administrators"] });
+      queryClient.invalidateQueries({ queryKey: ["administrators-page"] });
     },
   });
 }
@@ -56,6 +68,7 @@ export function useSuspendAdministratorMutation() {
     mutationFn: (id: string) => suspendAdministrator(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["administrators"] });
+      queryClient.invalidateQueries({ queryKey: ["administrators-page"] });
     },
   });
 }
@@ -66,6 +79,7 @@ export function useDeleteAdministratorMutation() {
     mutationFn: (id: string) => deleteAdministrator(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["administrators"] });
+      queryClient.invalidateQueries({ queryKey: ["administrators-page"] });
     },
   });
 }

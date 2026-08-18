@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 
 export type AdminStatus = "active" | "inactive" | "suspended" | "pending";
 
@@ -43,6 +43,24 @@ export async function listAdministrators(params: ListAdministratorsParams = {}):
   if (params.search) query.set("search", params.search);
 
   return fetchAllPages<Administrator>("/api/v1/users/", query);
+}
+
+export interface ListAdministratorsPageParams extends ListAdministratorsParams {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The real-pagination counterpart to listAdministrators above — used by
+ * the Super-Admin Administrators list page, which renders a
+ * `<Pagination>` control and only ever needs the current page's rows. */
+export async function listAdministratorsPage(params: ListAdministratorsPageParams = {}): Promise<Page<Administrator>> {
+  const query = new URLSearchParams({ role: "center_admin" });
+  if (params.organization) query.set("organization", params.organization);
+  if (params.branch) query.set("branch", params.branch);
+  if (params.status) query.set("status", params.status);
+  if (params.search) query.set("search", params.search);
+
+  return fetchPage<Administrator>("/api/v1/users/", query, params.page ?? 1, params.pageSize);
 }
 
 export interface AdministratorInput {

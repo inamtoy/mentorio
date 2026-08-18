@@ -28,7 +28,16 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # '20' (this workflow's original pin) shipped an npm too old for
+          # this repo's lockfile — `npm ci` failed with "Missing: @emnapi/
+          # runtime@1.11.3 from lock file" and similar for a few other
+          # optional/platform-specific entries, even though the lockfile
+          # and package.json are genuinely in sync (confirmed locally: a
+          # fresh `npm install --package-lock-only` makes zero changes).
+          # 'lts/*' tracks whatever's current Node LTS instead of a pin
+          # that silently drifts out of sync with local dev's npm version
+          # over time.
+          node-version: 'lts/*'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -62,10 +71,14 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      # Mirrors backend/README.md's "One-time Postgres role setup" — two
-      # non-superuser, non-owner roles because the app deliberately never
-      # connects as the table owner (owners silently bypass
-      # FORCE ROW LEVEL SECURITY, which would make RLS a no-op).
+      # Two non-superuser, non-owner roles, mirroring backend/README.md's
+      # "One-time Postgres role setup" exactly — migrations themselves run
+      # as the `postgres` superuser (see the Migrate step below), same as
+      # real local dev (table-owner privilege is needed for CREATE SCHEMA/
+      # RLS functions; a plain educore_app-as-owner migrate was tried first
+      # and failed: several apps' 0004_seed_permissions migrations query
+      # via the auth_bypass_rls alias *during* migrate, before either app
+      # role has any grant on the schema that migration just created).
       DJANGO_SETTINGS_MODULE: config.settings.test
       DJANGO_SECRET_KEY: ci-only-secret-key-not-used-anywhere-real
       DB_HOST: localhost
@@ -73,8 +86,8 @@ jobs:
       # settings/test.py reads this into DATABASES["default"]["NAME"]; set
       # to the exact physical database name we provision below (skipping
       # Django's usual test-runner-managed "test_<NAME>" auto-creation,
-      # since that path can't create the educore_auth_bypass grants it
-      # needs mid-run — see the grant step below).
+      # since that path can't create the app-role grants it needs before
+      # the test run — see the grant step below).
       TEST_DB_NAME: test_educore_test
       DB_USER: educore_app
       DB_PASSWORD: ci-app-password
@@ -95,17 +108,38 @@ jobs:
       - name: Create app roles + test database
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
-          CREATE ROLE educore_app LOGIN PASSWORD 'ci-app-password' CREATEDB;
+          CREATE ROLE educore_app LOGIN PASSWORD 'ci-app-password';
           CREATE ROLE educore_auth_bypass LOGIN PASSWORD 'ci-auth-bypass-password' BYPASSRLS;
-          CREATE DATABASE test_educore_test OWNER educore_app;
+          CREATE DATABASE test_educore_test;
           SQL
 
-      - name: Migrate test database (owned by educore_app)
+      # Runs as postgres (table-owner/superuser privilege), not educore_app
+      # — matches real local dev (see backend/README.md's own setup notes)
+      # and is required for RLS-function creation either way. Table
+      # ownership no longer matters for RLS correctness (every RLS table
+      # already uses FORCE ROW LEVEL SECURITY specifically so an owning
+      # role isn't silently exempt — see foundation/migrations/0004_rls.py)
+      # — it only matters for *grants*, which neither app role has yet at
+      # this point, and several apps' seed-permission migrations query
+      # via the SEPARATE auth_bypass_rls connection alias mid-migrate
+      # (e.g. attendance/migrations/0004_seed_permissions.py), so both
+      # DATABASES["default"] and DATABASES["auth_bypass_rls"] need to
+      # resolve to postgres here — overriding only DB_USER/DB_PASSWORD
+      # leaves the auth_bypass_rls alias still pointed at the ungranted
+      # educore_auth_bypass role and this fails in exactly the same way.
+      - name: Migrate test database (as postgres superuser)
+        env:
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_AUTH_BYPASS_USER: postgres
+          DB_AUTH_BYPASS_PASSWORD: postgres
         run: uv run python manage.py migrate
 
-      - name: Grant educore_auth_bypass access on test database
+      - name: Grant app roles access on test database
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -d test_educore_test -v ON_ERROR_STOP=1 <<SQL
+          GRANT USAGE ON SCHEMA ${EDUCORE_SCHEMAS} TO educore_app;
+          GRANT SELECT, INSERT, UPDATE, DELETE, REFERENCES ON ALL TABLES IN SCHEMA ${EDUCORE_SCHEMAS} TO educore_app;
           GRANT USAGE ON SCHEMA ${EDUCORE_SCHEMAS} TO educore_auth_bypass;
           GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ${EDUCORE_SCHEMAS} TO educore_auth_bypass;
           SQL

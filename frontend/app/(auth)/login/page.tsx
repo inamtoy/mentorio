@@ -52,7 +52,7 @@ export default function LoginPage() {
   // Same default the backend itself ships (see DEFAULT_GENERAL_SETTINGS)
   // — shown immediately on first paint instead of the Zap-icon placeholder
   // flashing for the brief moment before the branding query resolves.
-  const logoUrl = branding?.logoUrl || "/logo-mentorio.jpg";
+  const logoUrl = branding?.logoUrl || "/logo-mentorio.png";
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

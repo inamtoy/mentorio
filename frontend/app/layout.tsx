@@ -8,7 +8,7 @@ import { QueryProvider } from "./query-provider";
 export const metadata: Metadata = {
   title: "Mentorio — Education Management System",
   description: "Modern education management platform for schools and learning centers",
-  icons: { icon: "/logo.jpg" },
+  icons: { icon: "/logo.png" },
 };
 
 export default async function RootLayout({

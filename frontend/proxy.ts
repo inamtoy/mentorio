@@ -87,7 +87,7 @@ export const config = {
   // through to the role guard below like any other page request — harmless
   // for Admin (whose portal is the "anything unclaimed" fallback, so it
   // always passed), but a Teacher/Student/Super-Admin session would have
-  // its own <img src="/logo.jpg"> request redirected to an HTML page
+  // its own <img src="/logo.png"> request redirected to an HTML page
   // instead of the image (no PORTAL_GUARDS prefix matches a bare asset
   // path, so it fell into the ADMIN_ROLES-only fallback and got treated as
   // a wrong-portal hit). Excluding any path with a file extension in its

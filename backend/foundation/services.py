@@ -15,7 +15,7 @@ DEFAULT_GENERAL_SETTINGS: dict = {
     # frontend's own public/ directory (see frontend/app/(auth)/login/
     # page.tsx), so the browser resolves it against whatever origin the
     # login page itself was loaded from, regardless of where the API lives.
-    "logoUrl": "/logo-mentorio.jpg",
+    "logoUrl": "/logo-mentorio.png",
     "faviconUrl": None,
 }
 

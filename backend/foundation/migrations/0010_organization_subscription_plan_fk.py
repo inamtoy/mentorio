@@ -96,7 +96,30 @@ class Migration(migrations.Migration):
     and a NOT NULL column would need a migration-time-constant FK default,
     which a data-seeded row can't provide. See the plan doc for the full
     design discussion: C:\\Users\\qrina\\.claude\\plans\\hazy-orbiting-lantern.md
+
+    BUG FIXED HERE (2026-08-19): `atomic = False` is load-bearing, not
+    optional — without it, this migration deadlocks every single time on a
+    genuinely fresh `migrate` (never surfaced before: every environment
+    that had ever run this migration reused an already-migrated dev/test
+    database via --reuse-db, so it only actually re-executed for the first
+    time in CI once CI itself started actually running, see the CI
+    workflow's own "Migrate test database" step comment). The AddField
+    above takes an ACCESS EXCLUSIVE lock on `organizations` that, in an
+    atomic migration, is held until the *whole migration's* transaction
+    commits — including through the RunPython step below, which queries
+    that same `organizations` table via the separate auth_bypass_rls
+    connection. That SELECT needs only ACCESS SHARE, but blocks waiting
+    for the still-open transaction on the default connection to release
+    its lock — which never happens, because the default connection is
+    just sitting idle in Python, waiting for RunPython (running on the
+    *other* connection) to return. A real deadlock, but not one Postgres's
+    own detector catches, since the default connection was never actually
+    waiting on a lock itself. `atomic = False` makes each operation commit
+    immediately, so AddField's lock is long gone before RunPython ever
+    queries the table.
     """
+
+    atomic = False
 
     dependencies = [
         ("foundation", "0009_seed_audit_logs_permission"),

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Building2,
@@ -20,11 +20,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { DataTable, Column } from '@/components/ui/data-table';
+import { Pagination } from '@/components/ui/pagination';
 import { Input, SearchInput, Select } from '@/components/ui/input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/lib/store/toast-store';
 import { useOrganizationsQuery } from '@/lib/queries/organizations';
 import {
+  useBranchesPageQuery,
   useBranchesQuery,
   useCreateBranchMutation,
   useUpdateBranchMutation,
@@ -66,32 +68,44 @@ export default function BranchesPage() {
   const [search, setSearch] = useState('');
   const [filterCenter, setFilterCenter] = useState('');
   const [filterActive, setFilterActive] = useState('');
+  const [page, setPage] = useState(1);
 
   const { data: centers } = useOrganizationsQuery();
-  const { data: branches, isLoading, isError, error } = useBranchesQuery({
+
+  // Stats read from the full platform-wide list — same tradeoff as the
+  // other Super-Admin list pages converted to real pagination. The table
+  // below carries the real scale risk and gets its own single-page query.
+  const { data: allBranches } = useBranchesQuery({});
+  const total = (allBranches ?? []).length;
+  const active = (allBranches ?? []).filter((b) => b.is_active).length;
+  const inactive = total - active;
+
+  const { data: branchesPage, isLoading, isError, error } = useBranchesPageQuery({
     organization: filterCenter || undefined,
     isActive: filterActive ? filterActive === 'active' : undefined,
+    search: search || undefined,
+    page,
   });
   const createMutation = useCreateBranchMutation();
   const updateMutation = useUpdateBranchMutation();
   const suspendMutation = useSuspendBranchMutation();
   const deleteMutation = useDeleteBranchMutation();
 
-  const list = branches ?? [];
+  const list = branchesPage?.results ?? [];
   const centerOptions = (centers ?? []).map((c) => ({ value: c.id, label: c.name }));
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
-
-  const total = list.length;
-  const active = list.filter((b) => b.is_active).length;
-  const inactive = total - active;
-
-  // ── Filtered data ──────────────────────────────────────────────────────────
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return list.filter((b) => !q || b.name.toLowerCase().includes(q) || (b.city ?? '').toLowerCase().includes(q));
-  }, [list, search]);
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+  function updateFilterCenter(value: string) {
+    setFilterCenter(value);
+    setPage(1);
+  }
+  function updateFilterActive(value: string) {
+    setFilterActive(value);
+    setPage(1);
+  }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -307,8 +321,8 @@ export default function BranchesPage() {
       <Card noPadding>
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-slate-50">
-          <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('searchPlaceholder')} />
-          <Select value={filterCenter} placeholder={t('allCentersPlaceholder')} options={centerOptions} onChange={(e) => setFilterCenter(e.target.value)} />
+          <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t('searchPlaceholder')} />
+          <Select value={filterCenter} placeholder={t('allCentersPlaceholder')} options={centerOptions} onChange={(e) => updateFilterCenter(e.target.value)} />
           <Select
             value={filterActive}
             placeholder={t('allStatusesPlaceholder')}
@@ -316,21 +330,21 @@ export default function BranchesPage() {
               { value: 'active', label: t('statusActive') },
               { value: 'inactive', label: t('statusInactive') },
             ]}
-            onChange={(e) => setFilterActive(e.target.value)}
+            onChange={(e) => updateFilterActive(e.target.value)}
           />
           {(search || filterCenter || filterActive) && (
             <button
               onClick={() => {
-                setSearch('');
-                setFilterCenter('');
-                setFilterActive('');
+                updateSearch('');
+                updateFilterCenter('');
+                updateFilterActive('');
               }}
               className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
             >
               <X className="h-3 w-3" /> {t('clearButton')}
             </button>
           )}
-          <span className="ml-auto text-xs text-slate-400">{t('branchesCountLabel', { count: filtered.length })}</span>
+          <span className="ml-auto text-xs text-slate-400">{t('branchesCountLabel', { count: branchesPage?.totalCount ?? 0 })}</span>
         </div>
 
         {isError ? (
@@ -338,13 +352,20 @@ export default function BranchesPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t('loadErrorFallback')}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !branchesPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('loadingBranches')}
           </div>
         ) : (
-          <DataTable<Branch> columns={columns} data={filtered} keyField="id" emptyMessage={t('noBranchesFound')} />
+          <>
+            <DataTable<Branch> columns={columns} data={list} keyField="id" emptyMessage={t('noBranchesFound')} />
+            {branchesPage && branchesPage.pageCount > 1 && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={branchesPage.pageCount} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

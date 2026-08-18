@@ -3,9 +3,11 @@ import {
   createBranch,
   deleteBranch,
   listBranches,
+  listBranchesPage,
   suspendBranch,
   updateBranch,
   type BranchInput,
+  type ListBranchesPageParams,
   type ListBranchesParams,
 } from "@/lib/api/branches";
 
@@ -16,12 +18,21 @@ export function useBranchesQuery(params: ListBranchesParams = {}) {
   });
 }
 
+export function useBranchesPageQuery(params: ListBranchesPageParams = {}) {
+  return useQuery({
+    queryKey: ["branches-page", params],
+    queryFn: () => listBranchesPage(params),
+    placeholderData: (previous) => previous,
+  });
+}
+
 export function useCreateBranchMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: BranchInput) => createBranch(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["branches"] });
+      queryClient.invalidateQueries({ queryKey: ["branches-page"] });
     },
   });
 }
@@ -32,6 +43,7 @@ export function useUpdateBranchMutation() {
     mutationFn: ({ id, input }: { id: string; input: Partial<BranchInput> }) => updateBranch(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["branches"] });
+      queryClient.invalidateQueries({ queryKey: ["branches-page"] });
     },
   });
 }
@@ -42,6 +54,7 @@ export function useSuspendBranchMutation() {
     mutationFn: (id: string) => suspendBranch(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["branches"] });
+      queryClient.invalidateQueries({ queryKey: ["branches-page"] });
     },
   });
 }
@@ -52,6 +65,7 @@ export function useDeleteBranchMutation() {
     mutationFn: (id: string) => deleteBranch(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["branches"] });
+      queryClient.invalidateQueries({ queryKey: ["branches-page"] });
     },
   });
 }

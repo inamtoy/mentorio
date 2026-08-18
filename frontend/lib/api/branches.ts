@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 
 export interface Branch {
   id: string;
@@ -31,6 +31,10 @@ export interface ListBranchesParams {
   search?: string;
 }
 
+// Fetches every matching row — appropriate for callers needing the full set
+// client-side (Administrators' branch filter dropdown), NOT for the
+// top-level Super-Admin Branches list page, which uses listBranchesPage
+// below instead.
 export async function listBranches(params: ListBranchesParams = {}): Promise<Branch[]> {
   const query = new URLSearchParams();
   if (params.organization) query.set("organization", params.organization);
@@ -38,6 +42,23 @@ export async function listBranches(params: ListBranchesParams = {}): Promise<Bra
   if (params.search) query.set("search", params.search);
 
   return fetchAllPages<Branch>("/api/v1/branches/", query);
+}
+
+export interface ListBranchesPageParams extends ListBranchesParams {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The real-pagination counterpart to listBranches above — used by the
+ * Super-Admin Branches list page, which renders a `<Pagination>` control
+ * and only ever needs the current page's rows. */
+export async function listBranchesPage(params: ListBranchesPageParams = {}): Promise<Page<Branch>> {
+  const query = new URLSearchParams();
+  if (params.organization) query.set("organization", params.organization);
+  if (params.isActive !== undefined) query.set("is_active", String(params.isActive));
+  if (params.search) query.set("search", params.search);
+
+  return fetchPage<Branch>("/api/v1/branches/", query, params.page ?? 1, params.pageSize);
 }
 
 export interface BranchInput {

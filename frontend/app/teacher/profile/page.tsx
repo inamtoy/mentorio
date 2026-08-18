@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Users, Layers, KeyRound, Phone, Clock, Copy, Check, Edit3, Save, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/card';
@@ -98,7 +98,12 @@ export default function ProfilePage() {
     firstName: '', lastName: '', phone: '', bio: '', educationDegree: '', university: '', experienceYears: 0,
   });
 
-  useEffect(() => {
+  // Synced at edit-start, not via a useEffect — form only ever renders
+  // while isEditing is true, so there's no earlier moment a stale seed
+  // value could be seen, and this avoids the extra render pass an effect
+  // adds (see the React Compiler + Zustand hook bug memory's identical
+  // rehydration-timing lesson for the same "sync on edit-start" pattern).
+  function startEdit() {
     if (user && profile) {
       setForm({
         firstName: user.first_name,
@@ -110,9 +115,6 @@ export default function ProfilePage() {
         experienceYears: profile.experience_years,
       });
     }
-  }, [user, profile]);
-
-  function startEdit() {
     setIsEditing(true);
   }
 

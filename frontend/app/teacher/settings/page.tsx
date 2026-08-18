@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   User,
   Bell,
@@ -65,6 +65,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function TeacherSettingsPage() {
+  // Keyed on hasHydrated so the whole inner page remounts (re-running
+  // every useState initializer below, including `account`, against the
+  // now-rehydrated store value) the one time zustand's persist middleware
+  // finishes reading localStorage — instead of a post-mount setState pass
+  // via useEffect. See teacher-profile-store.ts's own comment on why.
+  const hasHydrated = useTeacherProfileStore((s) => s.hasHydrated);
+  return <TeacherSettingsPageInner key={hasHydrated ? 'hydrated' : 'pending'} />;
+}
+
+function TeacherSettingsPageInner() {
   const t = useTranslations('TeacherSettings');
   const tc = useTranslations('Common');
   const p = useTeacherProfileStore((s) => s.profile);
@@ -88,12 +98,6 @@ export default function TeacherSettingsPage() {
     bio: p.bio,
     subject: p.subject,
   });
-
-  // Re-sync once the persisted profile store finishes rehydrating from localStorage,
-  // since that happens after this component's initial useState runs.
-  useEffect(() => {
-    setAccount({ name: p.name, phone: p.phone, bio: p.bio, subject: p.subject });
-  }, [p.name, p.phone, p.bio, p.subject]);
 
   // Security form
   const [passwords, setPasswords] = useState({

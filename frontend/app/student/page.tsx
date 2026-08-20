@@ -1,15 +1,6 @@
 "use client";
 
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import {
   CalendarCheck,
   GraduationCap,
   ClipboardList,
@@ -25,11 +16,6 @@ import { useTranslations, useLocale } from "next-intl";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card } from "@/components/ui/card";
 import { Badge, StatusBadge } from "@/components/ui/badge";
-import {
-  STUDENT_PROFILE,
-  STUDENT_STATS,
-  GRADE_TREND_DATA,
-} from "@/lib/student-data";
 import { useNotificationsQuery } from "@/lib/queries/notifications";
 import { useExamsQuery } from "@/lib/queries/exams";
 import { useAuthStore } from "@/lib/store/auth-store";
@@ -38,12 +24,12 @@ import type { Lesson } from "@/lib/api/schedule";
 import { useStudentsQuery } from "@/lib/queries/students";
 import { useStudentGroupMembershipsQuery } from "@/lib/queries/groups";
 import { useAssignmentsQuery, useSubmissionsQuery } from "@/lib/queries/homework";
+import { useAttendanceQuery } from "@/lib/queries/attendance";
+import { useStudentGradeSummaryQuery } from "@/lib/queries/grades";
 import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const TODAY = "2026-07-04";
 
 function toLocalIso(d: Date): string {
   const year = d.getFullYear();
@@ -84,12 +70,14 @@ function formatRelativeTime(isoString: string, t: ReturnType<typeof useTranslati
   return t("daysAgo", { count: Math.floor(diffH / 24) });
 }
 
+// Keyed by the real Notification.type (info/success/warning/error) — same
+// switch from the invented category taxonomy to the real field the Super-
+// Admin Notifications page already made (see that page's own note).
 const notifDotColor: Record<string, string> = {
-  message: "bg-indigo-500",
-  homework: "bg-amber-500",
-  exam: "bg-violet-500",
-  class: "bg-blue-500",
-  admin: "bg-slate-500",
+  info: "bg-blue-500",
+  success: "bg-emerald-500",
+  warning: "bg-amber-500",
+  error: "bg-red-500",
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -174,7 +162,8 @@ export default function StudentDashboardPage() {
   const { data: students = [] } = useStudentsQuery({ organizationId: organizationId ?? "" });
   const myProfile = students.find((s) => s.user === authUserId);
   const { data: memberships = [] } = useStudentGroupMembershipsQuery(myProfile?.id ?? null);
-  const myGroupIds = new Set(memberships.filter((m) => m.status === "active").map((m) => m.group));
+  const activeMemberships = memberships.filter((m) => m.status === "active");
+  const myGroupIds = new Set(activeMemberships.map((m) => m.group));
   const { data: assignments = [] } = useAssignmentsQuery({ organizationId: organizationId ?? "" });
   const myAssignments = assignments.filter((a) => myGroupIds.has(a.group));
   const { data: submissions = [] } = useSubmissionsQuery({ organizationId: organizationId ?? "", studentProfile: myProfile?.id });
@@ -190,7 +179,21 @@ export default function StudentDashboardPage() {
     .filter((e) => e.status === "scheduled")
     .sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time));
 
-  const todayLabel = formatLocalizedDate(new Date(TODAY + "T00:00:00"), locale, {
+  // Same formulas as app/student/profile/page.tsx's identical stat cards —
+  // present-only attendance rate, and grade average sourced from the real,
+  // computed Grades module (see backend/grades/views.py).
+  const { data: attendance } = useAttendanceQuery({ organizationId: organizationId ?? "", studentProfile: myProfile?.id });
+  const attendanceRecords = attendance ?? [];
+  const attendanceRate =
+    attendanceRecords.length > 0
+      ? Math.round((attendanceRecords.filter((r) => r.status === "present").length / attendanceRecords.length) * 100)
+      : 0;
+  const { data: gradeRows } = useStudentGradeSummaryQuery();
+  const gradedRows = (gradeRows ?? []).filter((r) => r.final_grade !== null);
+  const avgGrade =
+    gradedRows.length > 0 ? Math.round(gradedRows.reduce((sum, r) => sum + (r.final_grade as number), 0) / gradedRows.length) : 0;
+
+  const todayLabel = formatLocalizedDate(new Date(), locale, {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -204,7 +207,7 @@ export default function StudentDashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">
-              {t("welcomeBack", { name: STUDENT_PROFILE.name.split(" ")[0] })}
+              {t("welcomeBack", { name: (myProfile?.user_full_name ?? "").split(" ")[0] })}
             </h2>
             <p className="text-indigo-100 text-sm mt-1">{todayLabel}</p>
             <p className="text-white/90 mt-2 text-base font-medium">
@@ -213,10 +216,10 @@ export default function StudentDashboardPage() {
           </div>
           <div className="hidden sm:flex flex-col items-end gap-1 text-right">
             <div className="bg-white/20 rounded-xl px-4 py-2 text-sm font-medium backdrop-blur-sm">
-              {t("avgGradeBadge", { value: STUDENT_STATS.avgGrade })}
+              {t("avgGradeBadge", { value: avgGrade })}
             </div>
             <div className="bg-white/20 rounded-xl px-4 py-2 text-sm font-medium backdrop-blur-sm">
-              {t("coursesEnrolledBadge", { count: STUDENT_STATS.enrolledCourses })}
+              {t("coursesEnrolledBadge", { count: activeMemberships.length })}
             </div>
           </div>
         </div>
@@ -226,13 +229,13 @@ export default function StudentDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label={t("statAttendanceRate")}
-          value={`${STUDENT_STATS.attendanceRate}%`}
+          value={`${attendanceRate}%`}
           icon={<ClipboardCheck className="h-5 w-5 text-indigo-600" />}
           iconBg="bg-indigo-50"
         />
         <StatCard
           label={t("statAverageGrade")}
-          value={`${STUDENT_STATS.avgGrade}%`}
+          value={`${avgGrade}%`}
           icon={<GraduationCap className="h-5 w-5 text-emerald-600" />}
           iconBg="bg-emerald-50"
         />
@@ -300,62 +303,39 @@ export default function StudentDashboardPage() {
         </Card>
       </div>
 
-      {/* ── Charts + Pending Homework ──────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Grade Trend */}
-        <Card title={t("gradeTrendTitle")} subtitle={t("gradeTrendSubtitle")}>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={GRADE_TREND_DATA} margin={{ top: 4, right: 12, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} domain={[60, 100]} />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "12px",
-                  border: "none",
-                  boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
-                  fontSize: "12px",
-                }}
-              />
-              <Line type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 4, fill: "#6366f1" }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
-
-        {/* Pending Homework */}
-        <Card title={t("pendingHomeworkTitle")} subtitle={t("itemsNeedAttention", { count: pendingHomework.length })}>
-          {pendingHomework.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-8">{t("allCaughtUp")}</p>
-          ) : (
-            <div className="space-y-3">
-              {pendingHomework.map((assignment) => {
-                const isLate = assignment.due_date < todayIso;
-                return (
-                  <div
-                    key={assignment.id}
-                    className="rounded-xl border border-slate-100 p-3 hover:border-indigo-100 hover:bg-indigo-50/30 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800 truncate">{assignment.title}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{assignment.group_name}</p>
-                      </div>
-                      <Badge
-                        label={HOMEWORK_STATUS_CONFIG[isLate ? "late" : "pending"].label}
-                        variant={HOMEWORK_STATUS_CONFIG[isLate ? "late" : "pending"].variant}
-                      />
+      {/* ── Pending Homework ──────────────────────────────────────────── */}
+      <Card title={t("pendingHomeworkTitle")} subtitle={t("itemsNeedAttention", { count: pendingHomework.length })}>
+        {pendingHomework.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-8">{t("allCaughtUp")}</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {pendingHomework.map((assignment) => {
+              const isLate = assignment.due_date < todayIso;
+              return (
+                <div
+                  key={assignment.id}
+                  className="rounded-xl border border-slate-100 p-3 hover:border-indigo-100 hover:bg-indigo-50/30 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800 truncate">{assignment.title}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{assignment.group_name}</p>
                     </div>
-                    <div className="flex items-center gap-1.5 mt-2 text-xs text-slate-400">
-                      <Clock className="h-3 w-3" />
-                      {t("dueLabel", { date: formatDate(assignment.due_date, locale) })}
-                    </div>
+                    <Badge
+                      label={HOMEWORK_STATUS_CONFIG[isLate ? "late" : "pending"].label}
+                      variant={HOMEWORK_STATUS_CONFIG[isLate ? "late" : "pending"].variant}
+                    />
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-      </div>
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-slate-400">
+                    <Clock className="h-3 w-3" />
+                    {t("dueLabel", { date: formatDate(assignment.due_date, locale) })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
 
       {/* ── Recent Activity + Exam Reminders ──────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -369,7 +349,7 @@ export default function StudentDashboardPage() {
                 <div key={notif.id} className="flex items-start gap-3">
                   <div className="mt-1.5 flex-shrink-0">
                     <span
-                      className={`h-2.5 w-2.5 rounded-full inline-block ${notifDotColor[notif.category] ?? "bg-slate-400"}`}
+                      className={`h-2.5 w-2.5 rounded-full inline-block ${notifDotColor[notif.type] ?? "bg-slate-400"}`}
                     />
                   </div>
                   <div className="flex-1 min-w-0">

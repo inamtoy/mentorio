@@ -134,8 +134,6 @@
     "upcomingLessonsTitle": "Upcoming Lessons",
     "next4Sessions": "Next 4 sessions",
     "noUpcomingLessons": "No upcoming lessons",
-    "gradeTrendTitle": "Grade Trend",
-    "gradeTrendSubtitle": "Average score over recent months",
     "pendingHomeworkTitle": "Pending Homework",
     "itemsNeedAttention": "{count, plural, one {# item} other {# items}} need attention",
     "allCaughtUp": "You're all caught up!",

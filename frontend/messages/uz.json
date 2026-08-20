@@ -161,9 +161,11 @@
     "taughtBy": "O'qituvchi: {name}",
     "classmatesCount": "{count, plural, other {# ta guruhdosh}}",
     "nextLessonLabel": "Keyingisi:",
-    "progressLabel": "Kurs {percent}% bajarilgan",
     "scheduleAction": "Jadval",
-    "homeworkAction": "Uy vazifasi"
+    "homeworkAction": "Uy vazifasi",
+    "loadingCourses": "Kurslar yuklanmoqda…",
+    "loadErrorFallback": "Kurslarni yuklab bo'lmadi.",
+    "noCoursesFound": "Siz hali hech qanday kursga yozilmagansiz."
   },
   "StudentSchedule": {
     "pageTitle": "Dars jadvali",

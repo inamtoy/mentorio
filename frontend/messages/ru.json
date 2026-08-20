@@ -161,9 +161,11 @@
     "taughtBy": "Преподаватель: {name}",
     "classmatesCount": "{count, plural, one {# одногруппник} few {# одногруппника} many {# одногруппников} other {# одногруппника}}",
     "nextLessonLabel": "Далее:",
-    "progressLabel": "Курс пройден на {percent}%",
     "scheduleAction": "Расписание",
-    "homeworkAction": "Задания"
+    "homeworkAction": "Задания",
+    "loadingCourses": "Загрузка курсов…",
+    "loadErrorFallback": "Не удалось загрузить курсы.",
+    "noCoursesFound": "Вы пока не записаны ни на один курс."
   },
   "StudentSchedule": {
     "pageTitle": "Расписание",

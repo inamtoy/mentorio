@@ -161,9 +161,11 @@
     "taughtBy": "Taught by {name}",
     "classmatesCount": "{count, plural, one {# classmate} other {# classmates}}",
     "nextLessonLabel": "Next:",
-    "progressLabel": "{percent}% course progress",
     "scheduleAction": "Schedule",
-    "homeworkAction": "Homework"
+    "homeworkAction": "Homework",
+    "loadingCourses": "Loading courses…",
+    "loadErrorFallback": "Failed to load courses.",
+    "noCoursesFound": "You're not enrolled in any courses yet."
   },
   "StudentSchedule": {
     "pageTitle": "Schedule",

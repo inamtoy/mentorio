@@ -42,3 +42,24 @@ export async function listTeacherGradeSummary(params: ListTeacherGradeSummaryPar
   const qs = query.toString();
   return apiFetch<TeacherGradeRow[]>(`/api/v1/grades/teacher-summary/${qs ? `?${qs}` : ""}`);
 }
+
+/** The student-facing counterpart — one row per group the caller is
+ * actively enrolled in (backend/grades/views.py::StudentGradeSummaryView).
+ * Same computed fields as TeacherGradeRow, minus student_profile/
+ * student_name (always the caller) and plus subject/teacher_name. */
+export interface StudentGradeRow {
+  id: string;
+  group: string;
+  group_name: string;
+  subject: string;
+  teacher_name: string;
+  assignment_avg: number | null;
+  exam_avg: number | null;
+  attendance_pct: number | null;
+  final_grade: number | null;
+  trend: GradeTrend | null;
+}
+
+export async function listStudentGradeSummary(): Promise<StudentGradeRow[]> {
+  return apiFetch<StudentGradeRow[]>("/api/v1/grades/student-summary/");
+}

@@ -68,11 +68,13 @@ this file, there is no underlying model/table: a "grade" is computed live
 from `Submission`/`ExamResult`/`Attendance` rows the caller already has
 `assignments`/`submissions`/`exams`/`attendance` grants for, so this only
 ever needs a `view` action — no create/update/delete, nothing to write to.
-`teacher`-only for now, further narrowed to the caller's own groups by the
-view itself (same "object-scoped grant" pattern as `teacher_salary`); no
-`center_admin`/`student` grant yet since no oversight/self-view surface
-for those roles has been built (unlike `exams`, which landed for all three
-roles together because all three surfaces shipped in the same change).
+`student` picked up the same `grades:view` the same day, for the Student
+portal's own Grades page (`StudentGradeSummaryView`, same module, same
+shared aggregation helpers) — object-scoped to the caller's own
+enrollments, same "object-scoped grant" pattern as `teacher_salary`. No
+`center_admin` grant yet since no oversight surface for that role has been
+built (unlike `exams`, which landed for all three roles together because
+all three surfaces shipped in the same change).
 
 `teacher_salary` was split out of `teachers` on 2026-08-12 — TeacherSalaryViewSet
 had been reusing `teachers`' permission_map, which meant `teacher:update`
@@ -333,6 +335,10 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, list[tuple[str, str]]] = {
         ("submissions", "create"),
         ("submissions", "update"),
         ("exams", "view"),
+        # view-only, further narrowed to the caller's own enrollments by
+        # StudentGradeSummaryView itself — see the module docstring's
+        # "grades" note.
+        ("grades", "view"),
         ("roles", "view"),
     ],
 }

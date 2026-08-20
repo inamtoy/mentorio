@@ -8,46 +8,38 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
 } from 'recharts';
-import { TrendingUp, TrendingDown, Minus, GraduationCap, Trophy, BookOpen } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, GraduationCap, Trophy, BookOpen, AlertCircle, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
-import { STUDENT_GRADES, GRADE_TREND_DATA } from '@/lib/student-data';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getLetterVariant(letter: string): 'success' | 'info' | 'warning' | 'danger' {
-  if (letter.startsWith('A')) return 'success';
-  if (letter.startsWith('B')) return 'info';
-  if (letter.startsWith('C')) return 'warning';
-  return 'danger';
-}
+import { useStudentGradeSummaryQuery } from '@/lib/queries/grades';
+import { ApiError } from '@/lib/api/client';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function StudentGradesPage() {
   const t = useTranslations('StudentGrades');
+  const { data: rows, isLoading, isError, error } = useStudentGradeSummaryQuery();
+  const list = rows ?? [];
 
-  const overallAvg = Math.round(
-    STUDENT_GRADES.reduce((s, g) => s + g.finalGrade, 0) / STUDENT_GRADES.length
-  );
-  const topSubject = STUDENT_GRADES.reduce((best, g) => (g.finalGrade > best.finalGrade ? g : best));
-  const needsAttention = STUDENT_GRADES.reduce((worst, g) => (g.finalGrade < worst.finalGrade ? g : worst));
+  // Stats skip rows with no final_grade yet rather than letting them
+  // poison the average/min/max as 0 — same reasoning as Teacher Grades.
+  const graded = list.filter((g) => g.final_grade !== null);
+  const overallAvg = graded.length > 0 ? Math.round(graded.reduce((s, g) => s + (g.final_grade as number), 0) / graded.length) : null;
+  const topSubject = graded.length > 0 ? graded.reduce((best, g) => ((g.final_grade as number) > (best.final_grade as number) ? g : best)) : null;
+  const needsAttention = graded.length > 0 ? graded.reduce((worst, g) => ((g.final_grade as number) < (worst.final_grade as number) ? g : worst)) : null;
 
   const assignmentLabel = t('colAssignment');
   const examLabel = t('colExam');
   const participationLabel = t('colParticipation');
 
-  const barData = STUDENT_GRADES.map((g) => ({
+  const barData = list.map((g) => ({
     name: g.subject,
-    [assignmentLabel]: g.assignmentScore,
-    [examLabel]: g.examScore,
-    [participationLabel]: g.participation,
+    [assignmentLabel]: g.assignment_avg ?? 0,
+    [examLabel]: g.exam_avg ?? 0,
+    [participationLabel]: g.attendance_pct ?? 0,
   }));
 
   return (
@@ -58,71 +50,85 @@ export default function StudentGradesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           label={t('statOverallAverage')}
-          value={`${overallAvg}%`}
+          value={overallAvg !== null ? `${overallAvg}%` : '—'}
           icon={<GraduationCap className="h-5 w-5 text-indigo-600" />}
           iconBg="bg-indigo-50"
         />
         <StatCard
           label={t('statStrongestSubject')}
-          value={topSubject.subject}
+          value={topSubject?.subject ?? '—'}
           icon={<Trophy className="h-5 w-5 text-amber-600" />}
           iconBg="bg-amber-50"
         />
         <StatCard
           label={t('statNeedsAttention')}
-          value={needsAttention.subject}
+          value={needsAttention?.subject ?? '—'}
           icon={<BookOpen className="h-5 w-5 text-red-500" />}
           iconBg="bg-red-50"
         />
       </div>
 
       {/* Subject Table */}
-      <Card title={t('breakdownTitle')} subtitle={t('enrolledSubjectsSubtitle', { count: STUDENT_GRADES.length })}>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px]">
-            <thead>
-              <tr className="border-b border-slate-100">
-                <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colSubject')}</th>
-                <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colTeacher')}</th>
-                <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colAssignment')}</th>
-                <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colExam')}</th>
-                <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colParticipation')}</th>
-                <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colFinalGrade')}</th>
-                <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colTrend')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {STUDENT_GRADES.map((g) => (
-                <tr key={g.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
-                  <td className="py-3.5 px-3">
-                    <span className="text-sm font-semibold text-slate-900">{g.subject}</span>
-                    <p className="text-xs text-slate-400">{g.groupName}</p>
-                  </td>
-                  <td className="py-3.5 px-3 text-sm text-slate-600">{g.teacherName}</td>
-                  <td className="py-3.5 px-3 text-sm text-slate-600">{g.assignmentScore}</td>
-                  <td className="py-3.5 px-3 text-sm text-slate-600">{g.examScore}</td>
-                  <td className="py-3.5 px-3 text-sm text-slate-600">{g.participation}</td>
-                  <td className="py-3.5 px-3">
-                    <span className="font-bold text-slate-900">{g.finalGrade}</span>
-                    <Badge label={g.letterGrade} variant={getLetterVariant(g.letterGrade)} className="ml-2" />
-                  </td>
-                  <td className="py-3.5 px-3">
-                    {(() => {
-                      const trend = g.trend as 'up' | 'down' | 'stable';
-                      if (trend === 'up') return <TrendingUp className="h-4 w-4 text-emerald-500" />;
-                      if (trend === 'down') return <TrendingDown className="h-4 w-4 text-red-500" />;
-                      return <Minus className="h-4 w-4 text-slate-400" />;
-                    })()}
-                  </td>
+      <Card title={t('breakdownTitle')} subtitle={t('enrolledSubjectsSubtitle', { count: list.length })}>
+        {isError ? (
+          <div className="flex items-center gap-2 py-8 text-sm text-red-500">
+            <AlertCircle className="h-4 w-4" />
+            {error instanceof ApiError ? error.message : t('loadErrorFallback')}
+          </div>
+        ) : isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t('loadingGrades')}
+          </div>
+        ) : list.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-10">{t('noGradesFound')}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colSubject')}</th>
+                  <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colTeacher')}</th>
+                  <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colAssignment')}</th>
+                  <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colExam')}</th>
+                  <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colParticipation')}</th>
+                  <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colFinalGrade')}</th>
+                  <th className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide py-3 px-3">{t('colTrend')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {list.map((g) => (
+                  <tr key={g.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+                    <td className="py-3.5 px-3">
+                      <span className="text-sm font-semibold text-slate-900">{g.subject}</span>
+                      <p className="text-xs text-slate-400">{g.group_name}</p>
+                    </td>
+                    <td className="py-3.5 px-3 text-sm text-slate-600">{g.teacher_name}</td>
+                    <td className="py-3.5 px-3 text-sm text-slate-600">{g.assignment_avg ?? '—'}</td>
+                    <td className="py-3.5 px-3 text-sm text-slate-600">{g.exam_avg ?? '—'}</td>
+                    <td className="py-3.5 px-3 text-sm text-slate-600">{g.attendance_pct ?? '—'}</td>
+                    <td className="py-3.5 px-3">
+                      <span className="font-bold text-slate-900">{g.final_grade ?? '—'}</span>
+                    </td>
+                    <td className="py-3.5 px-3">
+                      {g.trend === 'up' ? (
+                        <TrendingUp className="h-4 w-4 text-emerald-500" />
+                      ) : g.trend === 'down' ? (
+                        <TrendingDown className="h-4 w-4 text-red-500" />
+                      ) : (
+                        <Minus className="h-4 w-4 text-slate-400" />
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Subject comparison bar chart */}
+      {/* Subject comparison bar chart */}
+      {list.length > 0 && (
         <Card title={t('scoreComparisonTitle')} subtitle={t('scoreComparisonSubtitle')}>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={barData} margin={{ top: 4, right: 0, bottom: 0, left: -20 }} barSize={14}>
@@ -149,22 +155,7 @@ export default function StudentGradesPage() {
             </span>
           </div>
         </Card>
-
-        {/* Grade trend */}
-        <Card title={t('gradeTrendTitle')} subtitle={t('gradeTrendSubtitle')}>
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={GRADE_TREND_DATA} margin={{ top: 4, right: 12, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} domain={[60, 100]} />
-              <Tooltip
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', fontSize: '12px' }}
-              />
-              <Line type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 4, fill: '#6366f1' }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
+      )}
     </div>
   );
 }

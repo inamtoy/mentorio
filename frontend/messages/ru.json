@@ -219,8 +219,9 @@
     "colTrend": "Динамика",
     "scoreComparisonTitle": "Сравнение баллов",
     "scoreComparisonSubtitle": "Задания, экзамен и активность",
-    "gradeTrendTitle": "Динамика оценок",
-    "gradeTrendSubtitle": "Общий средний балл за последние месяцы"
+    "noGradesFound": "Оценок пока нет",
+    "loadingGrades": "Загрузка оценок…",
+    "loadErrorFallback": "Не удалось загрузить оценки."
   },
   "StudentAttendance": {
     "pageTitle": "Посещаемость",

@@ -219,8 +219,9 @@
     "colTrend": "Tendensiya",
     "scoreComparisonTitle": "Ballar taqqoslash",
     "scoreComparisonSubtitle": "Topshiriq, imtihon va faollik taqqoslamasi",
-    "gradeTrendTitle": "Baholar dinamikasi",
-    "gradeTrendSubtitle": "So'nggi oylardagi umumiy o'rtacha"
+    "noGradesFound": "Hozircha baholar yo'q",
+    "loadingGrades": "Baholar yuklanmoqda…",
+    "loadErrorFallback": "Baholarni yuklab bo'lmadi."
   },
   "StudentAttendance": {
     "pageTitle": "Davomat",

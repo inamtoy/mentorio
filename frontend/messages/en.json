@@ -219,8 +219,9 @@
     "colTrend": "Trend",
     "scoreComparisonTitle": "Score Comparison",
     "scoreComparisonSubtitle": "Assignment vs. exam vs. participation",
-    "gradeTrendTitle": "Grade Trend",
-    "gradeTrendSubtitle": "Overall average over recent months"
+    "noGradesFound": "No grades yet",
+    "loadingGrades": "Loading grades…",
+    "loadErrorFallback": "Failed to load grades."
   },
   "StudentAttendance": {
     "pageTitle": "Attendance",

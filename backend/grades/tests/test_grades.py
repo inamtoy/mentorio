@@ -1,10 +1,10 @@
-"""API-level tests for TeacherGradeSummaryView — computed, not stored (see
-the view's own docstring), so these exercise the actual aggregation math,
-not just CRUD plumbing. Same fixture style as
+"""API-level tests for TeacherGradeSummaryView/StudentGradeSummaryView —
+computed, not stored (see either view's own docstring), so these exercise
+the actual aggregation math, not just CRUD plumbing. Same fixture style as
 attendance/tests/test_attendance_authorization.py: a real login is needed
-since HasModulePermission + the teacher-owns-group scoping both read from
-request.user, and role/permission grants only exist once
-foundation.signals's post_save provisioning has actually run.
+since HasModulePermission + the teacher-owns-group/student-owns-enrollment
+scoping both read from request.user, and role/permission grants only exist
+once foundation.signals's post_save provisioning has actually run.
 """
 
 import uuid
@@ -29,6 +29,7 @@ pytestmark = pytest.mark.django_db(databases=["default", "auth_bypass_rls"], tra
 
 BYPASS_ALIAS = "auth_bypass_rls"
 URL = "/api/v1/grades/teacher-summary/"
+STUDENT_URL = "/api/v1/grades/student-summary/"
 
 
 def _make_org():
@@ -58,6 +59,15 @@ def _make_student_login(org, phone, first_name="S"):
     UserRole.objects.using(BYPASS_ALIAS).create(user=user, role=role, organization=org)
     profile = StudentProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, student_code=f"STU-{phone[-4:]}")
     return user, profile
+
+
+def _make_admin_login(org, phone):
+    user = User.objects.db_manager(BYPASS_ALIAS).create_user(
+        organization=org, first_name="A", last_name=phone[-4:], password="pw123456", phone=phone, status="active",
+    )
+    role = Role.objects.using(BYPASS_ALIAS).get(organization=org, slug="center_admin")
+    UserRole.objects.using(BYPASS_ALIAS).create(user=user, role=role, organization=org)
+    return user
 
 
 def _login(phone):
@@ -166,12 +176,98 @@ def test_teacher_cannot_see_another_teachers_group_grades():
 
 
 def test_role_without_grades_permission_gets_403():
-    """`grades:view` is teacher-only (see foundation/permissions_catalog.py's
-    "grades" note) — a student caller has no grant for this module at all.
+    """`grades:view` is granted to `teacher` and `student` only (see
+    foundation/permissions_catalog.py's "grades" note) — `center_admin` has
+    no grant for this module at all, on either endpoint.
     """
     org = _make_org()
-    student_user, _student = _make_student_login(org, "+998910000008")
+    admin_user = _make_admin_login(org, "+998910000008")
+
+    client = _login(admin_user.login_id)
+    assert client.get(URL).status_code == 403
+    assert client.get(STUDENT_URL).status_code == 403
+
+
+def test_student_login_on_teacher_endpoint_gets_empty_not_403():
+    """A student caller passes the module-wide grades:view check (shared by
+    both endpoints — see TeacherGradeSummaryView's docstring) but has no
+    teacher_profile, so TeacherGradeSummaryView's defensive branch returns
+    an empty list rather than erroring — it's simply the wrong endpoint for
+    that caller, not a permissions violation.
+    """
+    org = _make_org()
+    student_user, _student = _make_student_login(org, "+998910000009")
 
     client = _login(student_user.login_id)
     response = client.get(URL)
-    assert response.status_code == 403
+    assert response.status_code == 200
+    assert response.json()["data"] == []
+
+
+def test_student_sees_correct_grade_math_for_own_enrollment():
+    """Mirrors test_teacher_sees_correct_grade_math_for_own_group's fixture
+    shape, from the student's own point of view — same aggregation core
+    (_gather_events/_stats_for_key), different labels (subject/teacher_name
+    instead of student_name) and different scoping (own enrollments, not
+    groups taught).
+    """
+    org = _make_org()
+    course = Course.objects.using(BYPASS_ALIAS).create(organization=org, name="Algebra", code="CRS-G3", category="General")
+    _teacher_user, teacher = _make_teacher_login(org, "+998910000010")
+    group = Group.objects.using(BYPASS_ALIAS).create(
+        organization=org, course=course, teacher=teacher, code="GRP-G3", name="Algebra A1", start_date="2026-09-01"
+    )
+    student_user, student = _make_student_login(org, "+998910000011", "Me")
+    GroupMember.objects.using(BYPASS_ALIAS).create(organization=org, group=group, student_profile=student)
+
+    now = timezone.now()
+    assignment = Assignment.objects.using(BYPASS_ALIAS).create(
+        organization=org, group=group, title="A1", due_date="2026-09-05", max_score=100
+    )
+    Submission.objects.using(BYPASS_ALIAS).create(
+        organization=org, assignment=assignment, student_profile=student, score=60, graded_at=now - timedelta(days=1)
+    )
+    exam = Exam.objects.using(BYPASS_ALIAS).create(
+        organization=org, group=group, title="E1", date="2026-09-10", start_time="09:00", max_score=100
+    )
+    ExamResult.objects.using(BYPASS_ALIAS).create(
+        organization=org, exam=exam, student_profile=student, score=80, graded_at=now
+    )
+    Attendance.objects.using(BYPASS_ALIAS).create(
+        organization=org, group=group, student_profile=student, date="2026-09-01", status="present"
+    )
+
+    client = _login(student_user.login_id)
+    response = client.get(STUDENT_URL)
+    assert response.status_code == 200
+    rows = response.json()["data"]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["subject"] == "Algebra"
+    assert row["teacher_name"] == teacher.user.get_full_name()
+    assert row["assignment_avg"] == 60
+    assert row["exam_avg"] == 80
+    assert row["final_grade"] == 70
+    assert row["attendance_pct"] == 100
+    assert row["trend"] == "up"  # exam (80%, more recent) > assignment (60%, older)
+
+
+def test_student_does_not_see_groups_they_are_not_enrolled_in():
+    org = _make_org()
+    course = Course.objects.using(BYPASS_ALIAS).create(organization=org, name="Course", code="CRS-G4", category="General")
+    _teacher_user, teacher = _make_teacher_login(org, "+998910000012")
+    group_enrolled = Group.objects.using(BYPASS_ALIAS).create(
+        organization=org, course=course, teacher=teacher, code="GRP-G4A", name="Enrolled", start_date="2026-09-01"
+    )
+    group_other = Group.objects.using(BYPASS_ALIAS).create(
+        organization=org, course=course, teacher=teacher, code="GRP-G4B", name="Other", start_date="2026-09-01"
+    )
+    student_user, student = _make_student_login(org, "+998910000013")
+    GroupMember.objects.using(BYPASS_ALIAS).create(organization=org, group=group_enrolled, student_profile=student)
+    # No GroupMember for group_other — student was never enrolled in it.
+
+    client = _login(student_user.login_id)
+    response = client.get(STUDENT_URL)
+    assert response.status_code == 200
+    group_names = [row["group_name"] for row in response.json()["data"]]
+    assert group_names == ["Enrolled"]

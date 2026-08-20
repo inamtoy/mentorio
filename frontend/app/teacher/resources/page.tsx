@@ -18,7 +18,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input, SearchInput, Select } from '@/components/ui/input';
-import { TEACHER_GROUPS } from '@/lib/teacher-data';
+import { useAuthStore } from '@/lib/store/auth-store';
+import { useMyTeacherProfileQuery } from '@/lib/queries/teachers';
+import { useGroupsQuery } from '@/lib/queries/groups';
 import { useTeacherResourcesStore, type TeacherResource } from '@/lib/store/teacher-resources-store';
 import { toast } from '@/lib/store/toast-store';
 import { cn } from '@/lib/utils';
@@ -144,9 +146,13 @@ export default function ResourcesPage() {
     { value: 'link', label: t('fileTypeLink') },
   ];
 
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  const { data: myProfile } = useMyTeacherProfileQuery();
+  const { data: groups } = useGroupsQuery({ organizationId: organizationId ?? '', teacher: myProfile?.id });
+
   const GROUP_OPTIONS = [
     { value: '', label: t('allGroupsOption') },
-    ...TEACHER_GROUPS.map((g) => ({ value: g.id, label: g.name })),
+    ...(groups ?? []).map((g) => ({ value: g.id, label: g.name })),
   ];
 
   const resourceItems = useTeacherResourcesStore((s) => s.items);
@@ -177,7 +183,7 @@ export default function ResourcesPage() {
 
   function handleUpload() {
     if (!uploadTitle.trim() || !uploadSubject.trim()) return;
-    const group = TEACHER_GROUPS.find((g) => g.id === uploadGroup);
+    const group = (groups ?? []).find((g) => g.id === uploadGroup);
     addResource({
       title: uploadTitle,
       subject: uploadSubject,

@@ -16,76 +16,10 @@ export const TEACHER_PROFILE = {
   yearsExperience: 8,
 };
 
-// ─── Teacher Groups ───────────────────────────────────────────────────────────
-
-export const TEACHER_GROUPS = [
-  {
-    id: "g1",
-    name: "Algebra A1",
-    courseName: "Algebra Fundamentals",
-    courseColor: "#6366f1",
-    studentCount: 15,
-    capacity: 20,
-    progress: 68,
-    nextLesson: "2026-07-07",
-    days: ["Mon", "Wed", "Fri"],
-    startTime: "09:00",
-    endTime: "10:30",
-    room: "Room 101",
-    level: "beginner",
-    students: [
-      { id: "s1", name: "Alice Johnson", attendanceRate: 95, avgGrade: 88, avatar: undefined },
-      { id: "s2", name: "Bob Smith", attendanceRate: 88, avgGrade: 74, avatar: undefined },
-      { id: "s11", name: "Kate Adams", attendanceRate: 93, avgGrade: 91, avatar: undefined },
-      { id: "s13", name: "Noah Evans", attendanceRate: 82, avgGrade: 79, avatar: undefined },
-      { id: "s14", name: "Olivia Harris", attendanceRate: 97, avgGrade: 95, avatar: undefined },
-    ],
-  },
-  {
-    id: "g2",
-    name: "Algebra A2",
-    courseName: "Algebra Fundamentals",
-    courseColor: "#8b5cf6",
-    studentCount: 14,
-    capacity: 20,
-    progress: 55,
-    nextLesson: "2026-07-08",
-    days: ["Tue", "Thu"],
-    startTime: "11:00",
-    endTime: "12:30",
-    room: "Room 102",
-    level: "intermediate",
-    students: [
-      { id: "s3", name: "Carol White", attendanceRate: 92, avgGrade: 85, avatar: undefined },
-      { id: "s4", name: "Daniel Brown", attendanceRate: 62, avgGrade: 58, avatar: undefined },
-      { id: "s12", name: "Liam Turner", attendanceRate: 45, avgGrade: 52, avatar: undefined },
-      { id: "s15", name: "Sophia Clark", attendanceRate: 90, avgGrade: 87, avatar: undefined },
-      { id: "s16", name: "Mason Lewis", attendanceRate: 85, avgGrade: 76, avatar: undefined },
-    ],
-  },
-  {
-    id: "g3",
-    name: "Calculus B1",
-    courseName: "Calculus & Derivatives",
-    courseColor: "#06b6d4",
-    studentCount: 13,
-    capacity: 18,
-    progress: 40,
-    nextLesson: "2026-07-09",
-    days: ["Mon", "Wed"],
-    startTime: "13:00",
-    endTime: "14:30",
-    room: "Room 205",
-    level: "advanced",
-    students: [
-      { id: "s5", name: "Eva Martinez", attendanceRate: 98, avgGrade: 94, avatar: undefined },
-      { id: "s6", name: "Frank Lee", attendanceRate: 85, avgGrade: 80, avatar: undefined },
-      { id: "s7", name: "Grace Kim", attendanceRate: 91, avgGrade: 88, avatar: undefined },
-      { id: "s17", name: "Ethan Walker", attendanceRate: 88, avgGrade: 83, avatar: undefined },
-      { id: "s18", name: "Ava Hall", attendanceRate: 94, avgGrade: 92, avatar: undefined },
-    ],
-  },
-];
+// Teacher Groups mock array (TEACHER_GROUPS) was removed here (2026-08-21)
+// once app/teacher/resources/page.tsx's group picker (its last remaining
+// consumer) switched to the real groups API — see lib/queries/groups.ts.
+// app/teacher/groups/page.tsx itself has used the real API all along.
 
 // ─── Teacher Students ─────────────────────────────────────────────────────────
 

@@ -27,7 +27,7 @@ import {
   Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSANotificationsStore } from "@/lib/store/sa-notifications-store";
+import { useNotificationsQuery } from "@/lib/queries/notifications";
 import { useSAProfileStore } from "@/lib/store/sa-profile-store";
 import { useLogout } from "@/lib/hooks/use-logout";
 import { formatLocalizedDate } from "@/i18n/date-locale";
@@ -233,7 +233,7 @@ function SuperAdminHeader({ sidebarCollapsed, onMenuClick }: HeaderProps) {
   const t = useTranslations("SuperAdminNav");
   const titleKey = PAGE_TITLE_KEYS[pathname];
   const title = titleKey ? t(titleKey) : t("portalFallbackTitle");
-  const notifications = useSANotificationsStore((s) => s.items);
+  const { data: notifications = [] } = useNotificationsQuery();
   const unreadCount = notifications.filter((n) => !n.read).length;
   const profile = useSAProfileStore((s) => s.profile);
   const [dropdownOpen, setDropdownOpen] = useState(false);

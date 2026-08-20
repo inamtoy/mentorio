@@ -8,28 +8,23 @@ import {
   AlertTriangle,
   Info,
   XCircle,
-  CreditCard,
-  GitBranch,
-  ShieldAlert,
   CheckCheck,
+  Loader2,
+  AlertCircle,
   X,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/input';
-import { NotificationType, NotificationCategory } from '@/lib/super-admin-data';
-import {
-  useSANotificationsStore,
-  markAllSANotificationsRead,
-  markSANotificationRead,
-  type SANotification,
-} from '@/lib/store/sa-notifications-store';
+import { useNotificationsQuery, useMarkNotificationReadMutation } from '@/lib/queries/notifications';
+import type { Notification, NotificationType } from '@/lib/api/notifications';
+import { ApiError } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatRelativeTime(iso: string, t: ReturnType<typeof useTranslations>) {
+function formatRelativeTime(iso: string, t: ReturnType<typeof useTranslations<'SuperAdminNotifications'>>) {
   const now = new Date();
   const then = new Date(iso);
   const diffMs = now.getTime() - then.getTime();
@@ -51,30 +46,9 @@ function typeConfig(type: NotificationType) {
   }[type];
 }
 
-// ─── Category Icon ────────────────────────────────────────────────────────────
-
-function categoryIcon(category: NotificationCategory) {
-  const map: Record<NotificationCategory, React.ReactNode> = {
-    system:       <ShieldAlert className="h-3 w-3" />,
-    payment:      <CreditCard className="h-3 w-3" />,
-    branch:       <GitBranch className="h-3 w-3" />,
-    subscription: <Bell className="h-3 w-3" />,
-  };
-  return map[category];
-}
-
-function categoryLabel(category: NotificationCategory, t: ReturnType<typeof useTranslations>) {
-  return {
-    system: t('categorySystem'),
-    payment: t('categoryPayment'),
-    branch: t('categoryBranch'),
-    subscription: t('categorySubscription'),
-  }[category];
-}
-
 // ─── Notification Row ─────────────────────────────────────────────────────────
 
-function NotificationRow({ notif, onMarkRead }: { notif: SANotification; onMarkRead: (id: string) => void }) {
+function NotificationRow({ notif, onMarkRead }: { notif: Notification; onMarkRead: (id: string) => void }) {
   const t = useTranslations('SuperAdminNotifications');
   const cfg = typeConfig(notif.type);
   const { Icon, iconClass, bgClass, borderClass } = cfg;
@@ -104,11 +78,7 @@ function NotificationRow({ notif, onMarkRead }: { notif: SANotification; onMarkR
         </div>
         <p className="text-sm text-slate-500 mt-0.5 leading-snug">{notif.message}</p>
         <div className="flex items-center gap-3 mt-2">
-          <span className="inline-flex items-center gap-1 text-xs text-slate-400">
-            {categoryIcon(notif.category)}
-            {categoryLabel(notif.category, t)}
-          </span>
-          <span className="text-xs text-slate-400">{formatRelativeTime(notif.createdAt, t)}</span>
+          <span className="text-xs text-slate-400">{formatRelativeTime(notif.created_at, t)}</span>
         </div>
       </div>
 
@@ -130,29 +100,30 @@ function NotificationRow({ notif, onMarkRead }: { notif: SANotification; onMarkR
 
 export default function NotificationsPage() {
   const t = useTranslations('SuperAdminNotifications');
-  const notifications = useSANotificationsStore((s) => s.items);
-  const [filterCategory, setFilterCategory] = useState('');
+  const { data: notifications = [], isLoading, isError, error } = useNotificationsQuery();
+  const markReadMutation = useMarkNotificationReadMutation();
+  const [filterType, setFilterType] = useState<NotificationType | ''>('');
   const [filterRead, setFilterRead] = useState('');
 
   const unread = notifications.filter((n) => !n.read).length;
 
   const filtered = useMemo(() => {
     return notifications.filter((n) => {
-      const matchCat = !filterCategory || n.category === filterCategory;
+      const matchType = !filterType || n.type === filterType;
       const matchRead =
         !filterRead ||
         (filterRead === 'unread' && !n.read) ||
         (filterRead === 'read' && n.read);
-      return matchCat && matchRead;
+      return matchType && matchRead;
     });
-  }, [notifications, filterCategory, filterRead]);
+  }, [notifications, filterType, filterRead]);
 
   const handleMarkRead = (id: string) => {
-    markSANotificationRead(id);
+    markReadMutation.mutate({ id, read: true });
   };
 
   const handleMarkAllRead = () => {
-    markAllSANotificationsRead();
+    notifications.filter((n) => !n.read).forEach((n) => markReadMutation.mutate({ id: n.id, read: true }));
   };
 
   return (
@@ -171,34 +142,34 @@ export default function NotificationsPage() {
         }
       />
 
-      {/* ── Summary Cards ─────────────────────────────────────────────────────── */}
+      {/* ── Summary Cards — click a type to filter by it ─────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {(
           [
-            { cat: 'system', label: t('categorySystemAlerts'), Icon: ShieldAlert, color: 'text-violet-600', bg: 'bg-violet-50' },
-            { cat: 'payment', label: t('categoryPayments'), Icon: CreditCard, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-            { cat: 'branch', label: t('categoryBranches'), Icon: GitBranch, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { cat: 'subscription', label: t('categorySubscriptions'), Icon: Bell, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { type: 'info', label: t('typeInfo'), Icon: Info, color: 'text-blue-600', bg: 'bg-blue-50' },
+            { type: 'success', label: t('typeSuccess'), Icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { type: 'warning', label: t('typeWarning'), Icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50' },
+            { type: 'error', label: t('typeError'), Icon: XCircle, color: 'text-red-600', bg: 'bg-red-50' },
           ] as const
-        ).map(({ cat, label, Icon, color, bg }) => {
-          const count = notifications.filter((n) => n.category === cat).length;
-          const unreadCat = notifications.filter((n) => n.category === cat && !n.read).length;
+        ).map(({ type, label, Icon, color, bg }) => {
+          const count = notifications.filter((n) => n.type === type).length;
+          const unreadType = notifications.filter((n) => n.type === type && !n.read).length;
           return (
             <button
-              key={cat}
-              onClick={() => setFilterCategory(filterCategory === cat ? '' : cat)}
+              key={type}
+              onClick={() => setFilterType(filterType === type ? '' : type)}
               className={cn(
                 'bg-white rounded-2xl p-5 shadow-sm border text-left transition-all',
-                filterCategory === cat ? 'border-indigo-200 ring-2 ring-indigo-100' : 'border-slate-100 hover:border-slate-200'
+                filterType === type ? 'border-indigo-200 ring-2 ring-indigo-100' : 'border-slate-100 hover:border-slate-200'
               )}
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className={`p-2.5 rounded-xl ${bg}`}>
                   <Icon className={`h-4 w-4 ${color}`} />
                 </div>
-                {unreadCat > 0 && (
+                {unreadType > 0 && (
                   <span className="ml-auto h-5 min-w-5 px-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {unreadCat}
+                    {unreadType}
                   </span>
                 )}
               </div>
@@ -225,20 +196,12 @@ export default function NotificationsPage() {
                 { value: 'read', label: t('filterRead') },
               ]}
             />
-            <Select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              options={[
-                { value: '', label: t('allCategoriesPlaceholder') },
-                { value: 'system', label: t('categorySystem') },
-                { value: 'payment', label: t('categoryPayment') },
-                { value: 'branch', label: t('categoryBranch') },
-                { value: 'subscription', label: t('categorySubscription') },
-              ]}
-            />
-            {(filterCategory || filterRead) && (
+            {(filterType || filterRead) && (
               <button
-                onClick={() => { setFilterCategory(''); setFilterRead(''); }}
+                onClick={() => {
+                  setFilterType('');
+                  setFilterRead('');
+                }}
                 className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
               >
                 <X className="h-3 w-3" /> {t('clearButton')}
@@ -248,7 +211,17 @@ export default function NotificationsPage() {
           <span className="text-xs text-slate-400">{t('notificationsCountLabel', { count: filtered.length })}</span>
         </div>
 
-        {filtered.length === 0 ? (
+        {isError ? (
+          <div className="flex items-center gap-2 px-6 py-8 text-sm text-red-500">
+            <AlertCircle className="h-4 w-4" />
+            {error instanceof ApiError ? error.message : t('loadErrorFallback')}
+          </div>
+        ) : isLoading ? (
+          <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t('loadingLabel')}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="py-16 text-center">
             <Bell className="h-10 w-10 text-slate-200 mx-auto mb-3" />
             <p className="text-slate-400 text-sm">{t('noNotifications')}</p>

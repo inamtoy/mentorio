@@ -974,36 +974,6 @@ export const SA_PAYMENTS: SAPayment[] = [
   { id: "p15", centerName: "Summit Skills Institute",   amount: 249,  plan: "Pro",        method: "transfer", date: "2026-05-31", status: "paid",    invoiceId: "INV-2026-0501" },
 ];
 
-// ─── Notifications ────────────────────────────────────────────────────────────
-
-export type NotificationType = "info" | "success" | "warning" | "error";
-export type NotificationCategory = "system" | "payment" | "branch" | "subscription";
-
-export interface SANotification {
-  id: string;
-  title: string;
-  message: string;
-  type: NotificationType;
-  category: NotificationCategory;
-  read: boolean;
-  createdAt: string;
-}
-
-export const SA_NOTIFICATIONS: SANotification[] = [
-  { id: "n1",  title: "New Center Registered",        message: "Coastal Kids Academy has completed registration and is pending approval.", type: "info",    category: "system",       read: false, createdAt: "2026-07-04T13:00:00Z" },
-  { id: "n2",  title: "Payment Failed",               message: "Summit Skills Institute's Pro plan payment failed. Invoice INV-2026-0707.", type: "error",   category: "payment",      read: false, createdAt: "2026-07-04T11:30:00Z" },
-  { id: "n3",  title: "Subscription Upgraded",        message: "Bright Future Academy upgraded from Pro to Enterprise plan.", type: "success", category: "subscription", read: false, createdAt: "2026-07-04T10:00:00Z" },
-  { id: "n4",  title: "Branch Suspended",             message: "Mumbai Andheri Branch (Summit Skills Institute) has been suspended due to policy violation.", type: "warning", category: "branch", read: false, createdAt: "2026-07-03T16:00:00Z" },
-  { id: "n5",  title: "Payment Received",             message: "Pinnacle Education Center paid $599 for Enterprise plan renewal.", type: "success", category: "payment",      read: true,  createdAt: "2026-07-03T14:00:00Z" },
-  { id: "n6",  title: "System Maintenance Scheduled", message: "Scheduled maintenance on July 6, 2026 from 02:00–04:00 UTC.", type: "warning", category: "system",       read: true,  createdAt: "2026-07-03T09:00:00Z" },
-  { id: "n7",  title: "New Admin Added",              message: "Liam O'Brien was added as moderator for Coastal Kids Academy.", type: "info",    category: "system",       read: true,  createdAt: "2026-07-02T12:00:00Z" },
-  { id: "n8",  title: "Trial Expiring Soon",          message: "EduStar Institute's trial expires in 3 days. Consider upgrading.", type: "warning", category: "subscription", read: false, createdAt: "2026-07-02T08:00:00Z" },
-  { id: "n9",  title: "Payment Refunded",             message: "EduStar Institute received a refund of $99 for Invoice INV-2026-0604.", type: "info",    category: "payment",      read: true,  createdAt: "2026-06-15T10:00:00Z" },
-  { id: "n10", title: "New Branch Created",           message: "Downtown Dubai Branch was created under Pinnacle Education Center.", type: "success", category: "branch",       read: true,  createdAt: "2026-06-10T14:00:00Z" },
-  { id: "n11", title: "Login Anomaly Detected",       message: "Multiple failed login attempts detected for Summit Skills Institute admin account.", type: "error",   category: "system",       read: false, createdAt: "2026-07-04T06:00:00Z" },
-  { id: "n12", title: "Monthly Report Ready",         message: "June 2026 platform analytics report is now available.", type: "info",    category: "system",       read: true,  createdAt: "2026-07-01T00:00:00Z" },
-];
-
 // ─── Audit Logs ───────────────────────────────────────────────────────────────
 
 export type AuditSeverity = "info" | "warning" | "critical";

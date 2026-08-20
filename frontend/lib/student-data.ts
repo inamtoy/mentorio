@@ -16,65 +16,15 @@ export const STUDENT_PROFILE = {
   bio: "Alice is a dedicated 10th-grade student with a strong interest in mathematics and biology. She consistently participates in class discussions and enjoys collaborative problem-solving.",
 };
 
-// ─── Course Payment ───────────────────────────────────────────────────────────
-// Real Payme/Click gateway integration is deferred until API credentials are
-// available — this is display-only mock data for now (see student/profile).
+// Student Payment mock object (STUDENT_PAYMENT) was removed here
+// (2026-08-21) once student/profile/page.tsx switched to a real
+// outstanding-balance summary sourced from useInvoicesQuery — see
+// lib/queries/finance.ts.
 
-export const STUDENT_PAYMENT = {
-  courseName: "Algebra Fundamentals",
-  amount: 450,
-  paid: 300,
-  balance: 150,
-  dueDate: "2026-08-05",
-  status: "pending" as "paid" | "pending" | "overdue",
-};
-
-// ─── Student Courses / Groups ─────────────────────────────────────────────────
-
-export const STUDENT_COURSES = [
-  {
-    id: "g1",
-    name: "Algebra A1",
-    courseName: "Algebra Fundamentals",
-    courseColor: "#6366f1",
-    teacherName: "Dr. Sarah Connor",
-    progress: 68,
-    days: ["Mon", "Wed", "Fri"],
-    startTime: "09:00",
-    endTime: "10:30",
-    room: "Room 101",
-    classmatesCount: 15,
-    nextLesson: "2026-07-07",
-  },
-  {
-    id: "g4",
-    name: "English Literature B",
-    courseName: "English Literature",
-    courseColor: "#f59e0b",
-    teacherName: "Mr. James Cole",
-    progress: 72,
-    days: ["Tue", "Thu"],
-    startTime: "10:00",
-    endTime: "11:30",
-    room: "Room 210",
-    classmatesCount: 18,
-    nextLesson: "2026-07-08",
-  },
-  {
-    id: "g5",
-    name: "Biology B1",
-    courseName: "Introductory Biology",
-    courseColor: "#10b981",
-    teacherName: "Ms. Elena Ruiz",
-    progress: 55,
-    days: ["Mon", "Wed"],
-    startTime: "12:00",
-    endTime: "13:30",
-    room: "Lab 3",
-    classmatesCount: 20,
-    nextLesson: "2026-07-06",
-  },
-];
+// Student Courses/Groups mock array (STUDENT_COURSES) was removed here
+// (2026-08-21) once student/groups/page.tsx and student/profile/page.tsx
+// (its last two real consumers) switched to real
+// useMyGroupMembershipsQuery+useGroupsQuery joins — see lib/queries/groups.ts.
 
 // Student Schedule mock array (STUDENT_SCHEDULE) was removed here
 // (2026-08-07) once the real Schedule backend + Student page landed — see
@@ -210,5 +160,10 @@ export const STUDENT_STATS = {
   // consumers (Dashboard StatCard, Profile StatRow) now read the real Exams
   // backend directly, see app/student/page.tsx and app/student/profile/page.tsx.
   unreadMessages: STUDENT_MESSAGES.reduce((sum, m) => sum + m.unread, 0),
-  enrolledCourses: STUDENT_COURSES.length,
+  // Was `STUDENT_COURSES.length` before that mock array was removed
+  // (2026-08-21, see its own removal note further up this file) — inlined
+  // to the same value since this field's only remaining consumer is the
+  // still-mock Dashboard (app/student/page.tsx), a separate
+  // not-yet-converted page.
+  enrolledCourses: 3,
 };

@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
 
 from common.audit import audited
 from common.permissions import HasModulePermission
@@ -35,6 +36,20 @@ class StudentProfileViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     search_fields = ["student_code", "user__first_name", "user__last_name", "user__login_id"]
     entity_type = "student_profile"
     permission_map = STUDENT_PERMISSION_MAP
+
+    def perform_update(self, serializer):
+        """students:update grants a student edit rights on their OWN profile
+        only (e.g. the Student Portal's Profile/Settings pages) — same
+        pattern as teacher/views.py::TeacherProfileViewSet.perform_update.
+        HasModulePermission is module-level only, so without this a student
+        with students:update could PATCH any student's row in the org.
+        center_admin (module-wide grant, no student_profile attribute) is
+        unaffected.
+        """
+        student_profile = getattr(self.request.user, "student_profile", None)
+        if student_profile is not None and serializer.instance.id != student_profile.id:
+            raise PermissionDenied("You can only update your own student profile.")
+        serializer.save()
 
     @audited(action="create", entity_type="student_profile")
     def create(self, request, *args, **kwargs):

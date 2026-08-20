@@ -14,14 +14,19 @@ import {
   Moon,
   Monitor,
   Shield,
+  Loader2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
-import { STUDENT_PROFILE } from '@/lib/student-data';
-import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/lib/store/auth-store';
+import { useStudentsQuery, useUpdateStudentMutation } from '@/lib/queries/students';
+import type { StudentProfile } from '@/lib/api/students';
+import { toast } from '@/lib/store/toast-store';
+import { ApiError } from '@/lib/api/client';
+import { cn, getInitials } from '@/lib/utils';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,12 +64,88 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+// ─── Account Tab ───────────────────────────────────────────────────────────────
+// Split out so `account`'s useState initializer can seed directly from
+// `profile` with no post-mount setState pass: the parent only mounts this
+// once `profile` has actually loaded (see StudentSettingsPage below), so
+// there's no earlier moment a stale/empty seed could be seen — same
+// "sync at a natural mount/remount boundary, not via useEffect" fix as
+// app/teacher/profile/page.tsx's startEdit() and teacher/settings/page.tsx's
+// hasHydrated-keyed remount (see the React Compiler + Zustand hook bug /
+// rehydration-timing memory notes for the underlying lint rule this avoids).
+function AccountTab({
+  profile,
+  updateMutation,
+}: {
+  profile: StudentProfile;
+  updateMutation: ReturnType<typeof useUpdateStudentMutation>;
+}) {
+  const t = useTranslations('StudentSettings');
+  const tc = useTranslations('Common');
+  const [account, setAccount] = useState({ name: profile.user_full_name, phone: profile.user_phone });
+
+  async function handleSaveAccount() {
+    const [firstName, ...rest] = account.name.trim().split(' ');
+    try {
+      await updateMutation.mutateAsync({
+        profileId: profile.id,
+        input: { userId: profile.user, firstName, lastName: rest.join(' '), phone: account.phone },
+      });
+      toast.success(t('accountUpdatedToast'));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('accountUpdateFailedToast'));
+    }
+  }
+
+  return (
+    <Card title={t('accountTitle')} subtitle={t('accountSubtitle')}>
+      <div className="space-y-4">
+        <div className="flex items-center gap-5 pb-4 border-b border-slate-50">
+          <div className="h-16 w-16 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-2xl">
+            {getInitials(account.name)}
+          </div>
+          <div>
+            <Button variant="outline" size="sm">{t('changePhoto')}</Button>
+            <p className="text-xs text-slate-400 mt-1">{t('photoHint')}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label={t('fullName')}>
+            <Input value={account.name} onChange={(e) => setAccount({ ...account, name: e.target.value })} />
+          </Field>
+          <Field label={t('loginId')}>
+            <Input value={profile.user_login_id} disabled />
+          </Field>
+          <Field label={t('phone')}>
+            <Input value={account.phone} onChange={(e) => setAccount({ ...account, phone: e.target.value })} />
+          </Field>
+          <Field label={t('gradeLevel')}>
+            <Input value={profile.education_level ?? ''} disabled />
+          </Field>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button onClick={handleSaveAccount} disabled={!account.name.trim() || updateMutation.isPending}>
+            <Save className="h-4 w-4" />
+            {tc('saveChanges')}
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function StudentSettingsPage() {
   const t = useTranslations('StudentSettings');
-  const tc = useTranslations('Common');
-  const p = STUDENT_PROFILE;
+
+  const organizationId = useAuthStore((s) => s.user?.organizationId) ?? '';
+  const authUserId = useAuthStore((s) => s.user?.id);
+  const { data: students = [] } = useStudentsQuery({ organizationId });
+  const profile = students.find((s) => s.user === authUserId);
+  const updateMutation = useUpdateStudentMutation();
 
   const SETTINGS_TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
     { id: 'account', label: t('tabAccount'), icon: User },
@@ -75,12 +156,6 @@ export default function StudentSettingsPage() {
   ];
 
   const [activeTab, setActiveTab] = useState<TabId>('account');
-
-  const [account, setAccount] = useState({
-    name: p.name,
-    phone: p.phone,
-    bio: p.bio,
-  });
 
   const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
   const [twoFAEnabled, setTwoFAEnabled] = useState(false);
@@ -145,50 +220,16 @@ export default function StudentSettingsPage() {
         <div className="lg:col-span-3 space-y-4">
           {/* Account */}
           {activeTab === 'account' && (
-            <Card title={t('accountTitle')} subtitle={t('accountSubtitle')}>
-              <div className="space-y-4">
-                <div className="flex items-center gap-5 pb-4 border-b border-slate-50">
-                  <div className="h-16 w-16 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-2xl">
-                    AJ
-                  </div>
-                  <div>
-                    <Button variant="outline" size="sm">{t('changePhoto')}</Button>
-                    <p className="text-xs text-slate-400 mt-1">{t('photoHint')}</p>
-                  </div>
+            profile ? (
+              <AccountTab key={profile.id} profile={profile} updateMutation={updateMutation} />
+            ) : (
+              <Card title={t('accountTitle')} subtitle={t('accountSubtitle')}>
+                <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-400">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t('loadingAccount')}
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label={t('fullName')}>
-                    <Input value={account.name} onChange={(e) => setAccount({ ...account, name: e.target.value })} />
-                  </Field>
-                  <Field label={t('loginId')}>
-                    <Input value={p.loginId} disabled />
-                  </Field>
-                  <Field label={t('phone')}>
-                    <Input value={account.phone} onChange={(e) => setAccount({ ...account, phone: e.target.value })} />
-                  </Field>
-                  <Field label={t('gradeLevel')}>
-                    <Input value={p.grade} disabled />
-                  </Field>
-                  <div className="sm:col-span-2">
-                    <Field label={t('bio')}>
-                      <textarea
-                        className="w-full min-h-[96px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
-                        value={account.bio}
-                        onChange={(e) => setAccount({ ...account, bio: e.target.value })}
-                      />
-                    </Field>
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <Button>
-                    <Save className="h-4 w-4" />
-                    {tc('saveChanges')}
-                  </Button>
-                </div>
-              </div>
-            </Card>
+              </Card>
+            )
           )}
 
           {/* Security */}

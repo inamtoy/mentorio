@@ -86,6 +86,13 @@ Salary is compensation data — same confidentiality bar as `finance`/
 `teacher` getting `view` only, further narrowed to their own row by
 TeacherSalaryViewSet.get_queryset() (same "object-scoped grant" pattern as
 `finance`/`payment_gateways` for the `student` role above).
+
+`student` picked up `students:update` on 2026-08-21, for the Student
+Portal's Profile/Settings pages to save their own name/phone (previously
+view-only — a student had no way to self-edit at all, unlike `teacher`'s
+identical `teachers:update` grant). Module-wide but self-scoped the same
+way: see `StudentProfileViewSet.perform_update`'s docstring, mirroring
+`TeacherProfileViewSet.perform_update` exactly.
 """
 
 PERMISSIONS_CATALOG: list[tuple[str, str, str]] = [
@@ -309,6 +316,12 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, list[tuple[str, str]]] = {
     ],
     "student": [
         ("students", "view"),
+        # "update" here is deliberately still safe module-wide — same
+        # convention as `teacher`'s own "teachers"/"update" grant below:
+        # StudentProfileViewSet.perform_update further restricts a student
+        # (not center_admin) to their OWN profile only. Needed for the
+        # Student Portal's Profile/Settings pages to save name/phone.
+        ("students", "update"),
         ("courses", "view"),
         ("groups", "view"),
         ("attendance", "view"),

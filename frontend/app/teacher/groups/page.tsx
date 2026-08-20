@@ -12,8 +12,10 @@ import { useAuthStore } from '@/lib/store/auth-store';
 import { useMyTeacherProfileQuery } from '@/lib/queries/teachers';
 import { useGroupMembersQuery, useGroupsQuery } from '@/lib/queries/groups';
 import { useAttendanceQuery } from '@/lib/queries/attendance';
-import { TEACHER_ASSIGNMENTS, TEACHER_GRADES } from '@/lib/teacher-data';
+import { useAssignmentsQuery } from '@/lib/queries/homework';
+import { useTeacherGradeSummaryQuery } from '@/lib/queries/grades';
 import type { Group } from '@/lib/api/groups';
+import type { Assignment } from '@/lib/api/homework';
 import { formatLocalizedDate } from '@/i18n/date-locale';
 import { isLocale, DEFAULT_LOCALE, type Locale } from '@/i18n/locales';
 
@@ -90,12 +92,6 @@ function GroupDetailPanel({ group, onBack }: { group: Group; onBack: () => void 
   const t = useTranslations('TeacherGroups');
   const [activeTab, setActiveTab] = useState<Tab>('students');
 
-  // Homework/Grades have no backend yet — same mock arrays as before,
-  // filtered by the (now real, UUID) group id, which will honestly never
-  // match, same as Admin's still-mock Finance/Homework sections elsewhere.
-  const groupAssignments = TEACHER_ASSIGNMENTS.filter((a) => a.groupId === group.id);
-  const groupGrades = TEACHER_GRADES.filter((g) => g.groupId === group.id);
-
   const TABS: { key: Tab; label: string }[] = [
     { key: 'students', label: t('tabStudents') },
     { key: 'attendance', label: t('tabAttendance') },
@@ -132,8 +128,8 @@ function GroupDetailPanel({ group, onBack }: { group: Group; onBack: () => void 
       <div className="p-6">
         {activeTab === 'students' && <StudentsTab group={group} />}
         {activeTab === 'attendance' && <AttendanceTab group={group} />}
-        {activeTab === 'homework' && <HomeworkTab assignments={groupAssignments} />}
-        {activeTab === 'grades' && <GradesTab grades={groupGrades} />}
+        {activeTab === 'homework' && <HomeworkTab group={group} />}
+        {activeTab === 'grades' && <GradesTab group={group} />}
       </div>
     </Card>
   );
@@ -270,12 +266,14 @@ function AttendanceTab({ group }: { group: Group }) {
   );
 }
 
-// ─── Homework Tab (still mock — no backend) ────────────────────────────────────
+// ─── Homework Tab (real) ────────────────────────────────────────────────────────
 
-function HomeworkTab({ assignments }: { assignments: typeof TEACHER_ASSIGNMENTS }) {
+function HomeworkTab({ group }: { group: Group }) {
   const t = useTranslations('TeacherGroups');
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  const { data: assignments, isLoading } = useAssignmentsQuery({ organizationId: organizationId ?? '', group: group.id });
 
   // Local status → label map, deliberately not the shared <StatusBadge> —
   // see the same note on app/student/attendance/page.tsx.
@@ -284,29 +282,39 @@ function HomeworkTab({ assignments }: { assignments: typeof TEACHER_ASSIGNMENTS 
     closed: { label: t('assignmentStatusClosed'), variant: 'secondary' },
   };
 
+  if (isLoading) {
+    return <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />{t('loadingHomework')}</div>;
+  }
+
+  const list = assignments ?? [];
+
   return (
     <div className="space-y-3">
-      {assignments.length === 0 ? (
+      {list.length === 0 ? (
         <p className="text-sm text-slate-400 text-center py-8">{t('noAssignmentsForGroup')}</p>
       ) : (
-        assignments.map((asgn) => {
+        list.map((asgn: Assignment) => {
           const config = ASSIGNMENT_STATUS_CONFIG[asgn.status] ?? { label: asgn.status, variant: 'secondary' as const };
+          // Assignment only exposes submitted_count/total_students, not a
+          // per-submission late breakdown (that lives on Submission.is_late,
+          // one row per student — not worth an extra query per assignment
+          // just for this secondary badge). Pending = not yet submitted.
+          const pending = asgn.total_students - asgn.submitted_count;
           return (
             <div key={asgn.id} className="rounded-xl border border-slate-100 p-4 hover:border-indigo-100 hover:bg-slate-50/50 transition-colors">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-slate-800 truncate">{asgn.title}</p>
-                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{asgn.description}</p>
+                  {asgn.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{asgn.description}</p>}
                 </div>
                 <Badge label={config.label} variant={config.variant} />
               </div>
               <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-slate-500">
-                <span>{t('dueLabel')} <span className="font-medium text-slate-700">{formatDate(asgn.dueDate, locale)}</span></span>
+                <span>{t('dueLabel')} <span className="font-medium text-slate-700">{formatDate(asgn.due_date, locale)}</span></span>
                 <span className="text-slate-300">·</span>
-                <span className="text-emerald-600 font-medium">{t('submittedCount', { count: asgn.submitted })}</span>
-                <span className="text-amber-600 font-medium">{t('pendingCount', { count: asgn.pending })}</span>
-                {asgn.late > 0 && <span className="text-red-500 font-medium">{t('lateCount', { count: asgn.late })}</span>}
-                <span className="text-slate-400">{t('maxPtsLabel', { points: asgn.maxScore })}</span>
+                <span className="text-emerald-600 font-medium">{t('submittedCount', { count: asgn.submitted_count })}</span>
+                {pending > 0 && <span className="text-amber-600 font-medium">{t('pendingCount', { count: pending })}</span>}
+                <span className="text-slate-400">{t('maxPtsLabel', { points: asgn.max_score })}</span>
               </div>
             </div>
           );
@@ -316,14 +324,21 @@ function HomeworkTab({ assignments }: { assignments: typeof TEACHER_ASSIGNMENTS 
   );
 }
 
-// ─── Grades Tab (still mock — no backend) ──────────────────────────────────────
+// ─── Grades Tab (real — computed, see backend/grades/views.py) ────────────────
 
-function GradesTab({ grades }: { grades: typeof TEACHER_GRADES }) {
+function GradesTab({ group }: { group: Group }) {
   const t = useTranslations('TeacherGroups');
+  const { data: rows, isLoading } = useTeacherGradeSummaryQuery({ group: group.id });
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />{t('loadingGrades')}</div>;
+  }
+
+  const list = rows ?? [];
 
   return (
     <div className="overflow-x-auto">
-      {grades.length === 0 ? (
+      {list.length === 0 ? (
         <p className="text-sm text-slate-400 text-center py-8">{t('noGradeRecords')}</p>
       ) : (
         <table className="w-full min-w-[600px]">
@@ -338,25 +353,24 @@ function GradesTab({ grades }: { grades: typeof TEACHER_GRADES }) {
             </tr>
           </thead>
           <tbody>
-            {grades.map((g) => (
+            {list.map((g) => (
               <tr key={g.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
                 <td className="py-3.5 px-3">
                   <div className="flex items-center gap-2">
-                    <Avatar name={g.studentName} size="sm" />
-                    <span className="text-sm font-medium text-slate-800">{g.studentName}</span>
+                    <Avatar name={g.student_name} size="sm" />
+                    <span className="text-sm font-medium text-slate-800">{g.student_name}</span>
                   </div>
                 </td>
-                <td className="py-3.5 px-3 text-sm text-slate-600">{g.assignmentScore}</td>
-                <td className="py-3.5 px-3 text-sm text-slate-600">{g.examScore}</td>
-                <td className="py-3.5 px-3 text-sm text-slate-600">{g.participation}</td>
+                <td className="py-3.5 px-3 text-sm text-slate-600">{g.assignment_avg ?? '—'}</td>
+                <td className="py-3.5 px-3 text-sm text-slate-600">{g.exam_avg ?? '—'}</td>
+                <td className="py-3.5 px-3 text-sm text-slate-600">{g.attendance_pct ?? '—'}</td>
                 <td className="py-3.5 px-3">
-                  <span className="text-sm font-bold text-slate-900">{g.finalGrade}</span>
-                  <span className="ml-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-full px-1.5 py-0.5">{g.letterGrade}</span>
+                  <span className="text-sm font-bold text-slate-900">{g.final_grade ?? '—'}</span>
                 </td>
                 <td className="py-3.5 px-3">
                   {g.trend === 'up' && <TrendingUp className="h-4 w-4 text-emerald-500" />}
                   {g.trend === 'down' && <TrendingDown className="h-4 w-4 text-red-500" />}
-                  {g.trend === 'stable' && <Minus className="h-4 w-4 text-slate-400" />}
+                  {(g.trend === 'stable' || g.trend === null) && <Minus className="h-4 w-4 text-slate-400" />}
                 </td>
               </tr>
             ))}

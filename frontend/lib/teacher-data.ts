@@ -347,130 +347,9 @@ export const TEACHER_ATTENDANCE = [
 // (2026-08-07) once the real Schedule backend + Teacher page landed — see
 // lib/api/schedule.ts.
 
-// ─── Teacher Assignments ──────────────────────────────────────────────────────
-
-export const TEACHER_ASSIGNMENTS = [
-  {
-    id: "asgn1",
-    title: "Polynomial Expressions Worksheet",
-    groupId: "g1",
-    groupName: "Algebra A1",
-    dueDate: "2026-07-08",
-    createdAt: "2026-07-01",
-    description: "Complete exercises 1–20 on polynomial addition, subtraction, and multiplication.",
-    totalStudents: 15,
-    submitted: 10,
-    pending: 3,
-    late: 2,
-    status: "active" as const,
-    maxScore: 100,
-  },
-  {
-    id: "asgn2",
-    title: "Systems of Equations Practice",
-    groupId: "g2",
-    groupName: "Algebra A2",
-    dueDate: "2026-07-09",
-    createdAt: "2026-07-02",
-    description: "Solve 10 systems of linear equations using substitution and elimination methods.",
-    totalStudents: 14,
-    submitted: 8,
-    pending: 4,
-    late: 2,
-    status: "active" as const,
-    maxScore: 100,
-  },
-  {
-    id: "asgn3",
-    title: "Limits Problem Set",
-    groupId: "g3",
-    groupName: "Calculus B1",
-    dueDate: "2026-07-07",
-    createdAt: "2026-06-30",
-    description: "Evaluate limits algebraically and graphically for 15 problems.",
-    totalStudents: 13,
-    submitted: 13,
-    pending: 0,
-    late: 0,
-    status: "closed" as const,
-    maxScore: 100,
-  },
-  {
-    id: "asgn4",
-    title: "Factoring Quiz Preparation",
-    groupId: "g1",
-    groupName: "Algebra A1",
-    dueDate: "2026-07-11",
-    createdAt: "2026-07-04",
-    description: "Practice factoring by GCF, difference of squares, and trinomials.",
-    totalStudents: 15,
-    submitted: 4,
-    pending: 11,
-    late: 0,
-    status: "active" as const,
-    maxScore: 50,
-  },
-  {
-    id: "asgn5",
-    title: "Derivative Rules Exercises",
-    groupId: "g3",
-    groupName: "Calculus B1",
-    dueDate: "2026-07-10",
-    createdAt: "2026-07-03",
-    description: "Apply power, product, and chain rules to 20 differentiation problems.",
-    totalStudents: 13,
-    submitted: 6,
-    pending: 6,
-    late: 1,
-    status: "active" as const,
-    maxScore: 100,
-  },
-  {
-    id: "asgn6",
-    title: "Quadratic Functions Assignment",
-    groupId: "g2",
-    groupName: "Algebra A2",
-    dueDate: "2026-06-28",
-    createdAt: "2026-06-20",
-    description: "Graph and analyze quadratic functions, identify vertex and axis of symmetry.",
-    totalStudents: 14,
-    submitted: 11,
-    pending: 0,
-    late: 3,
-    status: "closed" as const,
-    maxScore: 100,
-  },
-  {
-    id: "asgn7",
-    title: "Rational Expressions Homework",
-    groupId: "g1",
-    groupName: "Algebra A1",
-    dueDate: "2026-07-14",
-    createdAt: "2026-07-04",
-    description: "Simplify, multiply, and divide rational expressions. 15 problems total.",
-    totalStudents: 15,
-    submitted: 0,
-    pending: 15,
-    late: 0,
-    status: "active" as const,
-    maxScore: 75,
-  },
-  {
-    id: "asgn8",
-    title: "Integration Introduction",
-    groupId: "g3",
-    groupName: "Calculus B1",
-    dueDate: "2026-06-25",
-    createdAt: "2026-06-18",
-    description: "Evaluate basic indefinite integrals using the power rule.",
-    totalStudents: 13,
-    submitted: 12,
-    pending: 0,
-    late: 1,
-    status: "closed" as const,
-    maxScore: 80,
-  },
-];
+// Teacher Assignments mock array (TEACHER_ASSIGNMENTS) was removed here
+// (2026-08-21) once app/teacher/groups/page.tsx's Homework tab switched to
+// the real homework API — see lib/queries/homework.ts.
 
 // ─── Teacher Submissions ──────────────────────────────────────────────────────
 
@@ -493,25 +372,9 @@ export const TEACHER_SUBMISSIONS = [
 ];
 
 
-// ─── Teacher Grades ───────────────────────────────────────────────────────────
-
-export const TEACHER_GRADES = [
-  { id: "gr1", studentId: "s1", studentName: "Alice Johnson", groupId: "g1", groupName: "Algebra A1", subject: "Algebra", assignmentScore: 92, examScore: 85, participation: 90, finalGrade: 89, letterGrade: "B+", trend: "up" as const },
-  { id: "gr2", studentId: "s2", studentName: "Bob Smith", groupId: "g1", groupName: "Algebra A1", subject: "Algebra", assignmentScore: 71, examScore: 68, participation: 75, finalGrade: 71, letterGrade: "C+", trend: "stable" as const },
-  { id: "gr3", studentId: "s11", studentName: "Kate Adams", groupId: "g1", groupName: "Algebra A1", subject: "Algebra", assignmentScore: 98, examScore: 94, participation: 95, finalGrade: 96, letterGrade: "A", trend: "up" as const },
-  { id: "gr4", studentId: "s13", studentName: "Noah Evans", groupId: "g1", groupName: "Algebra A1", subject: "Algebra", assignmentScore: 79, examScore: 76, participation: 80, finalGrade: 78, letterGrade: "C+", trend: "up" as const },
-  { id: "gr5", studentId: "s14", studentName: "Olivia Harris", groupId: "g1", groupName: "Algebra A1", subject: "Algebra", assignmentScore: 96, examScore: 98, participation: 97, finalGrade: 97, letterGrade: "A", trend: "up" as const },
-  { id: "gr6", studentId: "s3", studentName: "Carol White", groupId: "g2", groupName: "Algebra A2", subject: "Algebra", assignmentScore: 88, examScore: 84, participation: 85, finalGrade: 86, letterGrade: "B", trend: "stable" as const },
-  { id: "gr7", studentId: "s4", studentName: "Daniel Brown", groupId: "g2", groupName: "Algebra A2", subject: "Algebra", assignmentScore: 52, examScore: 48, participation: 55, finalGrade: 52, letterGrade: "F", trend: "down" as const },
-  { id: "gr8", studentId: "s12", studentName: "Liam Turner", groupId: "g2", groupName: "Algebra A2", subject: "Algebra", assignmentScore: 45, examScore: 42, participation: 40, finalGrade: 43, letterGrade: "F", trend: "down" as const },
-  { id: "gr9", studentId: "s15", studentName: "Sophia Clark", groupId: "g2", groupName: "Algebra A2", subject: "Algebra", assignmentScore: 87, examScore: 85, participation: 88, finalGrade: 87, letterGrade: "B", trend: "up" as const },
-  { id: "gr10", studentId: "s16", studentName: "Mason Lewis", groupId: "g2", groupName: "Algebra A2", subject: "Algebra", assignmentScore: 74, examScore: 70, participation: 72, finalGrade: 72, letterGrade: "C", trend: "stable" as const },
-  { id: "gr11", studentId: "s5", studentName: "Eva Martinez", groupId: "g3", groupName: "Calculus B1", subject: "Calculus", assignmentScore: 99, examScore: 97, participation: 98, finalGrade: 98, letterGrade: "A", trend: "up" as const },
-  { id: "gr12", studentId: "s6", studentName: "Frank Lee", groupId: "g3", groupName: "Calculus B1", subject: "Calculus", assignmentScore: 82, examScore: 79, participation: 80, finalGrade: 80, letterGrade: "B-", trend: "stable" as const },
-  { id: "gr13", studentId: "s7", studentName: "Grace Kim", groupId: "g3", groupName: "Calculus B1", subject: "Calculus", assignmentScore: 91, examScore: 89, participation: 90, finalGrade: 90, letterGrade: "A-", trend: "up" as const },
-  { id: "gr14", studentId: "s17", studentName: "Ethan Walker", groupId: "g3", groupName: "Calculus B1", subject: "Calculus", assignmentScore: 83, examScore: 80, participation: 82, finalGrade: 82, letterGrade: "B-", trend: "stable" as const },
-  { id: "gr15", studentId: "s18", studentName: "Ava Hall", groupId: "g3", groupName: "Calculus B1", subject: "Calculus", assignmentScore: 92, examScore: 91, participation: 93, finalGrade: 92, letterGrade: "A-", trend: "up" as const },
-];
+// Teacher Grades mock array (TEACHER_GRADES) was removed here (2026-08-21)
+// once app/teacher/groups/page.tsx's Grades tab switched to the real,
+// computed grades API — see lib/queries/grades.ts.
 
 // ─── Teacher Messages ─────────────────────────────────────────────────────────
 

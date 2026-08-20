@@ -428,31 +428,14 @@ export const TEACHER_NOTIFICATIONS = [
   { id: "tn12", title: "Profile Updated", message: "Your profile information has been updated successfully.", type: "success" as const, read: true, createdAt: "2026-06-29T09:00:00Z", category: "admin" as const },
 ];
 
-// ─── Teacher Stats ────────────────────────────────────────────────────────────
+// Teacher Stats mock object (TEACHER_STATS) and its WEEKLY_ATTENDANCE_DATA
+// chart-data sibling were already fully orphaned before this pass —
+// app/teacher/page.tsx's Dashboard moved every one of these fields to real
+// queries in an earlier session (see that page's own "derive don't store"
+// comment on weeklyData) and never used either export again.
 
-export const TEACHER_STATS = {
-  todayClasses: 2,
-  totalStudents: 42,
-  avgAttendance: 84,
-  pendingGrading: 7,
-  upcomingExams: 3,
-  unreadMessages: 3,
-};
-
-// ─── Chart Data ───────────────────────────────────────────────────────────────
-
-export const WEEKLY_ATTENDANCE_DATA = [
-  { name: "Mon", present: 38, absent: 3, late: 1 },
-  { name: "Tue", present: 28, absent: 5, late: 2 },
-  { name: "Wed", present: 37, absent: 4, late: 1 },
-  { name: "Thu", present: 27, absent: 6, late: 2 },
-  { name: "Fri", present: 36, absent: 5, late: 1 },
-  { name: "Sat", present: 0, absent: 0, late: 0 },
-];
-
-export const GRADE_DISTRIBUTION_DATA = [
-  { name: "A (90–100)", value: 7, color: "#22c55e" },
-  { name: "B (80–89)", value: 5, color: "#6366f1" },
-  { name: "C (70–79)", value: 2, color: "#f59e0b" },
-  { name: "F (below 70)", value: 1, color: "#ef4444" },
-];
+// Grade Distribution mock array (GRADE_DISTRIBUTION_DATA) was removed here
+// (2026-08-21) once app/teacher/page.tsx (its last consumer) dropped the
+// A/B/C/F letter-bucket pie chart rather than rebuilding it on the real
+// Grades module — same "don't invent a grading scale nobody specified"
+// call already made for Teacher Grades' identical Distribution card.

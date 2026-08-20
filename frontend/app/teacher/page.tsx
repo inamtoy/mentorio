@@ -9,10 +9,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
 } from 'recharts';
 import {
   ClipboardCheck,
@@ -30,7 +26,6 @@ import { useTranslations, useLocale } from 'next-intl';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { GRADE_DISTRIBUTION_DATA } from '@/lib/teacher-data';
 import { useNotificationsQuery } from '@/lib/queries/notifications';
 import { useExamsQuery } from '@/lib/queries/exams';
 import { useAuthStore } from '@/lib/store/auth-store';
@@ -76,12 +71,14 @@ function formatRelativeTime(isoString: string, t: ReturnType<typeof useTranslati
   return t('daysAgo', { count: Math.floor(diffH / 24) });
 }
 
+// Keyed by the real Notification.type (info/success/warning/error) — same
+// switch from the invented category taxonomy already made on the
+// Super-Admin Notifications and Student Dashboard pages this session.
 const notifDotColor: Record<string, string> = {
-  message: 'bg-indigo-500',
-  assignment: 'bg-amber-500',
-  exam: 'bg-violet-500',
-  class: 'bg-blue-500',
-  admin: 'bg-slate-500',
+  info: 'bg-blue-500',
+  success: 'bg-emerald-500',
+  warning: 'bg-amber-500',
+  error: 'bg-red-500',
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -254,44 +251,29 @@ export default function TeacherDashboardPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title={t('attendanceSummaryTitle')} subtitle={t('last7DaysSubtitle')}>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={weeklyData} margin={{ top: 4, right: 0, bottom: 0, left: -20 }} barSize={16}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', fontSize: '12px' }} />
-              <Bar dataKey="present" fill="#6366f1" radius={[4, 4, 0, 0]} name={t('legendPresent')} />
-              <Bar dataKey="absent" fill="#fca5a5" radius={[4, 4, 0, 0]} name={t('legendAbsent')} />
-              <Bar dataKey="late" fill="#fcd34d" radius={[4, 4, 0, 0]} name={t('legendLate')} />
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="flex items-center gap-4 mt-2 justify-center">
-            <span className="flex items-center gap-1.5 text-xs text-slate-500"><span className="h-2.5 w-2.5 rounded-full bg-indigo-500 inline-block" /> {t('legendPresent')}</span>
-            <span className="flex items-center gap-1.5 text-xs text-slate-500"><span className="h-2.5 w-2.5 rounded-full bg-red-300 inline-block" /> {t('legendAbsent')}</span>
-            <span className="flex items-center gap-1.5 text-xs text-slate-500"><span className="h-2.5 w-2.5 rounded-full bg-yellow-300 inline-block" /> {t('legendLate')}</span>
-          </div>
-        </Card>
-
-        {/* Grade Distribution has no backend yet (no Grades module) — stays mock. */}
-        <Card title={t('gradeDistributionTitle')} subtitle={t('allGroupsSubtitle')}>
-          <ResponsiveContainer width="100%" height={240}>
-            <PieChart>
-              <Pie data={GRADE_DISTRIBUTION_DATA} cx="50%" cy="45%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value">
-                {GRADE_DISTRIBUTION_DATA.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', fontSize: '12px' }}
-                formatter={(value: unknown) => [t('studentsUnit', { count: Number(value) }), undefined]}
-              />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
+      {/* Grade Distribution (A/B/C/F letter buckets) dropped rather than
+          rebuilt on the real Grades module — same "don't invent a grading
+          scale nobody specified" call already made for Teacher Grades'
+          identical Distribution card this session. Attendance Summary
+          takes the full-width slot it left behind. */}
+      <Card title={t('attendanceSummaryTitle')} subtitle={t('last7DaysSubtitle')}>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={weeklyData} margin={{ top: 4, right: 0, bottom: 0, left: -20 }} barSize={16}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', fontSize: '12px' }} />
+            <Bar dataKey="present" fill="#6366f1" radius={[4, 4, 0, 0]} name={t('legendPresent')} />
+            <Bar dataKey="absent" fill="#fca5a5" radius={[4, 4, 0, 0]} name={t('legendAbsent')} />
+            <Bar dataKey="late" fill="#fcd34d" radius={[4, 4, 0, 0]} name={t('legendLate')} />
+          </BarChart>
+        </ResponsiveContainer>
+        <div className="flex items-center gap-4 mt-2 justify-center">
+          <span className="flex items-center gap-1.5 text-xs text-slate-500"><span className="h-2.5 w-2.5 rounded-full bg-indigo-500 inline-block" /> {t('legendPresent')}</span>
+          <span className="flex items-center gap-1.5 text-xs text-slate-500"><span className="h-2.5 w-2.5 rounded-full bg-red-300 inline-block" /> {t('legendAbsent')}</span>
+          <span className="flex items-center gap-1.5 text-xs text-slate-500"><span className="h-2.5 w-2.5 rounded-full bg-yellow-300 inline-block" /> {t('legendLate')}</span>
+        </div>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
@@ -300,7 +282,7 @@ export default function TeacherDashboardPage() {
               {notifications.slice(0, 5).map((notif) => (
                 <div key={notif.id} className="flex items-start gap-3">
                   <div className="mt-1.5 flex-shrink-0">
-                    <span className={`h-2.5 w-2.5 rounded-full inline-block ${notifDotColor[notif.category] ?? 'bg-slate-400'}`} />
+                    <span className={`h-2.5 w-2.5 rounded-full inline-block ${notifDotColor[notif.type] ?? 'bg-slate-400'}`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">

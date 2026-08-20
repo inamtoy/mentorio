@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Download, TrendingUp, TrendingDown, Minus, GraduationCap, Trophy, AlertTriangle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Download, TrendingUp, TrendingDown, Minus, GraduationCap, Trophy, AlertTriangle, AlertCircle, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -11,28 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { SearchInput, Select } from '@/components/ui/input';
 import { DataTable, Column } from '@/components/ui/data-table';
-import { TEACHER_GRADES, TEACHER_GROUPS } from '@/lib/teacher-data';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type GradeRow = (typeof TEACHER_GRADES)[number];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getLetterVariant(letter: string): 'success' | 'info' | 'warning' | 'danger' {
-  if (letter.startsWith('A')) return 'success';
-  if (letter.startsWith('B')) return 'info';
-  if (letter.startsWith('C')) return 'warning';
-  return 'danger';
-}
-
-function getLetterBase(letter: string): 'A' | 'B' | 'C' | 'D' | 'F' {
-  if (letter.startsWith('A')) return 'A';
-  if (letter.startsWith('B')) return 'B';
-  if (letter.startsWith('C')) return 'C';
-  if (letter.startsWith('D')) return 'D';
-  return 'F';
-}
+import { useAuthStore } from '@/lib/store/auth-store';
+import { useGroupsQuery } from '@/lib/queries/groups';
+import { useTeacherGradeSummaryQuery } from '@/lib/queries/grades';
+import type { TeacherGradeRow } from '@/lib/api/grades';
+import { ApiError } from '@/lib/api/client';
 
 // ─── Page Component ───────────────────────────────────────────────────────────
 
@@ -41,92 +24,75 @@ export default function GradesPage() {
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
 
-  const DIST_CONFIG: { key: 'A' | 'B' | 'C' | 'D' | 'F'; label: string; color: string; bg: string }[] = [
-    { key: 'A', label: t('distLabelA'), color: 'bg-emerald-500', bg: 'bg-emerald-50 text-emerald-700' },
-    { key: 'B', label: t('distLabelB'), color: 'bg-indigo-500', bg: 'bg-indigo-50 text-indigo-700' },
-    { key: 'C', label: t('distLabelC'), color: 'bg-amber-500', bg: 'bg-amber-50 text-amber-700' },
-    { key: 'D', label: t('distLabelD'), color: 'bg-orange-500', bg: 'bg-orange-50 text-orange-700' },
-    { key: 'F', label: t('distLabelF'), color: 'bg-red-500', bg: 'bg-red-50 text-red-700' },
-  ];
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  const { data: groups } = useGroupsQuery({ organizationId: organizationId ?? '' });
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    error,
+  } = useTeacherGradeSummaryQuery({ group: groupFilter || undefined });
+
+  const list = rows ?? [];
 
   // Filter grades
   const filtered = useMemo(() => {
-    return TEACHER_GRADES.filter((g) => {
+    return list.filter((g) => {
       const matchSearch =
         !search ||
-        g.studentName.toLowerCase().includes(search.toLowerCase()) ||
-        g.groupName.toLowerCase().includes(search.toLowerCase());
-      const matchGroup = !groupFilter || g.groupId === groupFilter;
-      return matchSearch && matchGroup;
+        g.student_name.toLowerCase().includes(search.toLowerCase()) ||
+        g.group_name.toLowerCase().includes(search.toLowerCase());
+      return matchSearch;
     });
-  }, [search, groupFilter]);
+  }, [list, search]);
 
-  // Stats computed from ALL grades (not filtered)
-  const classAvg = Math.round(
-    TEACHER_GRADES.reduce((s, g) => s + g.finalGrade, 0) / TEACHER_GRADES.length
-  );
-  const topScore = Math.max(...TEACHER_GRADES.map((g) => g.finalGrade));
-  const belowSixty = TEACHER_GRADES.filter((g) => g.finalGrade < 60).length;
-
-  // Grade distribution
-  const distCount = useMemo<Record<'A' | 'B' | 'C' | 'D' | 'F', number>>(() => {
-    const counts = { A: 0, B: 0, C: 0, D: 0, F: 0 };
-    for (const g of TEACHER_GRADES) {
-      counts[getLetterBase(g.letterGrade)]++;
-    }
-    return counts;
-  }, []);
-  const maxDistCount = Math.max(...Object.values(distCount), 1);
+  // Stats — computed from ALL rows (not filtered), skipping students with
+  // no final_grade yet rather than letting them poison the average as 0.
+  const graded = list.filter((g) => g.final_grade !== null);
+  const classAvg = graded.length > 0 ? Math.round(graded.reduce((s, g) => s + (g.final_grade as number), 0) / graded.length) : null;
+  const topScore = graded.length > 0 ? Math.max(...graded.map((g) => g.final_grade as number)) : null;
+  const belowSixty = graded.filter((g) => (g.final_grade as number) < 60).length;
 
   // Group select options
-  const groupOptions = TEACHER_GROUPS.map((g) => ({ value: g.id, label: g.name }));
+  const groupOptions = (groups ?? []).map((g) => ({ value: g.id, label: g.name }));
 
   // Table columns
-  const columns: Column<GradeRow>[] = [
+  const columns: Column<TeacherGradeRow>[] = [
     {
-      key: 'studentName',
+      key: 'student_name',
       label: t('colStudent'),
       render: (_v, row) => (
         <div className="flex items-center gap-3">
-          <Avatar name={row.studentName} size="sm" />
-          <span className="font-medium text-slate-900">{row.studentName}</span>
+          <Avatar name={row.student_name} size="sm" />
+          <span className="font-medium text-slate-900">{row.student_name}</span>
         </div>
       ),
     },
     {
-      key: 'groupName',
+      key: 'group_name',
       label: t('colGroup'),
-      render: (_v, row) => (
-        <Badge label={row.groupName} variant="secondary" />
-      ),
+      render: (_v, row) => <Badge label={row.group_name} variant="secondary" />,
     },
     {
-      key: 'assignmentScore',
+      key: 'assignment_avg',
       label: t('colAssignment'),
-      render: (_v, row) => <span>{row.assignmentScore}</span>,
+      render: (_v, row) => <span>{row.assignment_avg ?? '—'}</span>,
     },
     {
-      key: 'examScore',
+      key: 'exam_avg',
       label: t('colExam'),
-      render: (_v, row) => <span>{row.examScore}</span>,
+      render: (_v, row) => <span>{row.exam_avg ?? '—'}</span>,
     },
     {
-      key: 'participation',
+      key: 'attendance_pct',
       label: t('colParticipation'),
-      render: (_v, row) => <span>{row.participation}</span>,
+      render: (_v, row) => <span>{row.attendance_pct ?? '—'}</span>,
     },
     {
-      key: 'finalGrade',
+      key: 'final_grade',
       label: t('colFinalGrade'),
       render: (_v, row) => (
-        <span className="font-bold text-slate-900">{row.finalGrade}</span>
-      ),
-    },
-    {
-      key: 'letterGrade',
-      label: t('colLetterGrade'),
-      render: (_v, row) => (
-        <Badge label={row.letterGrade} variant={getLetterVariant(row.letterGrade)} />
+        <span className="font-bold text-slate-900">{row.final_grade ?? '—'}</span>
       ),
     },
     {
@@ -172,13 +138,13 @@ export default function GradesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           label={t('statClassAverage')}
-          value={`${classAvg}%`}
+          value={classAvg !== null ? `${classAvg}%` : '—'}
           icon={<GraduationCap className="h-5 w-5 text-indigo-600" />}
           iconBg="bg-indigo-50"
         />
         <StatCard
           label={t('statTopScore')}
-          value={`${topScore}%`}
+          value={topScore !== null ? `${topScore}%` : '—'}
           icon={<Trophy className="h-5 w-5 text-amber-600" />}
           iconBg="bg-amber-50"
         />
@@ -192,38 +158,24 @@ export default function GradesPage() {
 
       {/* Grade Table */}
       <Card title={t('gradeOverviewTitle')} subtitle={t('studentsCountSubtitle', { count: filtered.length })}>
-        <DataTable<GradeRow>
-          columns={columns}
-          data={filtered}
-          keyField="id"
-          emptyMessage={t('noGradesFound')}
-        />
-      </Card>
-
-      {/* Grade Distribution */}
-      <Card title={t('gradeDistributionTitle')} subtitle={t('allStudentsAllGroupsSubtitle')}>
-        <div className="space-y-4">
-          {DIST_CONFIG.map(({ key, label, color, bg }) => {
-            const count = distCount[key];
-            const pct = Math.round((count / TEACHER_GRADES.length) * 100);
-            const barWidth = Math.round((count / maxDistCount) * 100);
-            return (
-              <div key={key} className="flex items-center gap-4">
-                <span className={`inline-flex items-center justify-center rounded-lg px-2.5 py-0.5 text-xs font-semibold w-32 flex-shrink-0 ${bg}`}>
-                  {label}
-                </span>
-                <div className="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
-                  <div
-                    className={`h-3 rounded-full transition-all duration-500 ${color}`}
-                    style={{ width: `${barWidth}%` }}
-                  />
-                </div>
-                <span className="text-sm font-semibold text-slate-700 w-8 text-right">{count}</span>
-                <span className="text-xs text-slate-400 w-10 text-right">{pct}%</span>
-              </div>
-            );
-          })}
-        </div>
+        {isError ? (
+          <div className="flex items-center gap-2 py-8 text-sm text-red-500">
+            <AlertCircle className="h-4 w-4" />
+            {error instanceof ApiError ? error.message : t('loadErrorFallback')}
+          </div>
+        ) : isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t('loadingGrades')}
+          </div>
+        ) : (
+          <DataTable<TeacherGradeRow>
+            columns={columns}
+            data={filtered}
+            keyField="id"
+            emptyMessage={t('noGradesFound')}
+          />
+        )}
       </Card>
     </div>
   );

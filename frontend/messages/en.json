@@ -620,16 +620,10 @@
     "colExam": "Exam",
     "colParticipation": "Participation",
     "colFinalGrade": "Final Grade",
-    "colLetterGrade": "Letter Grade",
     "colTrend": "Trend",
     "noGradesFound": "No grades found",
-    "gradeDistributionTitle": "Grade Distribution",
-    "allStudentsAllGroupsSubtitle": "All students across all groups",
-    "distLabelA": "A (90–100)",
-    "distLabelB": "B (80–89)",
-    "distLabelC": "C (70–79)",
-    "distLabelD": "D (60–69)",
-    "distLabelF": "F (below 60)"
+    "loadingGrades": "Loading grades…",
+    "loadErrorFallback": "Failed to load grades."
   },
   "TeacherAttendance": {
     "pageTitle": "Attendance",

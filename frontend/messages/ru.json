@@ -620,16 +620,10 @@
     "colExam": "Экзамен",
     "colParticipation": "Активность",
     "colFinalGrade": "Итоговая оценка",
-    "colLetterGrade": "Буквенная оценка",
     "colTrend": "Динамика",
     "noGradesFound": "Оценки не найдены",
-    "gradeDistributionTitle": "Распределение оценок",
-    "allStudentsAllGroupsSubtitle": "Все студенты по всем группам",
-    "distLabelA": "A (90–100)",
-    "distLabelB": "B (80–89)",
-    "distLabelC": "C (70–79)",
-    "distLabelD": "D (60–69)",
-    "distLabelF": "F (ниже 60)"
+    "loadingGrades": "Загрузка оценок…",
+    "loadErrorFallback": "Не удалось загрузить оценки."
   },
   "TeacherAttendance": {
     "pageTitle": "Посещаемость",

@@ -620,16 +620,10 @@
     "colExam": "Imtihon",
     "colParticipation": "Faollik",
     "colFinalGrade": "Yakuniy baho",
-    "colLetterGrade": "Harfli baho",
     "colTrend": "Tendensiya",
     "noGradesFound": "Baholar topilmadi",
-    "gradeDistributionTitle": "Baholar taqsimoti",
-    "allStudentsAllGroupsSubtitle": "Barcha guruhlardagi barcha o'quvchilar",
-    "distLabelA": "A (90–100)",
-    "distLabelB": "B (80–89)",
-    "distLabelC": "C (70–79)",
-    "distLabelD": "D (60–69)",
-    "distLabelF": "F (60 dan past)"
+    "loadingGrades": "Baholar yuklanmoqda…",
+    "loadErrorFallback": "Baholarni yuklab bo'lmadi."
   },
   "TeacherAttendance": {
     "pageTitle": "Davomat",

@@ -62,6 +62,18 @@ singleton config blobs, always read or upserted, never created/deleted as
 distinct rows. Same "system-role bypass only, absent from
 DEFAULT_ROLE_PERMISSIONS" treatment as `billing`/`platform_billing` above.
 
+`grades` was added 2026-08-21, for the Teacher Portal's Grades page — see
+`grades/views.py::TeacherGradeSummaryView`. Unlike every other module in
+this file, there is no underlying model/table: a "grade" is computed live
+from `Submission`/`ExamResult`/`Attendance` rows the caller already has
+`assignments`/`submissions`/`exams`/`attendance` grants for, so this only
+ever needs a `view` action — no create/update/delete, nothing to write to.
+`teacher`-only for now, further narrowed to the caller's own groups by the
+view itself (same "object-scoped grant" pattern as `teacher_salary`); no
+`center_admin`/`student` grant yet since no oversight/self-view surface
+for those roles has been built (unlike `exams`, which landed for all three
+roles together because all three surfaces shipped in the same change).
+
 `teacher_salary` was split out of `teachers` on 2026-08-12 — TeacherSalaryViewSet
 had been reusing `teachers`' permission_map, which meant `teacher:update`
 (granted module-wide so a teacher can edit their own profile bio/education —
@@ -152,6 +164,7 @@ PERMISSIONS_CATALOG: list[tuple[str, str, str]] = [
     ("exams", "create", "Schedule exams and enter results"),
     ("exams", "update", "Update exams and results"),
     ("exams", "delete", "Delete exams and results"),
+    ("grades", "view", "View computed grade summaries"),
 ]
 
 # Default permission grants for the three org-scoped roles every
@@ -286,6 +299,10 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, list[tuple[str, str]]] = {
         ("exams", "view"),
         ("exams", "create"),
         ("exams", "update"),
+        # view-only, further narrowed to the caller's own groups by
+        # TeacherGradeSummaryView itself — see the module docstring's
+        # "grades" note.
+        ("grades", "view"),
         ("roles", "view"),
     ],
     "student": [

@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "payment_gateways",
     "billing",
     "exams",
+    "grades",
 ]
 
 MIDDLEWARE = [

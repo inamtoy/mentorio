@@ -1,144 +1,15 @@
 // ─── Super Admin Data ─────────────────────────────────────────────────────────
 
-// ─── Stats ────────────────────────────────────────────────────────────────────
-
-export const SA_STATS = {
-  totalCenters: 24,
-  totalBranches: 87,
-  totalStudents: 18420,
-  totalTeachers: 642,
-  activeAdmins: 156,
-  monthlyRevenue: 284600,
-  activeSubscriptions: 81,
-  newRegistrations: 347,
-};
-
-// ─── Centers ──────────────────────────────────────────────────────────────────
-
-export type CenterStatus = "active" | "suspended" | "trial";
-export type SubscriptionTier = "basic" | "pro" | "enterprise";
-
-export interface SACenter {
-  id: string;
-  name: string;
-  owner: string;
-  city: string;
-  country: string;
-  branchCount: number;
-  studentCount: number;
-  teacherCount: number;
-  status: CenterStatus;
-  subscription: SubscriptionTier;
-  createdAt: string;
-  logo?: string;
-}
-
-export const SA_CENTERS: SACenter[] = [
-  {
-    id: "c1",
-    name: "Bright Future Academy",
-    owner: "James Thompson",
-    city: "New York",
-    country: "USA",
-    branchCount: 12,
-    studentCount: 2400,
-    teacherCount: 84,
-    status: "active",
-    subscription: "enterprise",
-    createdAt: "2023-02-15",
-  },
-  {
-    id: "c2",
-    name: "Nova Learning Hub",
-    owner: "Aisha Patel",
-    city: "London",
-    country: "UK",
-    branchCount: 8,
-    studentCount: 1800,
-    teacherCount: 63,
-    status: "active",
-    subscription: "pro",
-    createdAt: "2023-04-01",
-  },
-  {
-    id: "c3",
-    name: "EduStar Institute",
-    owner: "Carlos Mendez",
-    city: "Madrid",
-    country: "Spain",
-    branchCount: 5,
-    studentCount: 900,
-    teacherCount: 32,
-    status: "trial",
-    subscription: "basic",
-    createdAt: "2024-01-10",
-  },
-  {
-    id: "c4",
-    name: "Pinnacle Education Center",
-    owner: "Fatima Al-Hassan",
-    city: "Dubai",
-    country: "UAE",
-    branchCount: 10,
-    studentCount: 2100,
-    teacherCount: 75,
-    status: "active",
-    subscription: "enterprise",
-    createdAt: "2023-06-20",
-  },
-  {
-    id: "c5",
-    name: "Horizon Academy",
-    owner: "Liu Wei",
-    city: "Singapore",
-    country: "Singapore",
-    branchCount: 6,
-    studentCount: 1200,
-    teacherCount: 44,
-    status: "active",
-    subscription: "pro",
-    createdAt: "2023-09-05",
-  },
-  {
-    id: "c6",
-    name: "Maple Leaf Learning",
-    owner: "Sophie Tremblay",
-    city: "Toronto",
-    country: "Canada",
-    branchCount: 4,
-    studentCount: 760,
-    teacherCount: 28,
-    status: "active",
-    subscription: "basic",
-    createdAt: "2024-03-18",
-  },
-  {
-    id: "c7",
-    name: "Summit Skills Institute",
-    owner: "Ravi Sharma",
-    city: "Mumbai",
-    country: "India",
-    branchCount: 9,
-    studentCount: 1950,
-    teacherCount: 68,
-    status: "suspended",
-    subscription: "pro",
-    createdAt: "2023-07-12",
-  },
-  {
-    id: "c8",
-    name: "Coastal Kids Academy",
-    owner: "Elena Rossi",
-    city: "Sydney",
-    country: "Australia",
-    branchCount: 3,
-    studentCount: 480,
-    teacherCount: 18,
-    status: "trial",
-    subscription: "basic",
-    createdAt: "2024-05-22",
-  },
-];
+// Stats mock object (SA_STATS) and Centers mock array (SA_CENTERS, plus its
+// CenterStatus/SubscriptionTier/SACenter types) were removed here
+// (2026-08-21) once app/super-admin/page.tsx (the Dashboard) and
+// app/super-admin/reports/page.tsx (their last two consumers) both
+// switched to real Organizations/Branches/Students/Teachers/Administrators
+// queries — see lib/queries/organizations.ts and this file's own "Reports"
+// note further down. lib/store/sa-centers-store.ts, SA_CENTERS' only other
+// consumer, was already fully orphaned before this pass (the real
+// Super-Admin Centers list page has used the real Groups/Organizations API
+// since an earlier session) — deleted alongside these.
 
 // ─── Branches ─────────────────────────────────────────────────────────────────
 
@@ -860,85 +731,12 @@ export const SA_STUDENTS: SAStudent[] = [
 ];
 
 
-// ─── Subscriptions ────────────────────────────────────────────────────────────
-
-export type BillingCycle = "monthly" | "annual";
-
-export interface SASubscription {
-  id: string;
-  name: "Basic" | "Pro" | "Enterprise" | "Starter" | "Custom";
-  price: number;
-  billingCycle: BillingCycle;
-  maxBranches: number;
-  maxStudents: number;
-  maxTeachers: number;
-  features: string[];
-  activeCount: number;
-  color: string;
-}
-
-export const SA_SUBSCRIPTIONS: SASubscription[] = [
-  {
-    id: "sub1",
-    name: "Starter",
-    price: 49,
-    billingCycle: "monthly",
-    maxBranches: 1,
-    maxStudents: 100,
-    maxTeachers: 10,
-    features: ["Basic dashboard", "Student management", "Attendance tracking", "Email support"],
-    activeCount: 12,
-    color: "#94a3b8",
-  },
-  {
-    id: "sub2",
-    name: "Basic",
-    price: 99,
-    billingCycle: "monthly",
-    maxBranches: 3,
-    maxStudents: 500,
-    maxTeachers: 30,
-    features: ["All Starter features", "Multi-branch support", "Grade management", "Reports", "Chat support"],
-    activeCount: 24,
-    color: "#6366f1",
-  },
-  {
-    id: "sub3",
-    name: "Pro",
-    price: 249,
-    billingCycle: "monthly",
-    maxBranches: 10,
-    maxStudents: 2000,
-    maxTeachers: 100,
-    features: ["All Basic features", "Advanced analytics", "API access", "Custom branding", "Priority support", "Bulk import"],
-    activeCount: 31,
-    color: "#8b5cf6",
-  },
-  {
-    id: "sub4",
-    name: "Enterprise",
-    price: 599,
-    billingCycle: "annual",
-    maxBranches: 999,
-    maxStudents: 999999,
-    maxTeachers: 9999,
-    features: ["All Pro features", "Unlimited branches", "Dedicated account manager", "SLA guarantee", "Custom integrations", "On-site training", "White-label option"],
-    activeCount: 11,
-    color: "#f59e0b",
-  },
-  {
-    id: "sub5",
-    name: "Custom",
-    price: 0,
-    billingCycle: "annual",
-    maxBranches: 999,
-    maxStudents: 999999,
-    maxTeachers: 9999,
-    features: ["Fully tailored plan", "Custom pricing", "Dedicated infrastructure", "24/7 support", "Full API access", "Custom SLA"],
-    activeCount: 3,
-    color: "#10b981",
-  },
-];
+// Subscriptions mock array (SA_SUBSCRIPTIONS, plus its BillingCycle/
+// SASubscription types) was removed here (2026-08-21) once
+// app/super-admin/reports/page.tsx (its only consumer, for the
+// Subscription Revenue Breakdown card) switched to a real per-plan revenue
+// breakdown computed from Organization.subscription_plan_detail joined
+// against real PlatformPayment amounts — see lib/queries/billing.ts.
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
 
@@ -980,42 +778,14 @@ export const SA_PAYMENTS: SAPayment[] = [
 // see lib/queries/audit-logs.ts (the Super-Admin Audit Logs page already
 // used the real one; this Dashboard card was the last mock holdout).
 
-// ─── Chart Data ───────────────────────────────────────────────────────────────
-
-export const MONTHLY_REVENUE_SA: { name: string; revenue: number; subscriptions: number }[] = [
-  { name: "Jan", revenue: 198400, subscriptions: 62 },
-  { name: "Feb", revenue: 214700, subscriptions: 65 },
-  { name: "Mar", revenue: 231500, subscriptions: 68 },
-  { name: "Apr", revenue: 248200, subscriptions: 72 },
-  { name: "May", revenue: 261900, subscriptions: 76 },
-  { name: "Jun", revenue: 273400, subscriptions: 79 },
-  { name: "Jul", revenue: 284600, subscriptions: 81 },
-];
-
-export const STUDENT_GROWTH_SA: { name: string; students: number }[] = [
-  { name: "Jan", students: 13200 },
-  { name: "Feb", students: 14100 },
-  { name: "Mar", students: 15300 },
-  { name: "Apr", students: 16100 },
-  { name: "May", students: 17000 },
-  { name: "Jun", students: 17800 },
-  { name: "Jul", students: 18420 },
-];
-
-// Subscription Distribution mock array (SUBSCRIPTION_DIST_SA) was removed
-// here (2026-08-21) once app/super-admin/page.tsx (its only consumer)
-// switched to a real breakdown of Organization.subscription_plan_detail —
-// see lib/queries/organizations.ts.
-
-export const BRANCH_GROWTH_SA: { name: string; branches: number }[] = [
-  { name: "Jan", branches: 58 },
-  { name: "Feb", branches: 63 },
-  { name: "Mar", branches: 68 },
-  { name: "Apr", branches: 73 },
-  { name: "May", branches: 79 },
-  { name: "Jun", branches: 83 },
-  { name: "Jul", branches: 87 },
-];
+// Chart Data mock arrays (MONTHLY_REVENUE_SA/STUDENT_GROWTH_SA/
+// BRANCH_GROWTH_SA) and Subscription Distribution (SUBSCRIPTION_DIST_SA,
+// removed in an earlier pass) all had the same two consumers — the
+// Dashboard and this Reports page — and both switched together
+// (2026-08-21) to real month-bucketed data computed from
+// Organizations/Branches/StudentProfile/PlatformPayment via the shared
+// helpers in lib/growth-metrics.ts. See app/super-admin/page.tsx and
+// app/super-admin/reports/page.tsx.
 
 // ─── Super Admin Profile ──────────────────────────────────────────────────────
 

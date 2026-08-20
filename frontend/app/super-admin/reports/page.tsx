@@ -1,22 +1,20 @@
 'use client';
 
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { Download, DollarSign, Users, UserPlus, Activity } from 'lucide-react';
+import { useMemo } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
+import { Download, DollarSign, Users, UserPlus, Building2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
-import {
-  SA_STATS,
-  SA_CENTERS,
-  SA_SUBSCRIPTIONS,
-  MONTHLY_REVENUE_SA,
-  STUDENT_GROWTH_SA,
-  BRANCH_GROWTH_SA,
-} from '@/lib/super-admin-data';
-import { formatCurrency } from '@/lib/utils';
+import { useOrganizationsQuery } from '@/lib/queries/organizations';
+import { useBranchesQuery } from '@/lib/queries/branches';
+import { useStudentsQuery } from '@/lib/queries/students';
+import { usePlatformPaymentsQuery } from '@/lib/queries/billing';
+import { monthKey, lastNMonthKeys, monthLabel, MONTH_WINDOW, EMPTY_ARRAY } from '@/lib/growth-metrics';
+import { formatCurrency, daysFromTodayIso } from '@/lib/utils';
+import { isLocale, DEFAULT_LOCALE } from '@/i18n/locales';
 import { toast } from '@/lib/store/toast-store';
 import {
   AreaChart,
@@ -32,82 +30,117 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-type Period = 'week' | 'month' | 'quarter' | 'year';
-
-const SUBSCRIPTION_REVENUE_ESTIMATE: Record<string, number> = {
-  Starter: 49 * 12,
-  Basic: 99 * 24,
-  Pro: 249 * 31,
-  Enterprise: 599 * 11,
-  Custom: 1200 * 3,
-};
-
-const CENTER_ATTENDANCE: Record<string, number> = {
-  c1: 94,
-  c2: 91,
-  c3: 87,
-  c4: 96,
-  c5: 89,
-  c6: 85,
-  c7: 72,
-  c8: 88,
-};
-
-const CENTER_REVENUE_ESTIMATE: Record<string, number> = {
-  c1: 71880,
-  c2: 38688,
-  c3: 28512,
-  c4: 71880,
-  c5: 46512,
-  c6: 28512,
-  c7: 46512,
-  c8: 28512,
-};
-
-const SUBSCRIPTION_COLORS: Record<string, string> = {
-  Starter: '#94a3b8',
-  Basic: '#6366f1',
-  Pro: '#8b5cf6',
-  Enterprise: '#f59e0b',
-  Custom: '#10b981',
-};
+const PLAN_COLORS = ['#6366f1', '#8b5cf6', '#06b6d4', '#f59e0b', '#10b981', '#ec4899'];
 
 export default function ReportsPage() {
   const t = useTranslations('SuperAdminReports');
+  const rawLocale = useLocale();
+  const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
 
-  const PERIODS: { key: Period; label: string }[] = [
-    { key: 'week', label: t('periodWeek') },
-    { key: 'month', label: t('periodMonth') },
-    { key: 'quarter', label: t('periodQuarter') },
-    { key: 'year', label: t('periodYear') },
-  ];
+  // Platform-wide (no organizationId) — same RLS-bypass convention every
+  // Super-Admin oversight page in this app relies on. See
+  // app/super-admin/page.tsx (the Dashboard), which this page shares its
+  // growth-chart data sourcing and month-bucketing helpers with.
+  const { data: organizationsData } = useOrganizationsQuery();
+  const organizations = organizationsData ?? EMPTY_ARRAY;
+  const { data: branchesData } = useBranchesQuery({});
+  const branches = branchesData ?? EMPTY_ARRAY;
+  const { data: studentsData } = useStudentsQuery({});
+  const students = studentsData ?? EMPTY_ARRAY;
+  const { data: paymentsData } = usePlatformPaymentsQuery({ dateFrom: daysFromTodayIso(-31 * MONTH_WINDOW) });
+  const payments = paymentsData ?? EMPTY_ARRAY;
 
-  const [period, setPeriod] = useState<Period>('month');
+  const monthKeys = useMemo(() => lastNMonthKeys(MONTH_WINDOW), []);
 
-  const sortedCenters = [...SA_CENTERS].sort((a, b) => b.studentCount - a.studentCount);
+  const revenueByMonth = useMemo(
+    () =>
+      monthKeys.map((key) => ({
+        name: monthLabel(key, locale),
+        revenue: payments.filter((p) => monthKey(p.payment_date) === key).reduce((sum, p) => sum + Number(p.amount), 0),
+      })),
+    [monthKeys, payments, locale]
+  );
+  const totalRevenue = revenueByMonth[revenueByMonth.length - 1]?.revenue ?? 0;
 
-  const subscriptionRevenueTotal = Object.values(SUBSCRIPTION_REVENUE_ESTIMATE).reduce(
-    (s, v) => s + v,
-    0
+  const branchGrowthData = useMemo(
+    () =>
+      monthKeys.map((key) => ({
+        name: monthLabel(key, locale),
+        branches: branches.filter((b) => monthKey(b.created_at) === key).length,
+      })),
+    [monthKeys, branches, locale]
   );
 
-  const subscriptionBadgeVariant = (tier: string) => {
-    if (tier === 'enterprise') return 'warning';
-    if (tier === 'pro') return 'purple';
-    return 'info';
-  };
+  const studentGrowthData = useMemo(() => {
+    if (monthKeys.length === 0) return [];
+    const [firstY, firstM] = monthKeys[0].split('-').map(Number);
+    const windowStart = new Date(firstY, firstM - 1, 1);
+    let running = students.filter((s) => new Date(s.created_at) < windowStart).length;
+    return monthKeys.map((key) => {
+      running += students.filter((s) => monthKey(s.created_at) === key).length;
+      return { name: monthLabel(key, locale), students: running };
+    });
+  }, [monthKeys, students, locale]);
+
+  const thirtyDaysAgo = daysFromTodayIso(-30);
+  const newRegistrations = organizations.filter((o) => o.created_at.slice(0, 10) >= thirtyDaysAgo).length;
+
+  // Real per-center revenue — sum of this org's own PlatformPayments,
+  // within the same 6-month window every chart on this page uses.
+  const revenueByOrg = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of payments) {
+      map.set(p.organization, (map.get(p.organization) ?? 0) + Number(p.amount));
+    }
+    return map;
+  }, [payments]);
+  const studentCountByOrg = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of students) {
+      map.set(s.organization, (map.get(s.organization) ?? 0) + 1);
+    }
+    return map;
+  }, [students]);
+
+  const sortedCenters = useMemo(
+    () => [...organizations].sort((a, b) => (studentCountByOrg.get(b.id) ?? 0) - (studentCountByOrg.get(a.id) ?? 0)),
+    [organizations, studentCountByOrg]
+  );
+
+  // Real per-plan revenue — every org's PlatformPayment total, grouped by
+  // the plan it's currently subscribed to.
+  const planBreakdown = useMemo(() => {
+    const buckets = new Map<string, { revenue: number; activeCount: number }>();
+    for (const org of organizations) {
+      const planName = org.subscription_plan_detail?.name ?? t('noPlanLabel');
+      const bucket = buckets.get(planName) ?? { revenue: 0, activeCount: 0 };
+      bucket.revenue += revenueByOrg.get(org.id) ?? 0;
+      bucket.activeCount += 1;
+      buckets.set(planName, bucket);
+    }
+    const total = Array.from(buckets.values()).reduce((sum, b) => sum + b.revenue, 0);
+    return Array.from(buckets.entries())
+      .map(([name, b], i) => ({
+        name,
+        revenue: b.revenue,
+        activeCount: b.activeCount,
+        pct: total > 0 ? (b.revenue / total) * 100 : 0,
+        color: PLAN_COLORS[i % PLAN_COLORS.length],
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [organizations, revenueByOrg, t]);
 
   const handleExportReport = () => {
     const rows = [
       [t('csvHeaderCenter'), t('csvHeaderCity'), t('csvHeaderCountry'), t('csvHeaderStudents'), t('csvHeaderBranches'), t('csvHeaderPlan'), t('csvHeaderEstRevenue')],
       ...sortedCenters.map((c) => [
         c.name,
-        c.city,
+        c.city ?? '',
         c.country,
-        String(c.studentCount),
-        String(c.branchCount),
-        c.subscription,
-        String(CENTER_REVENUE_ESTIMATE[c.id] ?? 0),
+        String(studentCountByOrg.get(c.id) ?? 0),
+        String(c.branch_count),
+        c.subscription_plan_detail?.name ?? t('noPlanLabel'),
+        String(revenueByOrg.get(c.id) ?? 0),
       ]),
     ];
     const csv = rows.map((r) => r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -115,7 +148,7 @@ export default function ReportsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `platform-report-${period}.csv`;
+    link.download = 'platform-report.csv';
     link.click();
     URL.revokeObjectURL(url);
     toast.success(t('reportExportedToast'));
@@ -134,57 +167,12 @@ export default function ReportsPage() {
         }
       />
 
-      {/* Period selector */}
-      <div className="flex items-center gap-2">
-        {PERIODS.map((p) => (
-          <button
-            key={p.key}
-            onClick={() => setPeriod(p.key)}
-            className={`h-9 px-4 rounded-xl text-sm font-medium transition-colors ${
-              period === p.key
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
       {/* Top stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard
-          label={t('statTotalRevenue')}
-          value={formatCurrency(SA_STATS.monthlyRevenue)}
-          change={4.3}
-          changeLabel={t('vsLastPeriod')}
-          icon={<DollarSign className="h-5 w-5 text-indigo-600" />}
-          iconBg="bg-indigo-50"
-        />
-        <StatCard
-          label={t('statTotalStudents')}
-          value={SA_STATS.totalStudents}
-          change={3.8}
-          changeLabel={t('vsLastPeriod')}
-          icon={<Users className="h-5 w-5 text-violet-600" />}
-          iconBg="bg-violet-50"
-        />
-        <StatCard
-          label={t('statNewRegistrations')}
-          value={SA_STATS.newRegistrations}
-          change={12.5}
-          changeLabel={t('vsLastPeriod')}
-          icon={<UserPlus className="h-5 w-5 text-emerald-600" />}
-          iconBg="bg-emerald-50"
-        />
-        <StatCard
-          label={t('statAvgAttendance')}
-          value="87.6%"
-          change={1.2}
-          changeLabel={t('vsLastPeriod')}
-          icon={<Activity className="h-5 w-5 text-amber-600" />}
-          iconBg="bg-amber-50"
-        />
+        <StatCard label={t('statTotalRevenue')} value={formatCurrency(totalRevenue)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
+        <StatCard label={t('statTotalStudents')} value={students.length} icon={<Users className="h-5 w-5 text-violet-600" />} iconBg="bg-violet-50" />
+        <StatCard label={t('statNewRegistrations')} value={newRegistrations} icon={<UserPlus className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
+        <StatCard label={t('statTotalCenters')} value={organizations.length} icon={<Building2 className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
       </div>
 
       {/* Charts 2x2 grid */}
@@ -192,7 +180,7 @@ export default function ReportsPage() {
         {/* Student Growth */}
         <Card title={t('studentGrowthTitle')}>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={STUDENT_GROWTH_SA} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <LineChart data={studentGrowthData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
@@ -200,14 +188,7 @@ export default function ReportsPage() {
                 contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 13 }}
                 formatter={(v) => [Number(v ?? 0).toLocaleString(), t('tooltipStudents')]}
               />
-              <Line
-                type="monotone"
-                dataKey="students"
-                stroke="#6366f1"
-                strokeWidth={2.5}
-                dot={{ fill: '#6366f1', r: 4 }}
-                activeDot={{ r: 6 }}
-              />
+              <Line type="monotone" dataKey="students" stroke="#6366f1" strokeWidth={2.5} dot={{ fill: '#6366f1', r: 4 }} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         </Card>
@@ -215,7 +196,7 @@ export default function ReportsPage() {
         {/* Revenue Overview */}
         <Card title={t('revenueOverviewTitle')}>
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={MONTHLY_REVENUE_SA} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <AreaChart data={revenueByMonth} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
@@ -229,13 +210,7 @@ export default function ReportsPage() {
                 contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 13 }}
                 formatter={(v) => [formatCurrency(Number(v ?? 0)), t('tooltipRevenue')]}
               />
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                stroke="#6366f1"
-                strokeWidth={2.5}
-                fill="url(#revenueGradient)"
-              />
+              <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5} fill="url(#revenueGradient)" />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -243,7 +218,7 @@ export default function ReportsPage() {
         {/* Branch Growth */}
         <Card title={t('branchGrowthTitle')}>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={BRANCH_GROWTH_SA} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <BarChart data={branchGrowthData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
@@ -258,7 +233,7 @@ export default function ReportsPage() {
 
         {/* Top Centers */}
         <Card title={t('topCentersTitle')} noPadding>
-          <div className="overflow-hidden">
+          <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-50">
@@ -270,33 +245,30 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sortedCenters.map((center, i) => (
+                {sortedCenters.slice(0, 10).map((center, i) => (
                   <tr key={center.id} className={`hover:bg-slate-50/60 transition-colors ${i !== sortedCenters.length - 1 ? 'border-b border-slate-50' : ''}`}>
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-7 w-7 rounded-lg bg-indigo-50 flex items-center justify-center text-xs font-bold text-indigo-600">
+                        <div className="h-7 w-7 rounded-lg bg-indigo-50 flex items-center justify-center text-xs font-bold text-indigo-600 flex-shrink-0">
                           {i + 1}
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-800">{center.name}</p>
-                          <p className="text-xs text-slate-400">{center.city}, {center.country}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{center.name}</p>
+                          <p className="text-xs text-slate-400 truncate">{center.city ? `${center.city}, ` : ''}{center.country}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-3 text-right text-sm font-semibold text-slate-900">
-                      {center.studentCount.toLocaleString()}
+                      {(studentCountByOrg.get(center.id) ?? 0).toLocaleString()}
                     </td>
                     <td className="px-3 py-3 text-right text-sm text-slate-600">
-                      {center.branchCount}
+                      {center.branch_count}
                     </td>
                     <td className="px-3 py-3 text-center">
-                      <Badge
-                        label={center.subscription.charAt(0).toUpperCase() + center.subscription.slice(1)}
-                        variant={subscriptionBadgeVariant(center.subscription)}
-                      />
+                      <Badge label={center.subscription_plan_detail?.name ?? t('noPlanLabel')} variant="info" />
                     </td>
                     <td className="px-6 py-3 text-right text-sm font-medium text-slate-700">
-                      {formatCurrency(CENTER_REVENUE_ESTIMATE[center.id] ?? 0)}
+                      {formatCurrency(revenueByOrg.get(center.id) ?? 0)}
                     </td>
                   </tr>
                 ))}
@@ -306,72 +278,27 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      {/* Bottom section */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Subscription Revenue Breakdown */}
-        <Card title={t('subscriptionRevenueBreakdownTitle')}>
-          <div className="space-y-4">
-            {SA_SUBSCRIPTIONS.map((plan) => {
-              const revenue = SUBSCRIPTION_REVENUE_ESTIMATE[plan.name] ?? 0;
-              const pct = subscriptionRevenueTotal > 0 ? (revenue / subscriptionRevenueTotal) * 100 : 0;
-              return (
-                <div key={plan.id} className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: plan.color }} />
-                      <span className="text-sm font-medium text-slate-700">{plan.name}</span>
-                      <span className="text-xs text-slate-400">{t('centersCountLabel', { count: plan.activeCount })}</span>
-                    </div>
-                    <span className="text-sm font-semibold text-slate-900">{formatCurrency(revenue)}</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%`, backgroundColor: plan.color }}
-                    />
-                  </div>
-                  <p className="text-xs text-slate-400 text-right">{t('pctOfTotal', { pct: pct.toFixed(1) })}</p>
+      {/* Subscription Revenue Breakdown */}
+      <Card title={t('subscriptionRevenueBreakdownTitle')}>
+        <div className="space-y-4">
+          {planBreakdown.map((plan) => (
+            <div key={plan.name} className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: plan.color }} />
+                  <span className="text-sm font-medium text-slate-700">{plan.name}</span>
+                  <span className="text-xs text-slate-400">{t('centersCountLabel', { count: plan.activeCount })}</span>
                 </div>
-              );
-            })}
-          </div>
-        </Card>
-
-        {/* Attendance Rate by Center */}
-        <Card title={t('attendanceRateByCenterTitle')}>
-          <div className="space-y-4">
-            {SA_CENTERS.map((center) => {
-              const rate = CENTER_ATTENDANCE[center.id] ?? 80;
-              const color =
-                rate >= 90 ? '#10b981' :
-                rate >= 80 ? '#6366f1' :
-                '#f59e0b';
-              return (
-                <div key={center.id} className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">{center.name}</p>
-                      <p className="text-xs text-slate-400">{center.city}</p>
-                    </div>
-                    <span
-                      className="text-sm font-bold"
-                      style={{ color }}
-                    >
-                      {rate}%
-                    </span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${rate}%`, backgroundColor: color }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
+                <span className="text-sm font-semibold text-slate-900">{formatCurrency(plan.revenue)}</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${plan.pct}%`, backgroundColor: plan.color }} />
+              </div>
+              <p className="text-xs text-slate-400 text-right">{t('pctOfTotal', { pct: plan.pct.toFixed(1) })}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

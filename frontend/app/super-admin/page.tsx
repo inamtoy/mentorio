@@ -54,41 +54,8 @@ import { usePlatformPaymentsQuery } from '@/lib/queries/billing';
 import { useAuditLogsQuery } from '@/lib/queries/audit-logs';
 import type { AuditAction } from '@/lib/api/audit-logs';
 import { formatCurrency, daysFromTodayIso } from '@/lib/utils';
-import { formatLocalizedDate } from '@/i18n/date-locale';
-import { isLocale, DEFAULT_LOCALE, type Locale } from '@/i18n/locales';
-
-// ─── Month bucketing helpers ────────────────────────────────────────────────
-// "Derive, don't store" — same approach as every rate/trend on the Teacher/
-// Student Dashboards this session, just bucketed by month instead of day.
-
-function monthKey(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function lastNMonthKeys(n: number): string[] {
-  const keys: string[] = [];
-  const base = new Date();
-  base.setDate(1);
-  for (let i = n - 1; i >= 0; i--) {
-    const m = new Date(base.getFullYear(), base.getMonth() - i, 1);
-    keys.push(`${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`);
-  }
-  return keys;
-}
-
-function monthLabel(key: string, locale: Locale): string {
-  const [y, m] = key.split('-').map(Number);
-  return formatLocalizedDate(new Date(y, m - 1, 1), locale, { month: 'short' });
-}
-
-const MONTH_WINDOW = 6;
-
-// A fresh `[]` literal on every render would make useMemo's dependency
-// array unstable (react-hooks/exhaustive-deps) even though the *content*
-// never differs while data is loading — one shared, stable empty array
-// fallback instead.
-const EMPTY_ARRAY: never[] = [];
+import { monthKey, lastNMonthKeys, monthLabel, MONTH_WINDOW, EMPTY_ARRAY } from '@/lib/growth-metrics';
+import { isLocale, DEFAULT_LOCALE } from '@/i18n/locales';
 
 // ─── Recent Activity (real Audit Logs) ──────────────────────────────────────
 // Same badge/label mapping as super-admin/audit-logs/page.tsx's

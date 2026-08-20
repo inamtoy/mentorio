@@ -6,9 +6,11 @@ import {
   deletePlatformInvoice,
   deleteSubscriptionPlan,
   listPlatformInvoices,
+  listPlatformInvoicesPage,
   listPlatformPayments,
   listSubscriptionPlans,
   updateSubscriptionPlan,
+  type ListPlatformInvoicesPageParams,
   type ListPlatformInvoicesParams,
   type ListPlatformPaymentsParams,
   type ListSubscriptionPlansParams,
@@ -65,12 +67,21 @@ export function usePlatformInvoicesQuery(params: ListPlatformInvoicesParams = {}
   });
 }
 
+export function usePlatformInvoicesPageQuery(params: ListPlatformInvoicesPageParams) {
+  return useQuery({
+    queryKey: ["platform-invoices-page", params],
+    queryFn: () => listPlatformInvoicesPage(params),
+    placeholderData: (previous) => previous,
+  });
+}
+
 export function useCreatePlatformInvoiceMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: PlatformInvoiceInput) => createPlatformInvoice(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["platform-invoices-page"] });
     },
   });
 }
@@ -81,6 +92,7 @@ export function useDeletePlatformInvoiceMutation() {
     mutationFn: (id: string) => deletePlatformInvoice(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["platform-invoices-page"] });
     },
   });
 }
@@ -101,6 +113,7 @@ export function useCreatePlatformPaymentMutation() {
       // server-side — both lists need to reflect that.
       queryClient.invalidateQueries({ queryKey: ["platform-payments"] });
       queryClient.invalidateQueries({ queryKey: ["platform-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["platform-invoices-page"] });
     },
   });
 }

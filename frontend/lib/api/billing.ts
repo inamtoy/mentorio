@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 
 /** Platform <-> organization billing — Mentorio selling a center a
  * subscription tier. Distinct from `lib/api/finance.ts` (a center billing
@@ -131,11 +131,7 @@ export interface ListPlatformInvoicesParams {
   dateTo?: string;
 }
 
-// Unbounded (no organization filter) callers are responsible for their own
-// date bound — this accumulates a new row every billing cycle for every
-// center on the platform with no natural cap. See the Super-Admin Payments
-// page's default date filter for the one such caller in this app.
-export async function listPlatformInvoices(params: ListPlatformInvoicesParams = {}): Promise<PlatformInvoice[]> {
+function platformInvoicesQuery(params: ListPlatformInvoicesParams): URLSearchParams {
   const query = new URLSearchParams();
   if (params.organization) query.set("organization", params.organization);
   if (params.subscriptionPlan) query.set("subscription_plan", params.subscriptionPlan);
@@ -143,8 +139,28 @@ export async function listPlatformInvoices(params: ListPlatformInvoicesParams = 
   if (params.search) query.set("search", params.search);
   if (params.dateFrom) query.set("date_from", params.dateFrom);
   if (params.dateTo) query.set("date_to", params.dateTo);
+  return query;
+}
 
-  return fetchAllPages<PlatformInvoice>("/api/v1/billing/platform-invoices/", query);
+// Unbounded (no organization filter) callers are responsible for their own
+// date bound — this accumulates a new row every billing cycle for every
+// center on the platform with no natural cap. See the Super-Admin Payments
+// page's default date filter for the one such caller in this app.
+export async function listPlatformInvoices(params: ListPlatformInvoicesParams = {}): Promise<PlatformInvoice[]> {
+  return fetchAllPages<PlatformInvoice>("/api/v1/billing/platform-invoices/", platformInvoicesQuery(params));
+}
+
+export interface ListPlatformInvoicesPageParams extends ListPlatformInvoicesParams {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The real-pagination counterpart to listPlatformInvoices above — used by
+ * the Super-Admin Payments list page, which renders a `<Pagination>`
+ * control and only ever needs the current page's rows (still within the
+ * same bounded 1-year default window that page already applies). */
+export async function listPlatformInvoicesPage(params: ListPlatformInvoicesPageParams): Promise<Page<PlatformInvoice>> {
+  return fetchPage<PlatformInvoice>("/api/v1/billing/platform-invoices/", platformInvoicesQuery(params), params.page ?? 1, params.pageSize);
 }
 
 export interface PlatformInvoiceInput {

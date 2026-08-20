@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { DataTable, Column } from '@/components/ui/data-table';
+import { Pagination } from '@/components/ui/pagination';
 import { SearchInput, Select, Input } from '@/components/ui/input';
 import {
   Dialog,
@@ -34,6 +35,7 @@ import { useOrganizationsQuery } from '@/lib/queries/organizations';
 import { useSubscriptionPlansQuery } from '@/lib/queries/billing';
 import {
   usePlatformInvoicesQuery,
+  usePlatformInvoicesPageQuery,
   useCreatePlatformInvoiceMutation,
   useDeletePlatformInvoiceMutation,
   usePlatformPaymentsQuery,
@@ -133,6 +135,7 @@ export default function PaymentsPage() {
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [page, setPage] = useState(1);
 
   // Platform invoices/payments accumulate every billing cycle for every
   // center on the platform with no natural cap (see lib/api/billing.ts's
@@ -143,11 +146,28 @@ export default function PaymentsPage() {
   // fetch — see that page's comment for the fuller reasoning.
   const [dateFrom] = useState(() => daysFromTodayIso(-365));
 
-  const { data: invoicesData, isLoading, isError, error } = usePlatformInvoicesQuery({
+  // Stats + CSV export read the full (still 1-year-bounded, unpaginated)
+  // list — same tradeoff as the other converted list pages. The table below
+  // gets its own, separate, single-page query.
+  const { data: invoicesData } = usePlatformInvoicesQuery({
     status: (filterStatus || undefined) as PlatformInvoiceStatus | undefined,
     dateFrom,
   });
   const invoices = invoicesData ?? [];
+
+  const {
+    data: invoicesPage,
+    isLoading,
+    isError,
+    error,
+  } = usePlatformInvoicesPageQuery({
+    status: (filterStatus || undefined) as PlatformInvoiceStatus | undefined,
+    dateFrom,
+    search: search || undefined,
+    page,
+  });
+  const tableRows = invoicesPage?.results ?? [];
+
   const { data: paymentsData } = usePlatformPaymentsQuery({ dateFrom });
   const payments = paymentsData ?? [];
   const recentPayments = [...payments].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, 5);
@@ -171,7 +191,19 @@ export default function PaymentsPage() {
   const pendingCount = invoices.filter((i) => i.status === 'pending' || i.status === 'partially_paid').length;
   const overdueCount = invoices.filter((i) => i.status === 'overdue').length;
 
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+  function updateFilterStatus(value: string) {
+    setFilterStatus(value);
+    setPage(1);
+  }
+
   // ── Filtered data ──────────────────────────────────────────────────────────
+  // Feeds the CSV export and the "X of Y" subtitle — a client-side re-filter
+  // of the same full (1-year-bounded) fetch stats read from, independent of
+  // the table's own paginated/server-filtered query below.
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return invoices.filter(
@@ -362,14 +394,14 @@ export default function PaymentsPage() {
       <Card
         noPadding
         title={t('platformInvoicesTitle')}
-        subtitle={t('invoicesOfCount', { filtered: filtered.length, total: invoices.length })}
+        subtitle={t('invoicesOfCount', { filtered: invoicesPage?.totalCount ?? 0, total: invoices.length })}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('searchPlaceholder')} className="w-52" />
+            <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t('searchPlaceholder')} className="w-52" />
             <Select
               value={filterStatus}
               placeholder={t('allStatusesPlaceholder')}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => updateFilterStatus(e.target.value)}
               options={[
                 { value: 'pending', label: t('statusPending') },
                 { value: 'partially_paid', label: t('statusPartiallyPaid') },
@@ -381,8 +413,8 @@ export default function PaymentsPage() {
             {(search || filterStatus) && (
               <button
                 onClick={() => {
-                  setSearch('');
-                  setFilterStatus('');
+                  updateSearch('');
+                  updateFilterStatus('');
                 }}
                 className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
               >
@@ -397,13 +429,20 @@ export default function PaymentsPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t('loadErrorFallback')}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !invoicesPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('loadingInvoices')}
           </div>
         ) : (
-          <DataTable<PlatformInvoice> columns={columns} data={filtered} keyField="id" emptyMessage={t('noInvoicesFound')} />
+          <>
+            <DataTable<PlatformInvoice> columns={columns} data={tableRows} keyField="id" emptyMessage={t('noInvoicesFound')} />
+            {invoicesPage && invoicesPage.pageCount > 1 && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={invoicesPage.pageCount} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

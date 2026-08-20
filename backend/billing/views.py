@@ -97,7 +97,7 @@ class PlatformInvoiceViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     serializer_class = PlatformInvoiceSerializer
     permission_classes = [HasModulePermission]
     filterset_class = PlatformInvoiceFilter
-    search_fields = ["invoice_number"]
+    search_fields = ["invoice_number", "organization__name", "subscription_plan__name"]
     entity_type = "platform_invoice"
     permission_map = PLATFORM_BILLING_PERMISSION_MAP
 

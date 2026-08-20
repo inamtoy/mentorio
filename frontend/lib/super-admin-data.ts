@@ -974,45 +974,11 @@ export const SA_PAYMENTS: SAPayment[] = [
   { id: "p15", centerName: "Summit Skills Institute",   amount: 249,  plan: "Pro",        method: "transfer", date: "2026-05-31", status: "paid",    invoiceId: "INV-2026-0501" },
 ];
 
-// ─── Audit Logs ───────────────────────────────────────────────────────────────
-
-export type AuditSeverity = "info" | "warning" | "critical";
-
-export interface SAAuditLog {
-  id: string;
-  action: string;
-  entity: string;
-  entityName: string;
-  user: string;
-  userId: string;
-  ip: string;
-  date: string;
-  details: string;
-  severity: AuditSeverity;
-}
-
-export const SA_AUDIT_LOGS: SAAuditLog[] = [
-  { id: "al1",  action: "CENTER_CREATED",       entity: "Center",  entityName: "Coastal Kids Academy",          user: "Alex Rivera",    userId: "sa1", ip: "203.0.113.10",  date: "2026-07-04T13:05:00Z", details: "New center registered by super admin.",                  severity: "info"     },
-  { id: "al2",  action: "LOGIN_FAILED",          entity: "User",    entityName: "EDU-3009",                      user: "Deepika Joshi",  userId: "a9",  ip: "198.51.100.42", date: "2026-07-04T12:45:00Z", details: "5 consecutive failed login attempts detected.",           severity: "critical" },
-  { id: "al3",  action: "SUBSCRIPTION_UPGRADED", entity: "Center",  entityName: "Bright Future Academy",         user: "Alex Rivera",    userId: "sa1", ip: "203.0.113.10",  date: "2026-07-04T10:05:00Z", details: "Plan changed from Pro to Enterprise.",                    severity: "info"     },
-  { id: "al4",  action: "BRANCH_SUSPENDED",      entity: "Branch",  entityName: "Mumbai Andheri Branch",         user: "Alex Rivera",    userId: "sa1", ip: "203.0.113.10",  date: "2026-07-03T16:05:00Z", details: "Branch suspended due to compliance violation.",           severity: "warning"  },
-  { id: "al5",  action: "PAYMENT_RECEIVED",      entity: "Payment", entityName: "INV-2026-0703",                 user: "System",         userId: "sys", ip: "10.0.0.1",      date: "2026-07-03T14:02:00Z", details: "Enterprise plan payment of $599 processed successfully.",  severity: "info"     },
-  { id: "al6",  action: "ADMIN_ADDED",           entity: "Admin",   entityName: "Liam O'Brien",                  user: "Alex Rivera",    userId: "sa1", ip: "203.0.113.10",  date: "2026-07-02T12:05:00Z", details: "New moderator added to Coastal Kids Academy.",            severity: "info"     },
-  { id: "al7",  action: "SETTINGS_UPDATED",      entity: "System",  entityName: "Platform Settings",             user: "Alex Rivera",    userId: "sa1", ip: "203.0.113.10",  date: "2026-07-02T09:30:00Z", details: "Email notification settings updated.",                    severity: "info"     },
-  { id: "al8",  action: "USER_DELETED",          entity: "User",    entityName: "Former Admin – c7",             user: "Alex Rivera",    userId: "sa1", ip: "203.0.113.10",  date: "2026-07-01T15:00:00Z", details: "Inactive admin account removed from Summit Skills.",       severity: "warning"  },
-  { id: "al9",  action: "PAYMENT_RECEIVED",      entity: "Payment", entityName: "INV-2026-0701",                 user: "System",         userId: "sys", ip: "10.0.0.1",      date: "2026-07-01T08:15:00Z", details: "Enterprise plan renewal for Bright Future Academy.",       severity: "info"     },
-  { id: "al10", action: "CENTER_CREATED",        entity: "Center",  entityName: "Maple Leaf Learning",           user: "Alex Rivera",    userId: "sa1", ip: "203.0.113.10",  date: "2026-03-18T10:00:00Z", details: "New center onboarded with Basic subscription.",           severity: "info"     },
-  { id: "al11", action: "SUBSCRIPTION_UPGRADED", entity: "Center",  entityName: "Horizon Academy",               user: "Alex Rivera",    userId: "sa1", ip: "203.0.113.10",  date: "2026-03-01T11:00:00Z", details: "Plan changed from Basic to Pro.",                         severity: "info"     },
-  { id: "al12", action: "LOGIN_FAILED",          entity: "User",    entityName: "TCH-4008",                      user: "Arjun Mehta",    userId: "t8",  ip: "192.168.1.55",  date: "2026-06-28T07:20:00Z", details: "Invalid credentials used from new device.",               severity: "warning"  },
-  { id: "al13", action: "BRANCH_SUSPENDED",      entity: "Branch",  entityName: "Jurong West Branch",            user: "Alex Rivera",    userId: "sa1", ip: "203.0.113.10",  date: "2026-06-20T14:00:00Z", details: "Branch set to inactive pending review.",                  severity: "warning"  },
-  { id: "al14", action: "ADMIN_ADDED",           entity: "Admin",   entityName: "Nour Khalil",                   user: "Alex Rivera",    userId: "sa1", ip: "203.0.113.10",  date: "2026-10-01T09:00:00Z", details: "Branch admin assigned to Downtown Dubai Branch.",         severity: "info"     },
-  { id: "al15", action: "PAYMENT_RECEIVED",      entity: "Payment", entityName: "INV-2026-0501",                 user: "System",         userId: "sys", ip: "10.0.0.1",      date: "2026-05-31T12:00:00Z", details: "Pro plan payment received from Summit Skills Institute.",  severity: "info"     },
-  { id: "al16", action: "SETTINGS_UPDATED",      entity: "Branch",  entityName: "Manhattan Campus",              user: "Rachel Kim",     userId: "a1",  ip: "74.125.200.10", date: "2026-06-10T10:30:00Z", details: "Working hours and contact info updated.",                 severity: "info"     },
-  { id: "al17", action: "USER_DELETED",          entity: "Student", entityName: "Inactive Student – c2",         user: "Oliver Hughes",  userId: "a3",  ip: "81.2.69.144",   date: "2026-06-05T16:00:00Z", details: "Inactive student record purged after 6 months.",           severity: "warning"  },
-  { id: "al18", action: "CENTER_CREATED",        entity: "Center",  entityName: "EduStar Institute",             user: "Alex Rivera",    userId: "sa1", ip: "203.0.113.10",  date: "2024-01-10T09:00:00Z", details: "Center created on trial plan.",                           severity: "info"     },
-  { id: "al19", action: "SUBSCRIPTION_UPGRADED", entity: "Center",  entityName: "Nova Learning Hub",             user: "Alex Rivera",    userId: "sa1", ip: "203.0.113.10",  date: "2023-11-01T10:00:00Z", details: "Plan upgraded from Basic to Pro.",                        severity: "info"     },
-  { id: "al20", action: "PAYMENT_RECEIVED",      entity: "Payment", entityName: "INV-2026-0606",                 user: "System",         userId: "sys", ip: "10.0.0.1",      date: "2026-06-05T09:00:00Z", details: "Basic plan payment received from Maple Leaf Learning.",   severity: "info"     },
-];
+// Audit Logs mock array (SA_AUDIT_LOGS), its SAAuditLog/AuditSeverity
+// types, were removed here (2026-08-21) once app/super-admin/page.tsx (its
+// only consumer) switched its Recent Activity card to real Audit Logs —
+// see lib/queries/audit-logs.ts (the Super-Admin Audit Logs page already
+// used the real one; this Dashboard card was the last mock holdout).
 
 // ─── Chart Data ───────────────────────────────────────────────────────────────
 
@@ -1036,13 +1002,10 @@ export const STUDENT_GROWTH_SA: { name: string; students: number }[] = [
   { name: "Jul", students: 18420 },
 ];
 
-export const SUBSCRIPTION_DIST_SA: { name: string; value: number; color: string }[] = [
-  { name: "Starter",    value: 12, color: "#94a3b8" },
-  { name: "Basic",      value: 24, color: "#6366f1" },
-  { name: "Pro",        value: 31, color: "#8b5cf6" },
-  { name: "Enterprise", value: 11, color: "#f59e0b" },
-  { name: "Custom",     value: 3,  color: "#10b981" },
-];
+// Subscription Distribution mock array (SUBSCRIPTION_DIST_SA) was removed
+// here (2026-08-21) once app/super-admin/page.tsx (its only consumer)
+// switched to a real breakdown of Organization.subscription_plan_detail —
+// see lib/queries/organizations.ts.
 
 export const BRANCH_GROWTH_SA: { name: string; branches: number }[] = [
   { name: "Jan", branches: 58 },

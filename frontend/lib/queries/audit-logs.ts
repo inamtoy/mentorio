@@ -5,5 +5,6 @@ export function useAuditLogsQuery(params: ListAuditLogsParams = {}) {
   return useQuery({
     queryKey: ["audit-logs", params],
     queryFn: () => listAuditLogs(params),
+    placeholderData: (previous) => previous,
   });
 }

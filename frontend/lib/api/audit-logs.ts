@@ -29,10 +29,12 @@ interface ListResponse<T> {
 export interface AuditLogsPage {
   results: AuditLog[];
   /** The real total matching the filter, from the backend's own count —
-   * NOT `results.length`. `results` is capped at one page (100 rows); a
-   * caller that needs to know whether it's looking at everything or just
-   * the first page must compare `results.length` against this. */
+   * NOT `results.length`. `results` is capped at one page; a caller that
+   * needs to know whether it's looking at everything or just one page must
+   * compare `results.length` against this. */
   count: number;
+  page: number;
+  pageCount: number;
 }
 
 export interface ListAuditLogsParams {
@@ -44,6 +46,7 @@ export interface ListAuditLogsParams {
   entityType?: string;
   dateFrom?: string;
   dateTo?: string;
+  page?: number;
   pageSize?: number;
 }
 
@@ -54,10 +57,12 @@ export interface ListAuditLogsParams {
 // "recent N" widget (Profile page's pageSize: 6). Looping every page here
 // would risk paging through an org's/platform's entire history. The
 // Super-Admin Audit Logs page instead defaults its own date_from filter to
-// a recent window — see that page for the actual bound. Returns the real
-// `count` alongside `results` (not just the array) so a caller whose
-// filtered set exceeds one page can tell it's looking at a partial view
-// instead of silently trusting `results.length` as the true total.
+// a recent window AND renders a real `<Pagination>` control from `page`/
+// `pageCount` below — narrowing the window is a convenience, not the only
+// way to reach an older event. Returns the real `count` alongside
+// `results` (not just the array) so a caller whose filtered set exceeds
+// one page can tell it's looking at a partial view instead of silently
+// trusting `results.length` as the true total.
 export async function listAuditLogs(params: ListAuditLogsParams = {}): Promise<AuditLogsPage> {
   const query = new URLSearchParams();
   if (params.organizationId) query.set("organization", params.organizationId);
@@ -66,8 +71,9 @@ export async function listAuditLogs(params: ListAuditLogsParams = {}): Promise<A
   if (params.entityType) query.set("entity_type", params.entityType);
   if (params.dateFrom) query.set("date_from", params.dateFrom);
   if (params.dateTo) query.set("date_to", params.dateTo);
+  query.set("page", String(params.page ?? 1));
   query.set("page_size", String(params.pageSize ?? 100));
 
   const data = await apiFetch<ListResponse<AuditLog>>(`/api/v1/audit-logs/?${query}`);
-  return { results: data.results, count: data.pagination.count };
+  return { results: data.results, count: data.pagination.count, page: data.pagination.page, pageCount: data.pagination.pages };
 }

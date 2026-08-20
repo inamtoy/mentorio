@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { Input, Select } from '@/components/ui/input';
 import { DataTable, Column } from '@/components/ui/data-table';
+import { Pagination } from '@/components/ui/pagination';
 import {
   Dialog,
   DialogContent,
@@ -152,6 +153,7 @@ export default function AuditLogsPage() {
   const [entityType, setEntityType] = useState('');
   const [dateFrom, setDateFrom] = useState(defaultDateFrom);
   const [dateTo, setDateTo] = useState('');
+  const [page, setPage] = useState(1);
   const [viewingLog, setViewingLog] = useState<AuditLog | null>(null);
 
   const { data: centers } = useOrganizationsQuery();
@@ -161,19 +163,44 @@ export default function AuditLogsPage() {
     entityType: entityType || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
+    page,
   });
+
+  function updateOrganizationId(value: string) {
+    setOrganizationId(value);
+    setPage(1);
+  }
+  function updateAction(value: AuditAction | '') {
+    setAction(value);
+    setPage(1);
+  }
+  function updateEntityType(value: string) {
+    setEntityType(value);
+    setPage(1);
+  }
+  function updateDateFrom(value: string) {
+    setDateFrom(value);
+    setPage(1);
+  }
+  function updateDateTo(value: string) {
+    setDateTo(value);
+    setPage(1);
+  }
 
   const centerOptions = [{ value: '', label: t('allCentersPlaceholder') }, ...(centers ?? []).map((c) => ({ value: c.id, label: c.name }))];
 
   const list = logsPage?.results ?? [];
   // The real total matching the filter — NOT list.length. list is capped at
-  // one page (100 rows); totalCount can be higher, in which case list is a
-  // partial view and every stat/label below needs to say so, not quietly
-  // report the truncated count as if it were the truth (see PR discussion:
-  // this is the exact failure mode the date-bound default above exists to
-  // avoid, and Clear briefly reintroduced it before this fix).
+  // one page; totalCount can be higher, in which case list is only the
+  // current page and every stat/label below needs to say so, not quietly
+  // report the shown page's count as if it were the platform-wide truth
+  // (see PR discussion: this is the exact failure mode the date-bound
+  // default above exists to avoid, and Clear briefly reintroduced it before
+  // this fix). The `<Pagination>` control below lets an admin reach the
+  // rest without narrowing the filter, unlike the truncation-only version
+  // of this page.
   const totalCount = logsPage?.count ?? 0;
-  const isTruncated = list.length < totalCount;
+  const isMultiPage = (logsPage?.pageCount ?? 1) > 1;
   const createCount = list.filter((l) => l.action === 'create').length;
   const updateCount = list.filter((l) => l.action === 'update').length;
   const deleteCount = list.filter((l) => l.action === 'delete').length;
@@ -264,25 +291,19 @@ export default function AuditLogsPage() {
       />
 
       {/* ── Stats Row ────────────────────────────────────────────────────── */}
-      {/* Created/Updated/Deleted are counted from `list` — the visible page
-          — while Total Events uses the real backend `totalCount`. Those only
-          agree when nothing's truncated; when it is, the three sub-stats get
-          a "(shown page)" qualifier so they don't silently misrepresent the
-          filter's true composition (see the isTruncated banner below). */}
+      {/* Created/Updated/Deleted are counted from `list` — the current page
+          only — while Total Events uses the real backend `totalCount`. Those
+          only agree on a single-page result; once there's more than one
+          page, the three sub-stats get a "(shown page)" qualifier so they
+          don't silently misrepresent the filter's true composition — there's
+          no group-by-action count endpoint to source a real cross-page
+          breakdown from. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label={t('statTotalEvents')} value={totalCount} icon={<ScrollText className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
-        <StatCard label={t('statCreated') + (isTruncated ? ` ${t('shownPageSuffix')}` : '')} value={createCount} icon={<PlusCircle className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
-        <StatCard label={t('statUpdated') + (isTruncated ? ` ${t('shownPageSuffix')}` : '')} value={updateCount} icon={<Pencil className="h-5 w-5 text-blue-600" />} iconBg="bg-blue-50" />
-        <StatCard label={t('statDeleted') + (isTruncated ? ` ${t('shownPageSuffix')}` : '')} value={deleteCount} icon={<Trash2 className="h-5 w-5 text-red-500" />} iconBg="bg-red-50" />
+        <StatCard label={t('statCreated') + (isMultiPage ? ` ${t('shownPageSuffix')}` : '')} value={createCount} icon={<PlusCircle className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
+        <StatCard label={t('statUpdated') + (isMultiPage ? ` ${t('shownPageSuffix')}` : '')} value={updateCount} icon={<Pencil className="h-5 w-5 text-blue-600" />} iconBg="bg-blue-50" />
+        <StatCard label={t('statDeleted') + (isMultiPage ? ` ${t('shownPageSuffix')}` : '')} value={deleteCount} icon={<Trash2 className="h-5 w-5 text-red-500" />} iconBg="bg-red-50" />
       </div>
-
-      {/* ── Truncation banner ────────────────────────────────────────────── */}
-      {isTruncated && (
-        <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 text-sm text-amber-800">
-          <AlertCircle className="h-4 w-4 flex-shrink-0" />
-          {t('truncatedNote', { shown: list.length, total: totalCount })}
-        </div>
-      )}
 
       {/* ── Table Card ───────────────────────────────────────────────────── */}
       <Card
@@ -291,19 +312,19 @@ export default function AuditLogsPage() {
         subtitle={t('eventsCountLabel', { count: totalCount })}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            <Select value={organizationId} onChange={(e) => setOrganizationId(e.target.value)} options={centerOptions} />
-            <Select value={action} onChange={(e) => setAction(e.target.value as AuditAction | '')} options={ACTION_OPTIONS} />
-            <Select value={entityType} onChange={(e) => setEntityType(e.target.value)} options={ENTITY_TYPE_OPTIONS} />
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36" />
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36" />
+            <Select value={organizationId} onChange={(e) => updateOrganizationId(e.target.value)} options={centerOptions} />
+            <Select value={action} onChange={(e) => updateAction(e.target.value as AuditAction | '')} options={ACTION_OPTIONS} />
+            <Select value={entityType} onChange={(e) => updateEntityType(e.target.value)} options={ENTITY_TYPE_OPTIONS} />
+            <Input type="date" value={dateFrom} onChange={(e) => updateDateFrom(e.target.value)} className="w-36" />
+            <Input type="date" value={dateTo} onChange={(e) => updateDateTo(e.target.value)} className="w-36" />
             {hasFilters && (
               <button
                 onClick={() => {
-                  setOrganizationId('');
-                  setAction('');
-                  setEntityType('');
-                  setDateFrom(defaultDateFrom());
-                  setDateTo('');
+                  updateOrganizationId('');
+                  updateAction('');
+                  updateEntityType('');
+                  updateDateFrom(defaultDateFrom());
+                  updateDateTo('');
                 }}
                 className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
               >
@@ -318,13 +339,20 @@ export default function AuditLogsPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t('loadErrorFallback')}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !logsPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('loadingAuditLogs')}
           </div>
         ) : (
-          <DataTable<AuditLog> columns={columns} data={list} keyField="id" emptyMessage={t('noAuditLogsFound')} />
+          <>
+            <DataTable<AuditLog> columns={columns} data={list} keyField="id" emptyMessage={t('noAuditLogsFound')} />
+            {isMultiPage && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={logsPage?.pageCount ?? 1} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

@@ -32,6 +32,7 @@ class AssignmentViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     serializer_class = AssignmentSerializer
     permission_classes = [HasModulePermission]
     filterset_class = AssignmentFilter
+    search_fields = ["title", "group__name"]
     entity_type = "assignment"
     permission_map = ASSIGNMENT_PERMISSION_MAP
 

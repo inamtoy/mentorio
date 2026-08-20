@@ -5,15 +5,18 @@ import {
   deleteAssignment,
   gradeSubmission,
   listAssignments,
+  listAssignmentsPage,
   listSubmissions,
   updateAssignment,
   type AssignmentInput,
+  type ListAssignmentsPageParams,
   type ListAssignmentsParams,
   type ListSubmissionsParams,
   type SubmissionInput,
 } from "@/lib/api/homework";
 
 const assignmentsKey = (params: ListAssignmentsParams) => ["assignments", params] as const;
+const assignmentsPageKey = (params: ListAssignmentsPageParams) => ["assignments-page", params] as const;
 const submissionsKey = (params: ListSubmissionsParams) => ["submissions", params] as const;
 
 // No `enabled` gate on organizationId — see lib/queries/exams.ts's
@@ -23,6 +26,14 @@ export function useAssignmentsQuery(params: ListAssignmentsParams) {
   return useQuery({
     queryKey: assignmentsKey(params),
     queryFn: () => listAssignments(params),
+  });
+}
+
+export function useAssignmentsPageQuery(params: ListAssignmentsPageParams) {
+  return useQuery({
+    queryKey: assignmentsPageKey(params),
+    queryFn: () => listAssignmentsPage(params),
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -39,6 +50,7 @@ export function useCreateAssignmentMutation() {
     mutationFn: (input: AssignmentInput) => createAssignment(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["assignments-page"] });
     },
   });
 }
@@ -49,6 +61,7 @@ export function useUpdateAssignmentMutation() {
     mutationFn: ({ id, input }: { id: string; input: Partial<AssignmentInput> }) => updateAssignment(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["assignments-page"] });
     },
   });
 }
@@ -59,6 +72,7 @@ export function useDeleteAssignmentMutation() {
     mutationFn: (id: string) => deleteAssignment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["assignments-page"] });
     },
   });
 }
@@ -70,6 +84,7 @@ export function useCreateSubmissionMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["submissions"] });
       queryClient.invalidateQueries({ queryKey: ["assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["assignments-page"] });
     },
   });
 }
@@ -82,6 +97,7 @@ export function useGradeSubmissionMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["submissions"] });
       queryClient.invalidateQueries({ queryKey: ["assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["assignments-page"] });
     },
   });
 }

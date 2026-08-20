@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { DataTable, Column } from "@/components/ui/data-table";
+import { Pagination } from "@/components/ui/pagination";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
 import { SearchInput, Select } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useGroupsQuery } from "@/lib/queries/groups";
-import { useAssignmentsQuery, useSubmissionsQuery } from "@/lib/queries/homework";
+import { useAssignmentsPageQuery, useAssignmentsQuery, useSubmissionsQuery } from "@/lib/queries/homework";
 import type { Assignment, AssignmentStatus } from "@/lib/api/homework";
 import { ApiError } from "@/lib/api/client";
 import { formatLocalizedDate, formatClockTime } from "@/i18n/date-locale";
@@ -132,24 +133,44 @@ export default function HomeworkPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<AssignmentStatus | "">("");
   const [groupFilter, setGroupFilter] = useState("");
+  const [page, setPage] = useState(1);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
 
   const { data: groups } = useGroupsQuery({ organizationId: organizationId ?? "" });
+
+  // Stat cards read the full (unpaginated) list — same tradeoff as the
+  // other converted list pages. The table below gets its own, separate,
+  // single-page query.
+  const { data: assignments } = useAssignmentsQuery({ organizationId: organizationId ?? "" });
+  const list = assignments ?? [];
+
   const {
-    data: assignments,
+    data: assignmentsPage,
     isLoading,
     isError,
     error,
-  } = useAssignmentsQuery({
+  } = useAssignmentsPageQuery({
     organizationId: organizationId ?? "",
     status: statusFilter || undefined,
     group: groupFilter || undefined,
+    search: search || undefined,
+    page,
   });
 
-  const list = assignments ?? [];
-  const filtered = list.filter(
-    (a) => !search || a.title.toLowerCase().includes(search.toLowerCase()) || a.group_name.toLowerCase().includes(search.toLowerCase())
-  );
+  const tableRows = assignmentsPage?.results ?? [];
+
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+  function updateStatusFilter(value: AssignmentStatus | "") {
+    setStatusFilter(value);
+    setPage(1);
+  }
+  function updateGroupFilter(value: string) {
+    setGroupFilter(value);
+    setPage(1);
+  }
 
   const GROUP_OPTIONS = [{ value: "", label: t("allGroupsOption") }, ...(groups ?? []).map((g) => ({ value: g.id, label: g.name }))];
 
@@ -172,12 +193,12 @@ export default function HomeworkPage() {
       <Card
         noPadding
         title={t("allAssignmentsTitle")}
-        subtitle={t("assignmentsCount", { count: filtered.length })}
+        subtitle={t("assignmentsCount", { count: assignmentsPage?.totalCount ?? 0 })}
         actions={
           <div className="flex items-center gap-2">
-            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchPlaceholder")} />
-            <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as AssignmentStatus | "")} className="w-32" />
-            <Select options={GROUP_OPTIONS} value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="w-40" />
+            <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t("searchPlaceholder")} />
+            <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => updateStatusFilter(e.target.value as AssignmentStatus | "")} className="w-32" />
+            <Select options={GROUP_OPTIONS} value={groupFilter} onChange={(e) => updateGroupFilter(e.target.value)} className="w-40" />
           </div>
         }
       >
@@ -186,13 +207,20 @@ export default function HomeworkPage() {
             <AlertCircle className="h-4 w-4" />
             {error instanceof ApiError ? error.message : t("loadErrorFallback")}
           </div>
-        ) : isLoading ? (
+        ) : isLoading && !assignmentsPage ? (
           <div className="flex items-center justify-center gap-2 px-6 py-12 text-sm text-slate-400">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t("loadingAssignments")}
           </div>
         ) : (
-          <DataTable columns={COLUMNS} data={filtered} keyField="id" onRowClick={setSelectedAssignment} emptyMessage={t("noAssignmentsFound")} />
+          <>
+            <DataTable columns={COLUMNS} data={tableRows} keyField="id" onRowClick={setSelectedAssignment} emptyMessage={t("noAssignmentsFound")} />
+            {assignmentsPage && assignmentsPage.pageCount > 1 && (
+              <div className="py-4 border-t border-slate-50">
+                <Pagination page={page} pageCount={assignmentsPage.pageCount} onPageChange={setPage} />
+              </div>
+            )}
+          </>
         )}
       </Card>
 

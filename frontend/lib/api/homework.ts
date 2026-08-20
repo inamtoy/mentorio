@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 
 export type AssignmentStatus = "active" | "closed";
 
@@ -43,6 +43,16 @@ export interface ListAssignmentsParams {
   organizationId?: string;
   group?: string;
   status?: AssignmentStatus;
+  search?: string;
+}
+
+function assignmentsQuery(params: ListAssignmentsParams): URLSearchParams {
+  const query = new URLSearchParams();
+  if (params.organizationId) query.set("organization", params.organizationId);
+  if (params.group) query.set("group", params.group);
+  if (params.status) query.set("status", params.status);
+  if (params.search) query.set("search", params.search);
+  return query;
 }
 
 // Unscoped (no group) callers get every assignment the org has ever
@@ -51,12 +61,19 @@ export interface ListAssignmentsParams {
 // rather than the bounded-default-filter treatment those need. Revisit if
 // a real org's assignment count ever grows large enough to make this slow.
 export async function listAssignments(params: ListAssignmentsParams): Promise<Assignment[]> {
-  const query = new URLSearchParams();
-  if (params.organizationId) query.set("organization", params.organizationId);
-  if (params.group) query.set("group", params.group);
-  if (params.status) query.set("status", params.status);
+  return fetchAllPages<Assignment>("/api/v1/homework/assignments/", assignmentsQuery(params));
+}
 
-  return fetchAllPages<Assignment>("/api/v1/homework/assignments/", query);
+export interface ListAssignmentsPageParams extends ListAssignmentsParams {
+  page?: number;
+  pageSize?: number;
+}
+
+/** The real-pagination counterpart to listAssignments above — used by the
+ * Admin Homework list page, which renders a `<Pagination>` control and only
+ * ever needs the current page's rows. */
+export async function listAssignmentsPage(params: ListAssignmentsPageParams): Promise<Page<Assignment>> {
+  return fetchPage<Assignment>("/api/v1/homework/assignments/", assignmentsQuery(params), params.page ?? 1, params.pageSize);
 }
 
 export interface AssignmentInput {

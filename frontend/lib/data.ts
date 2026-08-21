@@ -41,7 +41,8 @@ export const TEACHERS: Teacher[] = [
 // Admin's ATTENDANCE_RECORDS mock array was removed here (2026-08) once the
 // real Attendance backend + Admin page landed — see lib/api/attendance.ts.
 // The Teacher portal's own mock (lib/teacher-data.ts::TEACHER_ATTENDANCE)
-// is untouched — that portal hasn't been wired to real data yet.
+// was untouched at the time — that portal wasn't wired to real data yet.
+// It has been since (2026-08-21); see that file's own removal note.
 
 // ─── Finance ──────────────────────────────────────────────────────────────────
 

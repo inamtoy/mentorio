@@ -26,9 +26,9 @@ import {
   LogOut,
   Menu,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import { useNotificationsQuery } from "@/lib/queries/notifications";
-import { useSAProfileStore } from "@/lib/store/sa-profile-store";
+import { useAuthStore } from "@/lib/store/auth-store";
 import { useLogout } from "@/lib/hooks/use-logout";
 import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
@@ -235,18 +235,12 @@ function SuperAdminHeader({ sidebarCollapsed, onMenuClick }: HeaderProps) {
   const title = titleKey ? t(titleKey) : t("portalFallbackTitle");
   const { data: notifications = [] } = useNotificationsQuery();
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const profile = useSAProfileStore((s) => s.profile);
+  const authUser = useAuthStore((s) => s.user);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const handleSignOut = useLogout();
 
-  // Derive initials from profile name
-  const initials = profile.name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = getInitials(authUser?.fullName ?? t("superAdminBadge"));
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -330,9 +324,9 @@ function SuperAdminHeader({ sidebarCollapsed, onMenuClick }: HeaderProps) {
           </div>
           <div className="hidden sm:block text-left">
             <p className="text-sm font-medium text-slate-900 leading-none">
-              {profile.name}
+              {authUser?.fullName ?? t("superAdminBadge")}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">{profile.role}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{t("superAdminBadge")}</p>
           </div>
           <ChevronDown
             className={cn(
@@ -346,9 +340,9 @@ function SuperAdminHeader({ sidebarCollapsed, onMenuClick }: HeaderProps) {
           <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-lg border border-slate-100 py-1.5 z-50">
             <div className="px-4 py-2.5 border-b border-slate-50">
               <p className="text-sm font-semibold text-slate-900">
-                {profile.name}
+                {authUser?.fullName ?? t("superAdminBadge")}
               </p>
-              <p className="text-xs text-slate-400">{profile.loginId}</p>
+              <p className="text-xs text-slate-400">{authUser?.loginId}</p>
             </div>
             <Link
               href="/super-admin/profile"

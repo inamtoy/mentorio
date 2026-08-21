@@ -102,7 +102,6 @@
     "navGrades": "Grades",
     "navAttendance": "Attendance",
     "navPayments": "Payments",
-    "navMessages": "Messages",
     "navNotifications": "Notifications",
     "navProfile": "Profile",
     "navSettings": "Settings",
@@ -127,7 +126,6 @@
     "qaCheckGrades": "Check Grades",
     "qaViewSchedule": "View Schedule",
     "qaMyAttendance": "My Attendance",
-    "qaMessages": "Messages",
     "todaysClassesTitle": "Today's Classes",
     "sessionsOn": "{count, plural, one {# session} other {# sessions}} on {date}",
     "noClassesToday": "No classes today",
@@ -270,19 +268,6 @@
     "noCompletedExamsYet": "No completed exams yet.",
     "resultsNotYetEntered": "Results not yet entered"
   },
-  "StudentMessages": {
-    "pageTitle": "Messages",
-    "pageSubtitle": "Communicate with your teachers and the admin office",
-    "roleTeacher": "Teacher",
-    "roleAdmin": "Admin",
-    "searchConversationsPlaceholder": "Search conversations...",
-    "noConversationsFound": "No conversations found",
-    "selectConversationTitle": "Select a conversation",
-    "selectConversationHint": "Choose from the list to start messaging",
-    "onlineStatus": "Online",
-    "typeMessagePlaceholder": "Type a message...",
-    "attachFileTitle": "Attach file"
-  },
   "StudentNotifications": {
     "pageTitle": "Notifications",
     "unreadSubtitle": "{count, plural, one {You have # unread notification} other {You have # unread notifications}}",
@@ -397,7 +382,6 @@
     "navAssignments": "Assignments",
     "navExams": "Exams",
     "navGrades": "Grades",
-    "navMessages": "Messages",
     "navResources": "Resources",
     "navNotifications": "Notifications",
     "navProfile": "Profile",
@@ -443,7 +427,6 @@
     "qaCreateAssignment": "Create Assignment",
     "qaAddExam": "Add Exam",
     "qaGradeStudents": "Grade Students",
-    "qaSendAnnouncement": "Send Announcement",
     "todaysClassesTitle": "Today's Classes",
     "sessionsTodaySubtitle": "{count, plural, one {# session} other {# sessions}} today",
     "noClassesToday": "No classes today",
@@ -733,20 +716,6 @@
     "statusLate": "Late",
     "statusExcused": "Excused",
     "windowSuffix30d": " (30d)"
-  },
-  "TeacherMessages": {
-    "pageTitle": "Messages",
-    "pageSubtitle": "Communicate with students, parents, and administrators",
-    "roleStudent": "Student",
-    "roleAdmin": "Admin",
-    "roleParent": "Parent",
-    "searchConversationsPlaceholder": "Search conversations...",
-    "noConversationsFound": "No conversations found",
-    "selectConversationTitle": "Select a conversation",
-    "selectConversationHint": "Choose from the list to start messaging",
-    "onlineStatus": "Online",
-    "typeMessagePlaceholder": "Type a message...",
-    "attachFileTitle": "Attach file"
   },
   "TeacherNotifications": {
     "pageTitle": "Notifications",

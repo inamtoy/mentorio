@@ -102,7 +102,6 @@
     "navGrades": "Baholar",
     "navAttendance": "Davomat",
     "navPayments": "To'lovlar",
-    "navMessages": "Xabarlar",
     "navNotifications": "Bildirishnomalar",
     "navProfile": "Profil",
     "navSettings": "Sozlamalar",
@@ -127,7 +126,6 @@
     "qaCheckGrades": "Baholarni tekshirish",
     "qaViewSchedule": "Jadvalni ko'rish",
     "qaMyAttendance": "Mening davomatim",
-    "qaMessages": "Xabarlar",
     "todaysClassesTitle": "Bugungi darslar",
     "sessionsOn": "{date} kuni {count, plural, other {# ta dars}}",
     "noClassesToday": "Bugun darslar yo'q",
@@ -270,19 +268,6 @@
     "noCompletedExamsYet": "Hozircha yakunlangan imtihonlar yo'q.",
     "resultsNotYetEntered": "Natijalar hali kiritilmagan"
   },
-  "StudentMessages": {
-    "pageTitle": "Xabarlar",
-    "pageSubtitle": "O'qituvchilaringiz va ma'muriyat bilan muloqot qiling",
-    "roleTeacher": "O'qituvchi",
-    "roleAdmin": "Administrator",
-    "searchConversationsPlaceholder": "Suhbatlarni qidirish...",
-    "noConversationsFound": "Suhbatlar topilmadi",
-    "selectConversationTitle": "Suhbatni tanlang",
-    "selectConversationHint": "Yozishmani boshlash uchun ro'yxatdan tanlang",
-    "onlineStatus": "Onlayn",
-    "typeMessagePlaceholder": "Xabar yozing...",
-    "attachFileTitle": "Fayl biriktirish"
-  },
   "StudentNotifications": {
     "pageTitle": "Bildirishnomalar",
     "unreadSubtitle": "Sizda {count, plural, other {# ta}} o'qilmagan bildirishnoma bor",
@@ -397,7 +382,6 @@
     "navAssignments": "Topshiriqlar",
     "navExams": "Imtihonlar",
     "navGrades": "Baholar",
-    "navMessages": "Xabarlar",
     "navResources": "Materiallar",
     "navNotifications": "Bildirishnomalar",
     "navProfile": "Profil",
@@ -443,7 +427,6 @@
     "qaCreateAssignment": "Topshiriq yaratish",
     "qaAddExam": "Imtihon qo'shish",
     "qaGradeStudents": "O'quvchilarni baholash",
-    "qaSendAnnouncement": "E'lon yuborish",
     "todaysClassesTitle": "Bugungi darslar",
     "sessionsTodaySubtitle": "Bugun {count, plural, other {# ta dars}}",
     "noClassesToday": "Bugun darslar yo'q",
@@ -733,20 +716,6 @@
     "statusLate": "Kechikkan",
     "statusExcused": "Sababli",
     "windowSuffix30d": " (30 kun)"
-  },
-  "TeacherMessages": {
-    "pageTitle": "Xabarlar",
-    "pageSubtitle": "O'quvchilar, ota-onalar va administratorlar bilan muloqot qiling",
-    "roleStudent": "O'quvchi",
-    "roleAdmin": "Administrator",
-    "roleParent": "Ota-ona",
-    "searchConversationsPlaceholder": "Suhbatlarni qidirish...",
-    "noConversationsFound": "Suhbatlar topilmadi",
-    "selectConversationTitle": "Suhbatni tanlang",
-    "selectConversationHint": "Yozishmani boshlash uchun ro'yxatdan tanlang",
-    "onlineStatus": "Onlayn",
-    "typeMessagePlaceholder": "Xabar yozing...",
-    "attachFileTitle": "Fayl biriktirish"
   },
   "TeacherNotifications": {
     "pageTitle": "Bildirishnomalar",

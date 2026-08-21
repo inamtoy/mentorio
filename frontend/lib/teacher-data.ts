@@ -65,20 +65,16 @@ export const TEACHER_SUBMISSIONS = [
 // Building it for real means a new backend module (conversations, messages,
 // RBAC, delivery), not a page-level conversion — out of scope for this pass.
 
-// ─── Teacher Resources ────────────────────────────────────────────────────────
-
-export const TEACHER_RESOURCES = [
-  { id: "res1", title: "Algebra Fundamentals Textbook", subject: "Algebra", type: "pdf" as const, size: "8.4 MB", uploadedAt: "2026-01-10", groupId: "g1", groupName: "Algebra A1", downloads: 34, shared: true },
-  { id: "res2", title: "Polynomial Operations Video Lecture", subject: "Algebra", type: "video" as const, size: "245 MB", uploadedAt: "2026-03-05", groupId: "g1", groupName: "Algebra A1", downloads: 28, shared: true },
-  { id: "res3", title: "Systems of Equations Notes", subject: "Algebra", type: "document" as const, size: "1.2 MB", uploadedAt: "2026-04-15", groupId: "g2", groupName: "Algebra A2", downloads: 22, shared: false },
-  { id: "res4", title: "Calculus Quick Reference Sheet", subject: "Calculus", type: "pdf" as const, size: "540 KB", uploadedAt: "2026-02-20", groupId: "g3", groupName: "Calculus B1", downloads: 41, shared: true },
-  { id: "res5", title: "Derivatives Practice Problems", subject: "Calculus", type: "document" as const, size: "2.1 MB", uploadedAt: "2026-06-01", groupId: "g3", groupName: "Calculus B1", downloads: 19, shared: true },
-  { id: "res6", title: "Khan Academy – Algebra Playlist", subject: "Algebra", type: "link" as const, size: "—", uploadedAt: "2026-01-20", downloads: 56, shared: true },
-  { id: "res7", title: "Graphing Calculator Tutorial", subject: "Mathematics", type: "video" as const, size: "112 MB", uploadedAt: "2026-05-10", downloads: 37, shared: true },
-  { id: "res8", title: "Exam Formula Sheet", subject: "Mathematics", type: "pdf" as const, size: "320 KB", uploadedAt: "2026-06-25", downloads: 45, shared: true },
-  { id: "res9", title: "Quadratic Equations Diagram", subject: "Algebra", type: "image" as const, size: "780 KB", uploadedAt: "2026-04-02", groupId: "g2", groupName: "Algebra A2", downloads: 14, shared: false },
-  { id: "res10", title: "Mid-Term Study Guide", subject: "Algebra", type: "document" as const, size: "1.8 MB", uploadedAt: "2026-07-01", groupId: "g1", groupName: "Algebra A1", downloads: 12, shared: false },
-];
+// Teacher Resources mock array (TEACHER_RESOURCES) and its page
+// (app/teacher/resources/page.tsx) were removed here (2026-08-21) — same
+// call as Teacher/Student Messages: no backend exists for it at all.
+// course.course_materials is defined in the database SQL design docs but
+// explicitly not modeled at the Django layer yet (see
+// backend/course/models/course.py's own docstring: "course_materials
+// isn't modeled at all (no file-upload flow exists yet either)"), and the
+// mock page's "Upload" button never took an actual file either — nothing
+// real to convert to. Building this for real means a new backend module
+// (model, serializer, viewset, file storage), not a page-level conversion.
 
 // ─── Teacher Notifications ────────────────────────────────────────────────────
 

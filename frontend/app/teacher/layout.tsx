@@ -13,7 +13,6 @@ import {
   FileText,
   BookOpen,
   BarChart2,
-  MessageSquare,
   FolderOpen,
   Bell,
   UserCircle,
@@ -62,7 +61,6 @@ const NAV_GROUPS = [
   {
     groupKey: "navGroupCommunication",
     items: [
-      { href: "/teacher/messages", labelKey: "navMessages", icon: MessageSquare },
       { href: "/teacher/resources", labelKey: "navResources", icon: FolderOpen },
       { href: "/teacher/notifications", labelKey: "navNotifications", icon: Bell },
     ],
@@ -89,7 +87,6 @@ const PAGE_TITLE_KEYS: Record<string, string> = {
   "/teacher/assignments": "navAssignments",
   "/teacher/exams": "navExams",
   "/teacher/grades": "navGrades",
-  "/teacher/messages": "navMessages",
   "/teacher/resources": "navResources",
   "/teacher/notifications": "navNotifications",
   "/teacher/profile": "navProfile",

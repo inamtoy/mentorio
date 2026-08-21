@@ -310,91 +310,14 @@ export const TEACHER_SUBMISSIONS = [
 // once app/teacher/groups/page.tsx's Grades tab switched to the real,
 // computed grades API — see lib/queries/grades.ts.
 
-// ─── Teacher Messages ─────────────────────────────────────────────────────────
-
-export const TEACHER_MESSAGES = [
-  {
-    id: "msg1",
-    participantName: "Alice Johnson",
-    participantRole: "student" as const,
-    lastMessage: "Thank you for the feedback on my assignment!",
-    lastTime: "2026-07-04T10:15:00Z",
-    unread: 1,
-    avatar: undefined,
-    messages: [
-      { id: "m1a", senderId: "t1", text: "Hi Alice, I've reviewed your polynomial worksheet. Great work overall!", time: "2026-07-04T09:50:00Z", isMe: true },
-      { id: "m1b", senderId: "s1", text: "Thank you for the feedback on my assignment!", time: "2026-07-04T10:15:00Z", isMe: false },
-    ],
-  },
-  {
-    id: "msg2",
-    participantName: "Mary Johnson",
-    participantRole: "parent" as const,
-    lastMessage: "Can we schedule a meeting to discuss Alice's progress?",
-    lastTime: "2026-07-03T16:30:00Z",
-    unread: 2,
-    avatar: undefined,
-    messages: [
-      { id: "m2a", senderId: "parent1", text: "Hello Dr. Connor, I wanted to check in on Alice.", time: "2026-07-03T15:00:00Z", isMe: false },
-      { id: "m2b", senderId: "t1", text: "Hi Mary! Alice is doing wonderfully. She scored 92 on her last assignment.", time: "2026-07-03T15:45:00Z", isMe: true },
-      { id: "m2c", senderId: "parent1", text: "Can we schedule a meeting to discuss Alice's progress?", time: "2026-07-03T16:30:00Z", isMe: false },
-    ],
-  },
-  {
-    id: "msg3",
-    participantName: "Admin Office",
-    participantRole: "admin" as const,
-    lastMessage: "Please submit your mid-term grade reports by July 20.",
-    lastTime: "2026-07-03T09:00:00Z",
-    unread: 0,
-    avatar: undefined,
-    messages: [
-      { id: "m3a", senderId: "admin", text: "Please submit your mid-term grade reports by July 20.", time: "2026-07-03T09:00:00Z", isMe: false },
-      { id: "m3b", senderId: "t1", text: "Understood, I'll have them ready by July 18.", time: "2026-07-03T09:30:00Z", isMe: true },
-    ],
-  },
-  {
-    id: "msg4",
-    participantName: "Daniel Brown",
-    participantRole: "student" as const,
-    lastMessage: "I'll try to attend all classes from now on.",
-    lastTime: "2026-07-02T14:00:00Z",
-    unread: 0,
-    avatar: undefined,
-    messages: [
-      { id: "m4a", senderId: "t1", text: "Daniel, I'm concerned about your recent absences. Is everything okay?", time: "2026-07-02T13:00:00Z", isMe: true },
-      { id: "m4b", senderId: "s4", text: "I'm sorry Dr. Connor. I've been dealing with some personal issues.", time: "2026-07-02T13:40:00Z", isMe: false },
-      { id: "m4c", senderId: "t1", text: "I understand. Please let me know if you need any support.", time: "2026-07-02T13:50:00Z", isMe: true },
-      { id: "m4d", senderId: "s4", text: "I'll try to attend all classes from now on.", time: "2026-07-02T14:00:00Z", isMe: false },
-    ],
-  },
-  {
-    id: "msg5",
-    participantName: "Eva Martinez",
-    participantRole: "student" as const,
-    lastMessage: "Could you recommend extra reading for calculus?",
-    lastTime: "2026-07-01T18:00:00Z",
-    unread: 0,
-    avatar: undefined,
-    messages: [
-      { id: "m5a", senderId: "s5", text: "Hi Dr. Connor! Could you recommend extra reading for calculus?", time: "2026-07-01T18:00:00Z", isMe: false },
-      { id: "m5b", senderId: "t1", text: "Absolutely! Check out 'Calculus' by James Stewart, chapters 2–4.", time: "2026-07-01T18:30:00Z", isMe: true },
-    ],
-  },
-  {
-    id: "msg6",
-    participantName: "Nancy Turner",
-    participantRole: "parent" as const,
-    lastMessage: "We will make sure Liam attends regularly.",
-    lastTime: "2026-06-30T11:00:00Z",
-    unread: 0,
-    avatar: undefined,
-    messages: [
-      { id: "m6a", senderId: "t1", text: "Dear Mrs. Turner, Liam's attendance is critically low at 45%. We need to discuss this urgently.", time: "2026-06-30T10:00:00Z", isMe: true },
-      { id: "m6b", senderId: "parent6", text: "We are so sorry. We were not aware. We will make sure Liam attends regularly.", time: "2026-06-30T11:00:00Z", isMe: false },
-    ],
-  },
-];
+// Teacher Messages mock array (TEACHER_MESSAGES) and its page
+// (app/teacher/messages/page.tsx) were removed here (2026-08-21): there is
+// no backend for user-to-user messaging anywhere in this app (checked both
+// the database migrations and every backend app — only one-way SMS/
+// Telegram/email notification logs exist, no conversation/message table),
+// so this was a pure frontend mock with nothing real to convert to.
+// Building it for real means a new backend module (conversations, messages,
+// RBAC, delivery), not a page-level conversion — out of scope for this pass.
 
 // ─── Teacher Resources ────────────────────────────────────────────────────────
 

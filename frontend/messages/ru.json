@@ -102,7 +102,6 @@
     "navGrades": "Оценки",
     "navAttendance": "Посещаемость",
     "navPayments": "Платежи",
-    "navMessages": "Сообщения",
     "navNotifications": "Уведомления",
     "navProfile": "Профиль",
     "navSettings": "Настройки",
@@ -127,7 +126,6 @@
     "qaCheckGrades": "Проверить оценки",
     "qaViewSchedule": "Расписание",
     "qaMyAttendance": "Моя посещаемость",
-    "qaMessages": "Сообщения",
     "todaysClassesTitle": "Занятия на сегодня",
     "sessionsOn": "{count, plural, one {# занятие} few {# занятия} many {# занятий} other {# занятия}} — {date}",
     "noClassesToday": "Сегодня занятий нет",
@@ -270,19 +268,6 @@
     "noCompletedExamsYet": "Завершённых экзаменов пока нет.",
     "resultsNotYetEntered": "Результаты ещё не внесены"
   },
-  "StudentMessages": {
-    "pageTitle": "Сообщения",
-    "pageSubtitle": "Общайтесь с преподавателями и администрацией",
-    "roleTeacher": "Преподаватель",
-    "roleAdmin": "Администратор",
-    "searchConversationsPlaceholder": "Поиск переписок...",
-    "noConversationsFound": "Переписки не найдены",
-    "selectConversationTitle": "Выберите переписку",
-    "selectConversationHint": "Выберите из списка, чтобы начать общение",
-    "onlineStatus": "В сети",
-    "typeMessagePlaceholder": "Введите сообщение...",
-    "attachFileTitle": "Прикрепить файл"
-  },
   "StudentNotifications": {
     "pageTitle": "Уведомления",
     "unreadSubtitle": "{count, plural, one {У вас # непрочитанное уведомление} few {У вас # непрочитанных уведомления} many {У вас # непрочитанных уведомлений} other {У вас # непрочитанного уведомления}}",
@@ -397,7 +382,6 @@
     "navAssignments": "Задания",
     "navExams": "Экзамены",
     "navGrades": "Оценки",
-    "navMessages": "Сообщения",
     "navResources": "Материалы",
     "navNotifications": "Уведомления",
     "navProfile": "Профиль",
@@ -443,7 +427,6 @@
     "qaCreateAssignment": "Создать задание",
     "qaAddExam": "Добавить экзамен",
     "qaGradeStudents": "Оценить студентов",
-    "qaSendAnnouncement": "Отправить объявление",
     "todaysClassesTitle": "Занятия на сегодня",
     "sessionsTodaySubtitle": "Сегодня {count, plural, one {# занятие} few {# занятия} many {# занятий} other {# занятия}}",
     "noClassesToday": "Сегодня занятий нет",
@@ -733,20 +716,6 @@
     "statusLate": "Опоздал",
     "statusExcused": "По уважительной причине",
     "windowSuffix30d": " (30 дн.)"
-  },
-  "TeacherMessages": {
-    "pageTitle": "Сообщения",
-    "pageSubtitle": "Общайтесь со студентами, родителями и администрацией",
-    "roleStudent": "Студент",
-    "roleAdmin": "Администратор",
-    "roleParent": "Родитель",
-    "searchConversationsPlaceholder": "Поиск переписок...",
-    "noConversationsFound": "Переписки не найдены",
-    "selectConversationTitle": "Выберите переписку",
-    "selectConversationHint": "Выберите из списка, чтобы начать общение",
-    "onlineStatus": "В сети",
-    "typeMessagePlaceholder": "Введите сообщение...",
-    "attachFileTitle": "Прикрепить файл"
   },
   "TeacherNotifications": {
     "pageTitle": "Уведомления",

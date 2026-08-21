@@ -12,7 +12,6 @@ import {
   BookOpen,
   BarChart2,
   ClipboardCheck,
-  MessageSquare,
   Bell,
   CreditCard,
   UserCircle,
@@ -65,7 +64,6 @@ const NAV_GROUPS = [
   {
     groupKey: "navGroupCommunication",
     items: [
-      { href: "/student/messages", labelKey: "navMessages", icon: MessageSquare },
       { href: "/student/notifications", labelKey: "navNotifications", icon: Bell },
     ],
   },
@@ -90,7 +88,6 @@ const PAGE_TITLE_KEYS: Record<string, string> = {
   "/student/grades": "navGrades",
   "/student/attendance": "navAttendance",
   "/student/payments": "navPayments",
-  "/student/messages": "navMessages",
   "/student/notifications": "navNotifications",
   "/student/profile": "navProfile",
   "/student/settings": "navSettings",

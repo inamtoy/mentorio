@@ -15,7 +15,6 @@ import {
   FilePlus,
   BookOpenCheck,
   GraduationCap,
-  Megaphone,
   BookOpen,
   Users,
   CalendarCheck,
@@ -127,7 +126,6 @@ export default function TeacherDashboardPage() {
     { label: t('qaCreateAssignment'), icon: <FilePlus className="h-6 w-6 text-blue-600" />, iconBg: 'bg-blue-50', href: '/teacher/assignments' },
     { label: t('qaAddExam'), icon: <BookOpenCheck className="h-6 w-6 text-amber-600" />, iconBg: 'bg-amber-50', href: '/teacher/exams' },
     { label: t('qaGradeStudents'), icon: <GraduationCap className="h-6 w-6 text-emerald-600" />, iconBg: 'bg-emerald-50', href: '/teacher/grades' },
-    { label: t('qaSendAnnouncement'), icon: <Megaphone className="h-6 w-6 text-violet-600" />, iconBg: 'bg-violet-50', href: '/teacher/messages' },
   ];
 
   const authUser = useAuthStore((s) => s.user);

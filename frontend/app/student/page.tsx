@@ -8,7 +8,6 @@ import {
   FileText,
   BarChart2,
   ClipboardCheck,
-  MessageSquare,
   Clock,
   MapPin,
 } from "lucide-react";
@@ -142,12 +141,6 @@ export default function StudentDashboardPage() {
       icon: <ClipboardCheck className="h-6 w-6 text-amber-600" />,
       iconBg: "bg-amber-50",
       href: "/student/attendance",
-    },
-    {
-      label: t("qaMessages"),
-      icon: <MessageSquare className="h-6 w-6 text-violet-600" />,
-      iconBg: "bg-violet-50",
-      href: "/student/messages",
     },
   ];
 

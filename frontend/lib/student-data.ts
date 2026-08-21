@@ -48,60 +48,12 @@ export const STUDENT_PROFILE = {
 // backend in an earlier session and never used these; removed here
 // (2026-08-21) while cleaning up this file for the Dashboard conversion.
 
-// ─── Student Messages ─────────────────────────────────────────────────────────
-
-export const STUDENT_MESSAGES = [
-  {
-    id: "smsg1",
-    participantName: "Dr. Sarah Connor",
-    participantRole: "teacher" as const,
-    lastMessage: "Great job on the polynomial worksheet, Alice!",
-    lastTime: "2026-07-06T11:00:00Z",
-    unread: 1,
-    avatar: undefined,
-    messages: [
-      { id: "sm1a", senderId: "s1", text: "Hi Dr. Connor, I submitted my worksheet a bit early, could you check it?", time: "2026-07-06T10:35:00Z", isMe: true },
-      { id: "sm1b", senderId: "t1", text: "Great job on the polynomial worksheet, Alice!", time: "2026-07-06T11:00:00Z", isMe: false },
-    ],
-  },
-  {
-    id: "smsg2",
-    participantName: "Admin Office",
-    participantRole: "admin" as const,
-    lastMessage: "Mid-term exam schedule has been posted. Please check your Exams page.",
-    lastTime: "2026-07-03T09:00:00Z",
-    unread: 1,
-    avatar: undefined,
-    messages: [
-      { id: "sm2a", senderId: "admin", text: "Mid-term exam schedule has been posted. Please check your Exams page.", time: "2026-07-03T09:00:00Z", isMe: false },
-    ],
-  },
-  {
-    id: "smsg3",
-    participantName: "Mr. James Cole",
-    participantRole: "teacher" as const,
-    lastMessage: "Don't forget the essay is due this Wednesday.",
-    lastTime: "2026-07-02T14:20:00Z",
-    unread: 0,
-    avatar: undefined,
-    messages: [
-      { id: "sm3a", senderId: "t2", text: "Don't forget the essay is due this Wednesday.", time: "2026-07-02T14:20:00Z", isMe: false },
-      { id: "sm3b", senderId: "s1", text: "Thank you for the reminder, I'm almost done!", time: "2026-07-02T14:35:00Z", isMe: true },
-    ],
-  },
-  {
-    id: "smsg4",
-    participantName: "Ms. Elena Ruiz",
-    participantRole: "teacher" as const,
-    lastMessage: "Your lab report was well organized, nice work.",
-    lastTime: "2026-06-30T16:00:00Z",
-    unread: 0,
-    avatar: undefined,
-    messages: [
-      { id: "sm4a", senderId: "t3", text: "Your lab report was well organized, nice work.", time: "2026-06-30T16:00:00Z", isMe: false },
-    ],
-  },
-];
+// Student Messages mock array (STUDENT_MESSAGES) and its page
+// (app/student/messages/page.tsx) were removed here (2026-08-21) — same
+// call as Teacher Messages: no user-to-user messaging backend exists
+// anywhere in this app (checked database migrations + every backend app),
+// so there was nothing real to convert to. See lib/teacher-data.ts for the
+// full note.
 
 // Student Notifications mock array (STUDENT_NOTIFICATIONS) was already
 // fully orphaned before this pass — app/student/notifications/page.tsx
@@ -114,5 +66,5 @@ export const STUDENT_MESSAGES = [
 // Attendance/Grades queries app/student/profile/page.tsx already uses,
 // enrolledCourses to useStudentGroupMembershipsQuery. unreadMessages was
 // computed but never actually rendered anywhere in that page — dropped
-// with it rather than ported (Student Messages itself is still its own
-// separate, not-yet-converted page — see student/messages/page.tsx).
+// with it rather than ported (Student Messages was later removed
+// entirely — see the note above).

@@ -111,7 +111,8 @@
     "collapseSidebar": "Свернуть боковую панель",
     "quickSearchPlaceholder": "Быстрый поиск...",
     "notificationsAriaLabel": "Уведомления ({count} непрочитано)",
-    "signOut": "Выйти"
+    "signOut": "Выйти",
+    "roleStudent": "Студент"
   },
   "StudentDashboard": {
     "welcomeBack": "С возвращением, {name} 👋",

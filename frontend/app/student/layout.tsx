@@ -23,8 +23,8 @@ import {
   LogOut,
   Menu,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { STUDENT_PROFILE } from "@/lib/student-data";
+import { cn, getInitials } from "@/lib/utils";
+import { useAuthStore } from "@/lib/store/auth-store";
 import { useNotificationsQuery } from "@/lib/queries/notifications";
 import { useLogout } from "@/lib/hooks/use-logout";
 import { formatLocalizedDate } from "@/i18n/date-locale";
@@ -219,6 +219,7 @@ function StudentHeader({ sidebarCollapsed, onMenuClick }: HeaderProps) {
   const pathname = usePathname();
   const locale = useLocale();
   const t = useTranslations("StudentNav");
+  const authUser = useAuthStore((s) => s.user);
   const titleKey = PAGE_TITLE_KEYS[pathname];
   const title = titleKey ? t(titleKey) : t("portalFallbackTitle");
   const { data: notifications = [] } = useNotificationsQuery();
@@ -305,13 +306,13 @@ function StudentHeader({ sidebarCollapsed, onMenuClick }: HeaderProps) {
           aria-haspopup="true"
         >
           <div className="h-8 w-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-            AJ
+            {getInitials(authUser?.fullName ?? t("roleStudent"))}
           </div>
           <div className="hidden sm:block text-left">
             <p className="text-sm font-medium text-slate-900 leading-none">
-              {STUDENT_PROFILE.name}
+              {authUser?.fullName ?? t("roleStudent")}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">{STUDENT_PROFILE.groupName}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{t("roleStudent")}</p>
           </div>
           <ChevronDown
             className={cn(
@@ -325,9 +326,9 @@ function StudentHeader({ sidebarCollapsed, onMenuClick }: HeaderProps) {
           <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-lg border border-slate-100 py-1.5 z-50">
             <div className="px-4 py-2.5 border-b border-slate-50">
               <p className="text-sm font-semibold text-slate-900">
-                {STUDENT_PROFILE.name}
+                {authUser?.fullName ?? t("roleStudent")}
               </p>
-              <p className="text-xs text-slate-400">{STUDENT_PROFILE.loginId}</p>
+              <p className="text-xs text-slate-400">{authUser?.loginId}</p>
             </div>
             <Link
               href="/student/profile"

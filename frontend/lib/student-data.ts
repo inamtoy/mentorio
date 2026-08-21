@@ -1,20 +1,9 @@
-// ─── Student Profile ──────────────────────────────────────────────────────────
-
-export const STUDENT_PROFILE = {
-  id: "s1",
-  name: "Alice Johnson",
-  loginId: "STU-2025-0142",
-  phone: "+1 555-0101",
-  avatar: undefined,
-  studentIdNumber: "STU-2025-0142",
-  grade: "10th Grade",
-  groupId: "g1",
-  groupName: "Algebra A1",
-  parentName: "Mary Johnson",
-  parentPhone: "+1 555-0100",
-  joinedAt: "2025-09-01",
-  bio: "Alice is a dedicated 10th-grade student with a strong interest in mathematics and biology. She consistently participates in class discussions and enjoys collaborative problem-solving.",
-};
+// Student Profile mock object (STUDENT_PROFILE) was removed here
+// (2026-08-21) once app/student/layout.tsx's header user-dropdown (its
+// last consumer) switched to the real logged-in user via useAuthStore —
+// same authUser.fullName/loginId + getInitials pattern already used by
+// app/teacher/layout.tsx's TeacherHeader. app/student/profile/page.tsx
+// has used the real Student Profile API all along.
 
 // Student Payment mock object (STUDENT_PAYMENT) was removed here
 // (2026-08-21) once student/profile/page.tsx switched to a real

@@ -111,7 +111,8 @@
     "collapseSidebar": "Collapse sidebar",
     "quickSearchPlaceholder": "Quick search...",
     "notificationsAriaLabel": "Notifications ({count} unread)",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "roleStudent": "Student"
   },
   "StudentDashboard": {
     "welcomeBack": "Welcome back, {name} 👋",

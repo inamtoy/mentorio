@@ -111,7 +111,8 @@
     "collapseSidebar": "Yon panelni yig'ish",
     "quickSearchPlaceholder": "Tezkor qidiruv...",
     "notificationsAriaLabel": "Bildirishnomalar ({count} ta o'qilmagan)",
-    "signOut": "Chiqish"
+    "signOut": "Chiqish",
+    "roleStudent": "Talaba"
   },
   "StudentDashboard": {
     "welcomeBack": "Xush kelibsiz, {name} 👋",

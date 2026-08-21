@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import {
   UserCircle,
@@ -22,7 +22,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/lib/store/auth-store';
-import { useSAProfileStore } from '@/lib/store/sa-profile-store';
 import { useUserQuery, useUpdateSelfMutation, useChangePasswordMutation } from '@/lib/queries/users';
 import { useSessionsQuery, useRevokeSessionMutation } from '@/lib/queries/auth';
 import { useAuditLogsQuery } from '@/lib/queries/audit-logs';
@@ -80,8 +79,6 @@ export default function ProfilePage() {
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
   const authUser = useAuthStore((s) => s.user);
-  const cachedProfile = useSAProfileStore((s) => s.profile);
-  const syncCache = useSAProfileStore((s) => s.update);
 
   const { data: user, isLoading: userLoading } = useUserQuery(authUser?.id ?? null);
   const { data: sessions, isLoading: sessionsLoading } = useSessionsQuery();
@@ -106,23 +103,6 @@ export default function ProfilePage() {
     setPhone(user.phone);
   }
 
-  // Keep the header/dashboard display cache — useSAProfileStore — fresh
-  // with real data too, same "display cache only" role useAuthStore
-  // already plays. Writing to the external Zustand store (not local React
-  // state) is exactly what an effect is for.
-  useEffect(() => {
-    if (!user) return;
-    syncCache({
-      name: user.full_name,
-      loginId: user.login_id,
-      phone: user.phone,
-      role: user.roles[0]?.name ?? t('roleBadge'),
-      joinedAt: user.created_at,
-      lastLogin: user.last_login ?? user.created_at,
-      avatar: user.avatar_url ?? undefined,
-    });
-  }, [user, syncCache, t]);
-
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -131,14 +111,6 @@ export default function ProfilePage() {
 
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const initials = (name || cachedProfile.name)
-    .split(' ')
-    .filter(Boolean)
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
 
   async function handleSave() {
     if (!user) return;
@@ -212,6 +184,14 @@ export default function ProfilePage() {
       </div>
     );
   }
+
+  const initials = (name || user.full_name)
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="space-y-6">

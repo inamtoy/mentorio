@@ -1,20 +1,10 @@
-// ─── Teacher Profile ──────────────────────────────────────────────────────────
-
-export const TEACHER_PROFILE = {
-  id: "t1",
-  name: "Dr. Sarah Connor",
-  loginId: "TCH-2001",
-  phone: "+1 555-0201",
-  subject: "Mathematics",
-  specialization: "Algebra & Calculus",
-  bio: "Dr. Sarah Connor is a passionate mathematics educator with over 8 years of experience teaching algebra and calculus. She holds a PhD in Applied Mathematics from MIT and is known for her engaging teaching style that makes complex concepts accessible to all students.",
-  joinedAt: "2022-01-15",
-  avatar: undefined,
-  rating: 4.9,
-  totalStudents: 42,
-  totalGroups: 3,
-  yearsExperience: 8,
-};
+// Teacher Profile mock object (TEACHER_PROFILE) and its
+// lib/store/teacher-profile-store.ts wrapper were removed here (2026-08-21)
+// once app/teacher/settings/page.tsx's Account tab (its last consumer)
+// switched to the real useMyTeacherProfileQuery/useUpdateTeacherMutation —
+// see lib/queries/teachers.ts. app/teacher/profile/page.tsx has used the
+// real API all along; Settings' Account tab now mirrors its exact
+// "sync at mount, not via useEffect" pattern, same as Student Settings.
 
 // Teacher Groups mock array (TEACHER_GROUPS) was removed here (2026-08-21)
 // once app/teacher/resources/page.tsx's group picker (its last remaining

@@ -52,17 +52,7 @@ export const TEACHERS: Teacher[] = [
 // app/(admin)/page.tsx. DASHBOARD_STATS/ATTENDANCE_TREND_DATA/
 // ENROLLMENT_BY_COURSE were removed in the same pass — that page now
 // derives every stat/chart from real students/teachers/courses/groups/
-// finance/attendance queries instead. MONTHLY_REVENUE_DATA is untouched:
-// components/charts/finance-chart.tsx (the Admin Finance page's own
-// revenue chart) still reads it and hasn't been wired to real Payment
-// data yet — separate, pre-existing gap, out of scope here.
-
-export const MONTHLY_REVENUE_DATA = [
-  { name: "Jan", revenue: 38000, expenses: 21000 },
-  { name: "Feb", revenue: 41000, expenses: 22000 },
-  { name: "Mar", revenue: 39000, expenses: 20000 },
-  { name: "Apr", revenue: 43000, expenses: 23000 },
-  { name: "May", revenue: 45000, expenses: 24000 },
-  { name: "Jun", revenue: 42000, expenses: 22500 },
-  { name: "Jul", revenue: 48600, expenses: 25000 },
-];
+// finance/attendance queries instead. MONTHLY_REVENUE_DATA (the Admin
+// Finance page's own revenue chart) was removed the same way (2026-08-23)
+// once that page was wired to real Payment data too — see
+// components/charts/finance-chart.tsx and app/(admin)/finance/page.tsx.

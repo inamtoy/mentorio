@@ -1391,7 +1391,7 @@
     "statOverdue": "Overdue",
     "statPaidInvoices": "Paid Invoices",
     "monthlyRevenueTitle": "Monthly Revenue",
-    "monthlyRevenueSubtitle": "Revenue vs Expenses",
+    "monthlyRevenueSubtitle": "Last 12 months",
     "recentTransactionsTitle": "Recent Transactions",
     "recentTransactionsSubtitle": "Latest payments",
     "noPaymentsRecorded": "No payments recorded yet.",

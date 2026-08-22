@@ -1391,7 +1391,7 @@
     "statOverdue": "Просрочено",
     "statPaidInvoices": "Оплаченные счета",
     "monthlyRevenueTitle": "Доход за месяц",
-    "monthlyRevenueSubtitle": "Доходы и расходы",
+    "monthlyRevenueSubtitle": "За последние 12 месяцев",
     "recentTransactionsTitle": "Последние транзакции",
     "recentTransactionsSubtitle": "Последние платежи",
     "noPaymentsRecorded": "Платежи пока не зафиксированы.",

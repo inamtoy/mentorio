@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { DollarSign, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { PageHeader } from "@/components/ui/page-header";
@@ -24,6 +24,12 @@ import { InvoiceDetailPanel } from "./_components/invoice-detail-panel";
 import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
 import { daysFromTodayIso } from "@/lib/utils";
+import { monthKey, lastNMonthKeys, monthLabel, EMPTY_ARRAY } from "@/lib/growth-metrics";
+
+// The chart shows the same 12-month window this page's own subtitle
+// promises ("last12MonthsNote") — not lib/growth-metrics.ts's MONTH_WINDOW
+// (6), which is the Admin Dashboard's shorter overview window instead.
+const REVENUE_CHART_MONTHS = 12;
 
 // Invoices/payments accumulate every billing cycle for every student with
 // no natural cap (see lib/api/finance.ts's listInvoices/listPayments
@@ -74,10 +80,19 @@ export default function FinancePage() {
   const { data: invoicesData } = useInvoicesQuery({ organizationId: organizationId ?? "", dateFrom });
   const invoices = invoicesData ?? [];
   const { data: paymentsData } = usePaymentsQuery({ organizationId: organizationId ?? "", dateFrom });
-  const recentPayments = [...(paymentsData ?? [])]
+  const payments = paymentsData ?? EMPTY_ARRAY;
+  const recentPayments = [...payments]
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
     .slice(0, 5);
   const deleteMutation = useDeleteInvoiceMutation();
+
+  const revenueByMonth = useMemo(() => {
+    const monthKeys = lastNMonthKeys(REVENUE_CHART_MONTHS);
+    return monthKeys.map((key) => ({
+      name: monthLabel(key, locale),
+      revenue: payments.filter((p) => monthKey(p.payment_date) === key).reduce((sum, p) => sum + Number(p.amount), 0),
+    }));
+  }, [payments, locale]);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -182,7 +197,7 @@ export default function FinancePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2" title={t("monthlyRevenueTitle")} subtitle={t("monthlyRevenueSubtitle")}>
-          <FinanceRevenueChart />
+          <FinanceRevenueChart data={revenueByMonth} />
         </Card>
 
         <Card title={t("recentTransactionsTitle")} subtitle={t("recentTransactionsSubtitle")}>

@@ -1,7 +1,6 @@
 import type {
   Student,
   Teacher,
-  Transaction,
 } from "@/types";
 
 // ─── Students ─────────────────────────────────────────────────────────────────
@@ -48,30 +47,15 @@ export const TEACHERS: Teacher[] = [
 
 // Admin's INVOICES mock array was removed here (2026-08) once the real
 // Finance backend + Admin page landed — see lib/api/finance.ts. TRANSACTIONS
-// below is untouched: the Admin Dashboard's "Recent Transactions" widget
-// still reads it and hasn't been wired to real Payment data yet.
-
-export const TRANSACTIONS: Transaction[] = [
-  { id: "tr1", studentName: "Alice Johnson", amount: 299, method: "card", description: "Monthly tuition - Algebra A1", date: "2026-06-28", status: "paid" },
-  { id: "tr2", studentName: "Carol White", amount: 349, method: "transfer", description: "Monthly tuition - Physics B2", date: "2026-06-27", status: "paid" },
-  { id: "tr3", studentName: "Eva Martinez", amount: 249, method: "cash", description: "Monthly tuition - English C1", date: "2026-06-25", status: "paid" },
-  { id: "tr4", studentName: "Grace Kim", amount: 399, method: "online", description: "Monthly tuition - Chemistry D1", date: "2026-06-24", status: "paid" },
-  { id: "tr5", studentName: "Iris Chen", amount: 329, method: "card", description: "Monthly tuition - Biology E2", date: "2026-06-23", status: "paid" },
-  { id: "tr6", studentName: "Bob Smith", amount: 149, method: "cash", description: "Partial payment - Algebra A1", date: "2026-06-20", status: "paid" },
-];
-
-// ─── Dashboard Stats ──────────────────────────────────────────────────────────
-
-export const DASHBOARD_STATS = {
-  totalStudents: 240,
-  totalTeachers: 18,
-  totalCourses: 12,
-  totalGroups: 32,
-  monthlyRevenue: 48600,
-  avgAttendance: 87,
-  newEnrollments: 24,
-  pendingPayments: 8,
-};
+// (the Admin Dashboard's "Recent Transactions" widget) was removed the same
+// way (2026-08-23) once that page was wired to real Payment data — see
+// app/(admin)/page.tsx. DASHBOARD_STATS/ATTENDANCE_TREND_DATA/
+// ENROLLMENT_BY_COURSE were removed in the same pass — that page now
+// derives every stat/chart from real students/teachers/courses/groups/
+// finance/attendance queries instead. MONTHLY_REVENUE_DATA is untouched:
+// components/charts/finance-chart.tsx (the Admin Finance page's own
+// revenue chart) still reads it and hasn't been wired to real Payment
+// data yet — separate, pre-existing gap, out of scope here.
 
 export const MONTHLY_REVENUE_DATA = [
   { name: "Jan", revenue: 38000, expenses: 21000 },
@@ -81,22 +65,4 @@ export const MONTHLY_REVENUE_DATA = [
   { name: "May", revenue: 45000, expenses: 24000 },
   { name: "Jun", revenue: 42000, expenses: 22500 },
   { name: "Jul", revenue: 48600, expenses: 25000 },
-];
-
-export const ATTENDANCE_TREND_DATA = [
-  { name: "Mon", present: 92, absent: 8 },
-  { name: "Tue", present: 88, absent: 12 },
-  { name: "Wed", present: 95, absent: 5 },
-  { name: "Thu", present: 85, absent: 15 },
-  { name: "Fri", present: 90, absent: 10 },
-  { name: "Sat", present: 78, absent: 22 },
-];
-
-export const ENROLLMENT_BY_COURSE = [
-  { name: "Mathematics", value: 45, color: "#6366f1" },
-  { name: "Physics", value: 30, color: "#3b82f6" },
-  { name: "English", value: 60, color: "#22c55e" },
-  { name: "Chemistry", value: 28, color: "#f59e0b" },
-  { name: "Biology", value: 42, color: "#ec4899" },
-  { name: "Web Dev", value: 35, color: "#a855f7" },
 ];

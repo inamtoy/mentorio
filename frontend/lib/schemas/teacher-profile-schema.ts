@@ -1,8 +1,11 @@
 import { z } from "zod";
 
-// Real-API form schema for the Admin Teachers page. Kept separate from
-// lib/schemas/teacher-schema.ts, which still backs the mock Teacher type
-// consumed by the Groups feature's teacher picker (see lib/store/teachers-store.ts).
+// Real-API form schema for the Admin Teachers page. lib/schemas/teacher-schema.ts
+// (the mock-era counterpart this used to be "kept separate" from) was
+// removed 2026-08-23 — the Groups feature's teacher picker it supposedly
+// still backed had already moved to real data (useTeachersQuery) with
+// nothing left pointing at it; see the same pass's removal of
+// lib/store/teachers-store.ts, lib/data.ts, and types/index.ts.
 export const teacherProfileSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required"),
   lastName: z.string().trim().min(1, "Last name is required"),

@@ -7,8 +7,13 @@ Phase 0; `student`, `teacher`, `course`, `groups`, `attendance`, `finance`,
 `payment_gateways` (Payme/Click checkout links + webhooks), `billing`
 (the platform's own subscription-plan catalog sold to organizations —
 distinct from `finance`, which is an organization billing its own students),
-and `exams` (exam scheduling + per-student results) have since been added on
-top of it. Reports/AI are still a later phase. See
+`exams` (exam scheduling + per-student results), `grades` (computed grade
+summaries, no stored model), and `reports` (computed org-wide Admin
+reporting summaries, no stored model — see `reports/views.py`'s module
+docstring for why the original `report`/`ai` schema plan's cached-snapshot
+design was dropped in favor of this) have since been added on top of it.
+`ai` is still a later phase (needs actual LLM integration groundwork this
+backend doesn't have yet). See
 `C:\Users\qrina\.claude\plans\stateful-gliding-perlis.md` for the full
 architecture plan this was built from (payment_gateways has its own plan,
 `C:\Users\qrina\.claude\plans\effervescent-foraging-puzzle.md`; billing/

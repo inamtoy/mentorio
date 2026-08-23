@@ -22,13 +22,26 @@ All four are `reports:view`, center_admin-only — org-wide aggregates across
 every student/teacher/invoice in the org, same "no other role gets even
 :view" precedent as `finance`/`audit_logs`/`teacher_salary` (see those
 modules' notes in permissions_catalog.py).
+
+Score-normalization/grade-averaging/attendance-rate math is centralized in
+the `_normalized_scores`/`_mean_pct`/`_combined_grade`/`_attendance_counts`
+helpers below and reused by every view that needs it — these don't reuse
+`grades/views.py`'s own `_gather_events`/`_stats_for_key` because those are
+shaped for a different aggregation (per (student, group) pair, for a
+per-group breakdown); these are shaped for "roll up across every group a
+student/teacher touches", which is what StudentsSummaryReportView/
+TeachersSummaryReportView both need. Keeping one shared copy in this
+module (instead of the original 5+ independent copies) means the grading/
+attendance rule only has one place to drift out of sync from grades.py's,
+not five.
 """
 
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
 
-from django.db.models import Sum
+from django.db.models import DecimalField, F, OuterRef, Q, Subquery, Sum
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -71,14 +84,65 @@ def _resolve_period(request):
     return start, end
 
 
+def _normalized_scores(rows, id_field, score_field, max_field):
+    """`rows`: an iterable of dicts from a `.values(...)` queryset. Groups
+    score-as-%-of-max by `id_field`, dropping any row whose max is <= 0 —
+    the one normalize-before-averaging rule (matches grades/views.py's
+    identical rule) every score-averaging computation in this module
+    shares, so it can't drift between the Students/Teachers report rows.
+    """
+    result = defaultdict(list)
+    for row in rows:
+        max_score = row[max_field] or 0
+        if max_score > 0:
+            result[row[id_field]].append(row[score_field] / max_score * 100)
+    return result
+
+
+def _mean_pct(values):
+    return round(sum(values) / len(values)) if values else None
+
+
+def _combined_grade(assignment_pcts, exam_pcts):
+    """Mean of whichever of (assignment avg, exam avg) exist — never
+    dragged toward 0 by a missing half. Same rule as grades/views.py's
+    `final_grade`. Returns (assignment_avg, exam_avg, combined)."""
+    assignment_avg = _mean_pct(assignment_pcts)
+    exam_avg = _mean_pct(exam_pcts)
+    components = [v for v in (assignment_avg, exam_avg) if v is not None]
+    return assignment_avg, exam_avg, (_mean_pct(components) if components else None)
+
+
+def _attendance_counts(rows, id_field):
+    """`rows`: an iterable of dicts with `status` and `id_field`. Returns
+    `{id: [present, total]}` — only "present" counts as attended, same
+    rule as grades/views.py."""
+    counts = defaultdict(lambda: [0, 0])
+    for row in rows:
+        counts[row[id_field]][1] += 1
+        if row["status"] == "present":
+            counts[row[id_field]][0] += 1
+    return counts
+
+
 class StudentsSummaryReportView(APIView):
-    """One row per active student in the org: attendance/homework/grade
-    performance for the given period, rolled up across ALL of that
-    student's active group memberships combined — an org-level report, not
-    the Teacher/Student Grades page's per-group breakdown (see
-    `grades/views.py`, which this deliberately does not duplicate: that
-    view answers "how is this student doing in THIS group", this one
-    answers "how is this student doing overall this month").
+    """One row per student enrolled at some point during the period: attendance/
+    homework/grade performance for the given period, rolled up across every
+    group they were an active member of — an org-level report, not the
+    Teacher/Student Grades page's per-group breakdown (see `grades/views.py`,
+    which this deliberately does not duplicate: that view answers "how is
+    this student doing in THIS group", this one answers "how is this
+    student doing overall this period").
+
+    The roster is scoped by `enrollment_date`/`graduation_date` overlapping
+    the requested period, not by the student's CURRENT status — a student
+    who graduated after the period ended must still show up in a report
+    for that period. This doesn't (and can't, with the fields this model
+    has) catch every terminal status the same way — `expelled`/
+    `transferred`/`on_leave` have no matching "left the org on this date"
+    field, only `graduation_date` — but it fixes the concrete case (a
+    graduated student vanishing from their own past reports) without
+    fabricating a field the model doesn't have.
 
     `average_grade` follows the exact same rule as `grades`'s
     `final_grade`: the mean of whichever of (assignment_avg, exam_avg)
@@ -92,7 +156,9 @@ class StudentsSummaryReportView(APIView):
         start, end = _resolve_period(request)
         branch = request.query_params.get("branch")
 
-        students = StudentProfile.objects.filter(status="active").select_related("user")
+        students = StudentProfile.objects.filter(enrollment_date__lte=end).filter(
+            Q(graduation_date__isnull=True) | Q(graduation_date__gte=start)
+        ).select_related("user")
         if branch:
             students = students.filter(branch_id=branch)
         students = list(students.order_by("user__first_name", "user__last_name"))
@@ -120,44 +186,48 @@ class StudentsSummaryReportView(APIView):
         ).values("student_profile_id", "assignment_id"):
             submitted_ids_by_student[row["student_profile_id"]].add(row["assignment_id"])
 
-        assignment_scores = defaultdict(list)
-        for row in Submission.objects.filter(
-            student_profile_id__in=student_ids,
-            score__isnull=False,
-            graded_at__date__gte=start,
-            graded_at__date__lte=end,
-        ).values("student_profile_id", "score", "assignment__max_score"):
-            max_score = row["assignment__max_score"] or 0
-            if max_score > 0:
-                assignment_scores[row["student_profile_id"]].append(row["score"] / max_score * 100)
-
-        exam_scores = defaultdict(list)
-        for row in ExamResult.objects.filter(
-            student_profile_id__in=student_ids,
-            score__isnull=False,
-            graded_at__date__gte=start,
-            graded_at__date__lte=end,
-        ).values("student_profile_id", "score", "exam__max_score"):
-            max_score = row["exam__max_score"] or 0
-            if max_score > 0:
-                exam_scores[row["student_profile_id"]].append(row["score"] / max_score * 100)
-
-        attendance_counts = defaultdict(lambda: [0, 0])  # [present, total]
-        for row in Attendance.objects.filter(
-            student_profile_id__in=student_ids, date__gte=start, date__lte=end
-        ).values("student_profile_id", "status"):
-            attendance_counts[row["student_profile_id"]][1] += 1
-            if row["status"] == "present":
-                attendance_counts[row["student_profile_id"]][0] += 1
+        # Scored by the assignment's/exam's OWN date (due_date / date), not
+        # by when it happened to be graded — matches homeworks_total's
+        # due_date window below, and keeps group_id__in=all_group_ids so a
+        # group the student has since left (GroupMember no longer "active")
+        # doesn't keep contributing attendance/grade data that
+        # homeworks_total, scoped the same way, already excludes.
+        assignment_scores = _normalized_scores(
+            Submission.objects.filter(
+                student_profile_id__in=student_ids,
+                assignment__group_id__in=all_group_ids,
+                assignment__due_date__gte=start,
+                assignment__due_date__lte=end,
+                score__isnull=False,
+            ).values("student_profile_id", "score", "assignment__max_score"),
+            "student_profile_id",
+            "score",
+            "assignment__max_score",
+        )
+        exam_scores = _normalized_scores(
+            ExamResult.objects.filter(
+                student_profile_id__in=student_ids,
+                exam__group_id__in=all_group_ids,
+                exam__date__gte=start,
+                exam__date__lte=end,
+                score__isnull=False,
+            ).values("student_profile_id", "score", "exam__max_score"),
+            "student_profile_id",
+            "score",
+            "exam__max_score",
+        )
+        attendance_counts = _attendance_counts(
+            Attendance.objects.filter(
+                student_profile_id__in=student_ids, group_id__in=all_group_ids, date__gte=start, date__lte=end
+            ).values("student_profile_id", "status"),
+            "student_profile_id",
+        )
 
         data = []
         for student in students:
-            a_scores = assignment_scores.get(student.id, [])
-            e_scores = exam_scores.get(student.id, [])
-            assignment_avg = round(sum(a_scores) / len(a_scores)) if a_scores else None
-            exam_avg = round(sum(e_scores) / len(e_scores)) if e_scores else None
-            components = [v for v in (assignment_avg, exam_avg) if v is not None]
-            average_grade = round(sum(components) / len(components)) if components else None
+            assignment_avg, exam_avg, average_grade = _combined_grade(
+                assignment_scores.get(student.id, []), exam_scores.get(student.id, [])
+            )
 
             present, total = attendance_counts.get(student.id, [0, 0])
             attendance_rate = round(present / total * 100) if total else None
@@ -189,9 +259,17 @@ class StudentsSummaryReportView(APIView):
 
 
 class TeachersSummaryReportView(APIView):
-    """One row per active teacher in the org: workload and their students'
-    performance for the given period, rolled up across every group they
-    teach.
+    """One row per teacher employed at some point during the period: workload
+    and their students' performance for the given period, rolled up across
+    every group they taught during it.
+
+    Both the teacher roster (`hire_date`/`termination_date` overlap) and
+    each teacher's groups (`start_date`/`end_date` overlap) are scoped by
+    the requested period, not by CURRENT status — a teacher's July report
+    must still include a group that was marked "completed" in August, and
+    a terminated teacher must still show up in a report for while they
+    were employed. See StudentsSummaryReportView's docstring for the same
+    reasoning (and the same "no field for every terminal status" caveat).
     """
 
     permission_classes = [HasModulePermission]
@@ -201,7 +279,9 @@ class TeachersSummaryReportView(APIView):
         start, end = _resolve_period(request)
         branch = request.query_params.get("branch")
 
-        teachers = TeacherProfile.objects.filter(status="active").select_related("user")
+        teachers = TeacherProfile.objects.filter(hire_date__lte=end).filter(
+            Q(termination_date__isnull=True) | Q(termination_date__gte=start)
+        ).select_related("user")
         if branch:
             teachers = teachers.filter(branch_id=branch)
         teachers = list(teachers.order_by("user__first_name", "user__last_name"))
@@ -210,8 +290,10 @@ class TeachersSummaryReportView(APIView):
             return Response({"success": True, "message": "", "data": []})
 
         groups_by_teacher = defaultdict(list)
-        for row in Group.objects.filter(teacher_id__in=teacher_ids, status__in=["forming", "active"]).values(
-            "id", "teacher_id"
+        for row in (
+            Group.objects.filter(teacher_id__in=teacher_ids, start_date__lte=end)
+            .filter(Q(end_date__isnull=True) | Q(end_date__gte=start))
+            .values("id", "teacher_id")
         ):
             groups_by_teacher[row["teacher_id"]].append(row["id"])
         all_group_ids = [gid for ids in groups_by_teacher.values() for gid in ids]
@@ -232,49 +314,43 @@ class TeachersSummaryReportView(APIView):
         ):
             members_by_group[row["group_id"]].add(row["student_profile_id"])
 
-        attendance_by_group = defaultdict(lambda: [0, 0])  # [present, total]
-        for row in Attendance.objects.filter(group_id__in=all_group_ids, date__gte=start, date__lte=end).values(
-            "group_id", "status"
-        ):
-            attendance_by_group[row["group_id"]][1] += 1
-            if row["status"] == "present":
-                attendance_by_group[row["group_id"]][0] += 1
+        attendance_by_group = _attendance_counts(
+            Attendance.objects.filter(group_id__in=all_group_ids, date__gte=start, date__lte=end).values(
+                "group_id", "status"
+            ),
+            "group_id",
+        )
 
         assignment_counts_by_group = defaultdict(int)
-        assignment_ids_by_group = defaultdict(set)
         for row in Assignment.objects.filter(group_id__in=all_group_ids, due_date__gte=start, due_date__lte=end).values(
             "id", "group_id"
         ):
             assignment_counts_by_group[row["group_id"]] += 1
-            assignment_ids_by_group[row["group_id"]].add(row["id"])
-        all_assignment_ids = {aid for ids in assignment_ids_by_group.values() for aid in ids}
 
+        # One query (not two overlapping ones) for both homework_graded and
+        # the assignment half of scores_by_group — same due_date window as
+        # assignment_counts_by_group above (not graded_at: a June-due
+        # assignment graded in August must not count as August's work,
+        # the same fix as StudentsSummaryReportView's assignment_scores).
         graded_counts_by_group = defaultdict(int)
-        for row in Submission.objects.filter(
-            assignment_id__in=all_assignment_ids,
-            score__isnull=False,
-            graded_at__date__gte=start,
-            graded_at__date__lte=end,
-        ).values("assignment__group_id"):
-            graded_counts_by_group[row["assignment__group_id"]] += 1
-
-        # Combined assignment+exam score-as-percentage-of-max, per group —
-        # same normalize-before-averaging rule as grades/views.py.
         scores_by_group = defaultdict(list)
         for row in Submission.objects.filter(
             assignment__group_id__in=all_group_ids,
+            assignment__due_date__gte=start,
+            assignment__due_date__lte=end,
             score__isnull=False,
-            graded_at__date__gte=start,
-            graded_at__date__lte=end,
         ).values("assignment__group_id", "score", "assignment__max_score"):
+            gid = row["assignment__group_id"]
+            graded_counts_by_group[gid] += 1
             max_score = row["assignment__max_score"] or 0
             if max_score > 0:
-                scores_by_group[row["assignment__group_id"]].append(row["score"] / max_score * 100)
+                scores_by_group[gid].append(row["score"] / max_score * 100)
+
         for row in ExamResult.objects.filter(
             exam__group_id__in=all_group_ids,
+            exam__date__gte=start,
+            exam__date__lte=end,
             score__isnull=False,
-            graded_at__date__gte=start,
-            graded_at__date__lte=end,
         ).values("exam__group_id", "score", "exam__max_score"):
             max_score = row["exam__max_score"] or 0
             if max_score > 0:
@@ -289,8 +365,7 @@ class TeachersSummaryReportView(APIView):
             total_sum = sum(attendance_by_group.get(gid, [0, 0])[1] for gid in group_ids)
             average_attendance_rate = round(present_sum / total_sum * 100) if total_sum else None
 
-            scores = [pct for gid in group_ids for pct in scores_by_group.get(gid, ())]
-            average_student_grade = round(sum(scores) / len(scores)) if scores else None
+            average_student_grade = _mean_pct([pct for gid in group_ids for pct in scores_by_group.get(gid, ())])
 
             data.append(
                 {
@@ -400,6 +475,12 @@ class FinanceSummaryReportView(APIView):
     `total_invoiced`/`total_collected`, which only count invoices/payments
     dated inside [start, end]. A debt doesn't stop being outstanding just
     because it was invoiced last month.
+
+    That snapshot is computed entirely in the database: a correlated
+    subquery for payments-to-date per invoice, then one conditional-
+    aggregate query for both totals — not a Python loop materializing
+    every open invoice in the org on every page load (including every
+    date-picker edit, since start/end always re-fire this view).
     """
 
     permission_classes = [HasModulePermission]
@@ -411,36 +492,36 @@ class FinanceSummaryReportView(APIView):
         total_invoiced = (
             Invoice.objects.filter(issued_date__gte=start, issued_date__lte=end)
             .exclude(status="cancelled")
-            .aggregate(total=Sum("total_amount"))["total"]
-            or Decimal("0")
+            .aggregate(total=Coalesce(Sum("total_amount"), Decimal("0")))["total"]
         )
         total_collected = (
-            Payment.objects.filter(payment_date__gte=start, payment_date__lte=end).aggregate(total=Sum("amount"))["total"]
-            or Decimal("0")
+            Payment.objects.filter(payment_date__gte=start, payment_date__lte=end)
+            .aggregate(total=Coalesce(Sum("amount"), Decimal("0")))["total"]
         )
 
-        open_invoices = list(
-            Invoice.objects.filter(issued_date__lte=end)
-            .exclude(status__in=["cancelled", "draft"])
-            .only("id", "total_amount", "due_date")
-        )
-        paid_by_invoice = defaultdict(lambda: Decimal("0"))
-        for row in (
-            Payment.objects.filter(invoice_id__in=[inv.id for inv in open_invoices], payment_date__lte=end)
+        paid_to_date = (
+            Payment.objects.filter(invoice_id=OuterRef("pk"), payment_date__lte=end)
+            .order_by()
             .values("invoice_id")
             .annotate(total=Sum("amount"))
-        ):
-            paid_by_invoice[row["invoice_id"]] = row["total"] or Decimal("0")
-
-        total_outstanding = Decimal("0")
-        total_overdue = Decimal("0")
-        for invoice in open_invoices:
-            balance = invoice.total_amount - paid_by_invoice.get(invoice.id, Decimal("0"))
-            if balance <= 0:
-                continue
-            total_outstanding += balance
-            if invoice.due_date < end:
-                total_overdue += balance
+            .values("total")
+        )
+        open_invoices = (
+            Invoice.objects.filter(issued_date__lte=end)
+            .exclude(status__in=["cancelled", "draft"])
+            .annotate(
+                paid=Coalesce(
+                    Subquery(paid_to_date, output_field=DecimalField(max_digits=12, decimal_places=2)),
+                    Decimal("0"),
+                ),
+                balance=F("total_amount") - F("paid"),
+            )
+            .filter(balance__gt=0)
+        )
+        balance_totals = open_invoices.aggregate(
+            total_outstanding=Coalesce(Sum("balance"), Decimal("0")),
+            total_overdue=Coalesce(Sum("balance", filter=Q(due_date__lt=end)), Decimal("0")),
+        )
 
         new_enrollments = StudentProfile.objects.filter(enrollment_date__gte=start, enrollment_date__lte=end).count()
 
@@ -449,8 +530,8 @@ class FinanceSummaryReportView(APIView):
             "period_end": end.isoformat(),
             "total_invoiced": total_invoiced,
             "total_collected": total_collected,
-            "total_outstanding": total_outstanding,
-            "total_overdue": total_overdue,
+            "total_outstanding": balance_totals["total_outstanding"],
+            "total_overdue": balance_totals["total_overdue"],
             "new_enrollments": new_enrollments,
             "currency": "UZS",
         }

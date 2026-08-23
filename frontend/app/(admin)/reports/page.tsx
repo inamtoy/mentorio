@@ -17,12 +17,16 @@ import {
   useTeachersSummaryReportQuery,
 } from "@/lib/queries/reports";
 import type { StudentReportRow, TeacherReportRow } from "@/lib/api/reports";
-import { formatCurrency, daysFromTodayIso } from "@/lib/utils";
+import { formatCurrency, daysFromTodayIso, toLocalIsoDate } from "@/lib/utils";
 import { toast } from "@/lib/store/toast-store";
 
+/** 1st of the current month, in the local calendar — reuses lib/utils.ts's
+ * shared toLocalIsoDate() encoder (see its own comment on why a bare
+ * `new Date(...).toISOString()` would be wrong here) instead of a third
+ * hand-rolled getFullYear()/padStart implementation. */
 function monthStartIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+  const now = new Date();
+  return toLocalIsoDate(new Date(now.getFullYear(), now.getMonth(), 1));
 }
 
 /** Color-codes a %-rate cell the same way across both tables — green/amber/

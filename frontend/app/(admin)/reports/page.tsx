@@ -181,7 +181,10 @@ export default function ReportsPage() {
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      {/* 3-per-row (not 6) — 6 stat cards on one row left "Total Invoiced"/
+          "New Enrollments" truncated at typical widths (StatCard's label
+          is `truncate`); 2 rows of 3 gives each card enough width. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard label={t("statTotalInvoiced")} value={formatCurrency(finance?.total_invoiced ?? 0)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
         <StatCard label={t("statTotalCollected")} value={formatCurrency(finance?.total_collected ?? 0)} icon={<Wallet className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
         <StatCard label={t("statOutstanding")} value={formatCurrency(finance?.total_outstanding ?? 0)} icon={<AlertCircle className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />

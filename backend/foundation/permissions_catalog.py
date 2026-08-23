@@ -93,6 +93,18 @@ view-only — a student had no way to self-edit at all, unlike `teacher`'s
 identical `teachers:update` grant). Module-wide but self-scoped the same
 way: see `StudentProfileViewSet.perform_update`'s docstring, mirroring
 `TeacherProfileViewSet.perform_update` exactly.
+
+`reports` was added 2026-08-23, for the Admin portal's new Reports page —
+see `reports/views.py`. Same "no underlying model, view-only" shape as
+`grades`: four endpoints aggregated live from Attendance/Submission/
+ExamResult/Assignment/Lesson/Invoice/Payment (the schema docs'
+`report.student_reports`/etc. are pre-generated snapshot tables refreshed
+by a cron job that doesn't exist in this backend — see reports/views.py's
+module docstring for why that spec was deliberately not followed).
+center_admin-only, same "org-wide aggregate -> admin-only" precedent as
+`finance`/`audit_logs`/`teacher_salary` — this reads across every
+student/teacher/invoice in the org, not one caller's own rows, so it can't
+be object-scoped down to `teacher`/`student` the way `grades` is.
 """
 
 PERMISSIONS_CATALOG: list[tuple[str, str, str]] = [
@@ -174,6 +186,7 @@ PERMISSIONS_CATALOG: list[tuple[str, str, str]] = [
     ("exams", "update", "Update exams and results"),
     ("exams", "delete", "Delete exams and results"),
     ("grades", "view", "View computed grade summaries"),
+    ("reports", "view", "View organization-wide reports"),
 ]
 
 # Default permission grants for the three org-scoped roles every
@@ -265,6 +278,10 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, list[tuple[str, str]]] = {
         ("exams", "create"),
         ("exams", "update"),
         ("exams", "delete"),
+        # Org-wide aggregate across every student/teacher/invoice — same
+        # "no other role gets even :view" reasoning as finance/audit_logs.
+        # See the module docstring's "reports" note.
+        ("reports", "view"),
     ],
     "teacher": [
         ("students", "view"),

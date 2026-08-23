@@ -23,6 +23,7 @@ urlpatterns = [
     path("api/v1/", include("billing.urls")),
     path("api/v1/", include("exams.urls")),
     path("api/v1/", include("grades.urls")),
+    path("api/v1/", include("reports.urls")),
 ]
 
 # JSON-envelope fallback for unhandled exceptions — see common/exceptions.py.

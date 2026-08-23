@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     "billing",
     "exams",
     "grades",
+    "reports",
 ]
 
 MIDDLEWARE = [

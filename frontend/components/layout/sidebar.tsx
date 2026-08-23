@@ -13,6 +13,7 @@ import {
   ClipboardList,
   Award,
   CreditCard,
+  BarChart2,
   Bell,
   Settings,
   ChevronLeft,
@@ -51,6 +52,7 @@ const NAV_ITEMS = [
     groupKey: "navGroupAdministration",
     items: [
       { href: "/finance", labelKey: "navFinance", icon: CreditCard },
+      { href: "/reports", labelKey: "navReports", icon: BarChart2 },
       { href: "/notifications", labelKey: "navNotifications", icon: Bell },
       { href: "/settings", labelKey: "navSettings", icon: Settings },
     ],

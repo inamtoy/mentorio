@@ -14,6 +14,7 @@ import { LessonDetailDialog } from './_components/lesson-detail-dialog';
 import { LessonFormDialog } from './_components/lesson-form-dialog';
 import { formatLocalizedDate, weekdayShort, formatDayHeader, formatWeekRange, formatClockTime } from '@/i18n/date-locale';
 import { isLocale, DEFAULT_LOCALE } from '@/i18n/locales';
+import { useMyRegionSettingsQuery } from '@/lib/queries/settings';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -127,7 +128,10 @@ export default function TeacherSchedulePage() {
     return 'info' as const;
   };
 
-  const todayLabel = formatLocalizedDate(new Date(), locale, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const { data: region } = useMyRegionSettingsQuery();
+  const todayLabel = formatLocalizedDate(new Date(), locale, {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: region?.timezone,
+  });
 
   return (
     <div className="space-y-6">

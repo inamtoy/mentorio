@@ -51,13 +51,33 @@ export function daysFromTodayIso(days: number): string {
   return toLocalIsoDate(d);
 }
 
-export function formatDate(date: string | Date) {
+/** The 3 options Admin/Teacher/Student Settings' Region tab offers — see
+ * backend/foundation/services.py's DATE_FORMAT_CHOICES for the server-side
+ * twin of this list. Defined here (not in lib/api/settings.ts) since
+ * that's the consumer of this type, not its source. */
+export type DateFormat = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD";
+
+/** `dateFormat` omitted keeps this call site's original "Aug 15, 2026"
+ * en-US style (still the default everywhere a caller hasn't been updated
+ * to pass the viewer's real preference yet). Passed, it renders the exact
+ * numeric token the user picked in Settings > Region instead — the one
+ * user-visible effect of that setting, see mentorio-remaining-work's
+ * "Timezone/date-format fields" item. */
+export function formatDate(date: string | Date, dateFormat?: DateFormat) {
   const parsed = typeof date === "string" && DATE_ONLY.test(date) ? parseLocalDate(date) : new Date(date);
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(parsed);
+  if (!dateFormat) {
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(parsed);
+  }
+  const dd = String(parsed.getDate()).padStart(2, "0");
+  const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+  const yyyy = parsed.getFullYear();
+  if (dateFormat === "MM/DD/YYYY") return `${mm}/${dd}/${yyyy}`;
+  if (dateFormat === "DD/MM/YYYY") return `${dd}/${mm}/${yyyy}`;
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 export function formatTime(time: string) {
@@ -79,12 +99,4 @@ export function getInitials(name: string) {
 
 export function capitalize(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-}
-
-/** Mock login ID generator (e.g. "STU-4821") — stands in for the backend's
- * sequence-based login_id generation (see backend/foundation/managers.py)
- * until real account creation is wired up. */
-export function generateLoginId(prefix: string) {
-  const random = Math.floor(1000 + Math.random() * 9000);
-  return `${prefix}-${random}`;
 }

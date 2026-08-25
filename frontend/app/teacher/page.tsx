@@ -34,6 +34,7 @@ import { useAttendanceForGroupsQuery } from '@/lib/queries/attendance';
 import type { DayOfWeek, Group, GroupStatus } from '@/lib/api/groups';
 import { formatLocalizedDate } from '@/i18n/date-locale';
 import { isLocale, DEFAULT_LOCALE, type Locale } from '@/i18n/locales';
+import { useMyRegionSettingsQuery } from '@/lib/queries/settings';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -178,7 +179,10 @@ export default function TeacherDashboardPage() {
       }
     });
 
-  const todayLabel = formatLocalizedDate(new Date(), locale, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const { data: region } = useMyRegionSettingsQuery();
+  const todayLabel = formatLocalizedDate(new Date(), locale, {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: region?.timezone,
+  });
 
   return (
     <div className="space-y-6">

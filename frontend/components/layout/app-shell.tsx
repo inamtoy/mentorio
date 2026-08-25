@@ -3,13 +3,23 @@ import { useState } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { cn } from "@/lib/utils";
+import { usePlatformBrandingQuery } from "@/lib/queries/settings";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
+  // Seeded from the platform's Theme > compactSidebar default (Super-Admin
+  // Settings) — a real default, not a forced state: still just the
+  // useState initializer, so a user's own expand/collapse click (onToggle
+  // below) still works exactly as before. `data` is undefined until the
+  // (already-cached, see usePlatformBrandingQuery's staleTime) branding
+  // fetch resolves, so this only actually changes the initial render once
+  // it has — no flash/relayout after mount either way, just a possibly-
+  // already-cached default at first paint.
+  const { data: branding } = usePlatformBrandingQuery();
+  const [collapsed, setCollapsed] = useState(() => branding?.theme.compactSidebar ?? false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <Sidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed((c) => !c)}

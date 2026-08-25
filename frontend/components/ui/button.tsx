@@ -4,7 +4,10 @@ type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outline";
 type ButtonSize = "sm" | "md" | "lg" | "icon";
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm",
+  // Token-based (--primary, set by Super-Admin Settings' Theme >
+  // primaryColor via theme-applier.tsx) — every other variant keeps its
+  // fixed color, only the platform's actual brand color is configurable.
+  primary: "bg-primary hover:bg-primary-hover text-primary-foreground shadow-sm",
   secondary: "bg-slate-100 hover:bg-slate-200 text-slate-700",
   ghost: "hover:bg-slate-100 text-slate-600",
   danger: "bg-red-500 hover:bg-red-600 text-white",
@@ -38,7 +41,7 @@ export function Button({
     <button
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center rounded-xl font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 disabled:pointer-events-none",
+        "inline-flex items-center justify-center rounded-xl font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:pointer-events-none",
         variantClasses[variant],
         sizeClasses[size],
         className

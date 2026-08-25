@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   User,
   Bell,
@@ -23,6 +23,8 @@ import { Input } from '@/components/ui/input';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useMyTeacherProfileQuery, useUpdateTeacherMutation } from '@/lib/queries/teachers';
 import type { TeacherProfile } from '@/lib/api/teachers';
+import { useMyRegionSettingsQuery, useUpdateMyRegionSettingsMutation } from '@/lib/queries/settings';
+import type { RegionSettings } from '@/lib/api/settings';
 import { toast } from '@/lib/store/toast-store';
 import { ApiError } from '@/lib/api/client';
 import { cn, getInitials } from '@/lib/utils';
@@ -190,15 +192,34 @@ export default function TeacherSettingsPage() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light');
   const [accent, setAccent] = useState('#6366f1');
 
-  // Region settings — timezone/dateFormat stay mock/local; interface
-  // language itself is real now, sourced live from useLocale() inside
+  // Region settings — real, backend-persisted (foundation.Setting,
+  // scope=user); interface language itself is a separate, always-
+  // immediate mechanism sourced live from useLocale() inside
   // LanguageSwitcher below (see app/student/settings/page.tsx's own
   // "Language" tab for the identical pattern and its comment on why the
-  // language switcher lives only in Settings, never on Login).
-  const [regionSettings, setRegionSettings] = useState({
-    timezone: 'America/New_York',
-    dateFormat: 'MM/DD/YYYY',
-  });
+  // language switcher lives only in Settings, never on Login). Seeded
+  // once via seededRef, same "don't clobber unsaved edits" reasoning as
+  // AccountTab's own profile seeding above.
+  const { data: regionData } = useMyRegionSettingsQuery();
+  const updateRegionMutation = useUpdateMyRegionSettingsMutation();
+  const [regionSettings, setRegionSettings] = useState<RegionSettings | null>(null);
+  const regionSeededRef = useRef(false);
+  useEffect(() => {
+    if (regionData && !regionSeededRef.current) {
+      setRegionSettings(regionData);
+      regionSeededRef.current = true;
+    }
+  }, [regionData]);
+
+  async function handleSaveRegion() {
+    if (!regionSettings) return;
+    try {
+      await updateRegionMutation.mutateAsync(regionSettings);
+      toast.success(t('languageRegionSavedToast'));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('genericError'));
+    }
+  }
 
   const ACCENT_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6'];
 
@@ -423,44 +444,51 @@ export default function TeacherSettingsPage() {
                   <LanguageSwitcher variant="full" className="w-full [&>select]:w-full" />
                 </Field>
 
-                <Field label={t('timezone')}>
-                  <select
-                    className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
-                    value={regionSettings.timezone}
-                    onChange={(e) => setRegionSettings({ ...regionSettings, timezone: e.target.value })}
-                  >
-                    <option value="America/New_York">{t('timezoneEasternET')}</option>
-                    <option value="America/Chicago">{t('timezoneCentralCT')}</option>
-                    <option value="America/Denver">{t('timezoneMountainMT')}</option>
-                    <option value="America/Los_Angeles">{t('timezonePacificPT')}</option>
-                    <option value="Europe/London">{t('timezoneLondonGMT')}</option>
-                    <option value="Europe/Paris">{t('timezoneParisCET')}</option>
-                    <option value="Asia/Dubai">{t('timezoneDubaiGST')}</option>
-                    <option value="Asia/Karachi">{t('timezoneKarachiPKT')}</option>
-                    <option value="Asia/Tokyo">{t('timezoneTokyoJST')}</option>
-                  </select>
-                </Field>
+                {!regionSettings ? (
+                  <div className="flex items-center gap-2 py-6 text-sm text-slate-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t('loadingEllipsis')}
+                  </div>
+                ) : (
+                  <>
+                    <Field label={t('timezone')}>
+                      <select
+                        className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
+                        value={regionSettings.timezone}
+                        onChange={(e) => setRegionSettings({ ...regionSettings, timezone: e.target.value })}
+                      >
+                        <option value="America/New_York">{t('timezoneEasternET')}</option>
+                        <option value="America/Chicago">{t('timezoneCentralCT')}</option>
+                        <option value="America/Denver">{t('timezoneMountainMT')}</option>
+                        <option value="America/Los_Angeles">{t('timezonePacificPT')}</option>
+                        <option value="Europe/London">{t('timezoneLondonGMT')}</option>
+                        <option value="Europe/Paris">{t('timezoneParisCET')}</option>
+                        <option value="Asia/Dubai">{t('timezoneDubaiGST')}</option>
+                        <option value="Asia/Karachi">{t('timezoneKarachiPKT')}</option>
+                        <option value="Asia/Tokyo">{t('timezoneTokyoJST')}</option>
+                      </select>
+                    </Field>
 
-                <Field label={t('dateFormat')}>
-                  <select
-                    className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
-                    value={regionSettings.dateFormat}
-                    onChange={(e) => setRegionSettings({ ...regionSettings, dateFormat: e.target.value })}
-                  >
-                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                    <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                    <option value="DD MMM YYYY">DD MMM YYYY</option>
-                    <option value="MMM DD, YYYY">MMM DD, YYYY</option>
-                  </select>
-                </Field>
+                    <Field label={t('dateFormat')}>
+                      <select
+                        className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
+                        value={regionSettings.dateFormat}
+                        onChange={(e) => setRegionSettings({ ...regionSettings, dateFormat: e.target.value as RegionSettings['dateFormat'] })}
+                      >
+                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                        <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                      </select>
+                    </Field>
 
-                <div className="flex justify-end pt-2">
-                  <Button onClick={() => toast.success(t('languageRegionSavedToast'))}>
-                    <Save className="h-4 w-4" />
-                    {t('saveSettings')}
-                  </Button>
-                </div>
+                    <div className="flex justify-end pt-2">
+                      <Button onClick={handleSaveRegion} loading={updateRegionMutation.isPending}>
+                        <Save className="h-4 w-4" />
+                        {t('saveSettings')}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </Card>
           )}

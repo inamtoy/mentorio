@@ -149,6 +149,13 @@ USE_TZ = True
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Where foundation.services.run_platform_backup() writes pg_dump output —
+# Super-Admin Settings' Backup panel. Not under STATIC_URL/MEDIA (never
+# served as a static/media URL) — downloads are streamed through
+# PlatformBackupDownloadView, permission-gated the same as everything else
+# under the `platform_settings` module.
+BACKUP_DIR = Path(env("BACKUP_DIR", default=str(BASE_DIR / "backups")))
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "common.authentication.SessionValidatingJWTAuthentication",

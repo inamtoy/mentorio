@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from billing.serializers import SubscriptionPlanSummarySerializer
-from foundation.models import AuditLog, Branch, Organization, Permission, Role, User
+from foundation.models import ApiKey, AuditLog, Branch, Organization, Permission, PlatformBackup, Role, User
 from foundation.password_policy import validate_password_policy
 
 
@@ -88,6 +88,43 @@ class PermissionSerializer(serializers.ModelSerializer):
         model = Permission
         fields = ["id", "module", "action", "description"]
         read_only_fields = ["id"]
+
+
+class PlatformBackupSerializer(serializers.ModelSerializer):
+    triggered_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PlatformBackup
+        fields = [
+            "id", "status", "triggered_by", "triggered_by_name", "started_at", "finished_at",
+            "size_bytes", "error_message", "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_triggered_by_name(self, obj) -> str | None:
+        return obj.triggered_by.get_full_name() if obj.triggered_by_id else None
+
+
+class ApiKeySerializer(serializers.ModelSerializer):
+    """Never serializes `key_hash` — the raw secret itself is never even
+    stored, see foundation.services.generate_api_key()."""
+
+    created_by_name = serializers.SerializerMethodField()
+    is_revoked = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ApiKey
+        fields = [
+            "id", "name", "key_prefix", "created_by", "created_by_name",
+            "last_used_at", "revoked_at", "is_revoked", "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_created_by_name(self, obj) -> str | None:
+        return obj.created_by.get_full_name() if obj.created_by_id else None
+
+    def get_is_revoked(self, obj) -> bool:
+        return obj.revoked_at is not None
 
 
 class RoleSerializer(serializers.ModelSerializer):

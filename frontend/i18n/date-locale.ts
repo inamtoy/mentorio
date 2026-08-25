@@ -30,6 +30,32 @@ interface LocalizedDateOptions {
   month?: "short" | "long" | "numeric" | "2-digit";
   day?: "numeric";
   year?: "numeric";
+  /** IANA zone (e.g. "Asia/Tashkent") — the user's Settings > Region
+   * timezone preference. Omitted keeps rendering in the *browser's* local
+   * zone, unchanged from before this option existed. */
+  timeZone?: string;
+}
+
+/** {weekday, month, day} of `date` as it reads in `timeZone` — a plain
+ * `Date` has no timezone of its own (it's a UTC instant), and
+ * `date.getDate()`/`getMonth()`/`getDay()` always answer in the *browser's*
+ * local zone, not an arbitrary chosen one. Routed through `Intl` (every
+ * runtime that has `Intl.DateTimeFormat` supports the IANA tz database) to
+ * get the wall-clock fields in the requested zone instead — the one piece
+ * `toLocaleDateString`'s `timeZone` option already does for en/ru, but the
+ * hand-rolled `uz` path below needs to do manually since it doesn't call
+ * `toLocaleDateString` at all. */
+function partsInZone(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "long",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  const weekdayIndex = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(get("weekday"));
+  return { year: Number(get("year")), month: Number(get("month")) - 1, day: Number(get("day")), weekday: weekdayIndex };
 }
 
 /** Locale-aware date formatting for display — delegates to the browser's
@@ -42,25 +68,29 @@ export function formatLocalizedDate(date: Date, locale: Locale, options: Localiz
     return date.toLocaleDateString(INTL_DATE_LOCALES[locale], options);
   }
 
+  const zoned = options.timeZone
+    ? partsInZone(date, options.timeZone)
+    : { year: date.getFullYear(), month: date.getMonth(), day: date.getDate(), weekday: date.getDay() };
+
   const segments: string[] = [];
   if (options.weekday) {
-    segments.push((options.weekday === "long" ? UZ_WEEKDAYS_LONG : UZ_WEEKDAYS_SHORT)[date.getDay()]);
+    segments.push((options.weekday === "long" ? UZ_WEEKDAYS_LONG : UZ_WEEKDAYS_SHORT)[zoned.weekday]);
   }
 
   let dayMonth = "";
-  if (options.day) dayMonth += date.getDate();
+  if (options.day) dayMonth += zoned.day;
   if (options.month) {
     const month =
       options.month === "long"
-        ? UZ_MONTHS_LONG[date.getMonth()]
+        ? UZ_MONTHS_LONG[zoned.month]
         : options.month === "short"
-          ? UZ_MONTHS_SHORT[date.getMonth()]
-          : String(date.getMonth() + 1).padStart(options.month === "2-digit" ? 2 : 1, "0");
+          ? UZ_MONTHS_SHORT[zoned.month]
+          : String(zoned.month + 1).padStart(options.month === "2-digit" ? 2 : 1, "0");
     dayMonth += (dayMonth ? " " : "") + month;
   }
   if (dayMonth) segments.push(dayMonth);
 
-  if (options.year) segments.push(String(date.getFullYear()));
+  if (options.year) segments.push(String(zoned.year));
 
   return segments.join(", ");
 }

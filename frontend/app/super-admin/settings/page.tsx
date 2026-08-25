@@ -14,19 +14,40 @@ import {
   Save,
   ChevronRight,
   Loader2,
+  Download,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/input';
-import { useSASettingsStore } from '@/lib/store/sa-settings-store';
-import { usePlatformSettingsQuery, useUpdatePlatformSettingsMutation } from '@/lib/queries/settings';
-import type { GeneralSettings, SecuritySettings } from '@/lib/api/settings';
+import { Badge } from '@/components/ui/badge';
+import {
+  usePlatformSettingsQuery,
+  useUpdatePlatformSettingsMutation,
+  usePlatformBackupsQuery,
+  useRunPlatformBackupMutation,
+  useApiKeysQuery,
+  useCreateApiKeyMutation,
+  useRotateApiKeyMutation,
+  useRevokeApiKeyMutation,
+  useTestEmailSettingsMutation,
+  useTestSmsSettingsMutation,
+} from '@/lib/queries/settings';
+import type {
+  GeneralSettings,
+  SecuritySettings,
+  ThemeSettings,
+  LanguagesSettings,
+  EmailSettings,
+  SmsSettings,
+  PlatformBackupStatus,
+} from '@/lib/api/settings';
+import { platformBackupDownloadUrl } from '@/lib/api/settings';
 import { toast } from '@/lib/store/toast-store';
 import { ApiError } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
-import { formatLocalizedDate, INTL_DATE_LOCALES } from '@/i18n/date-locale';
-import { isLocale, DEFAULT_LOCALE } from '@/i18n/locales';
+import { cn, formatDate } from '@/lib/utils';
+import { formatLocalizedDate } from '@/i18n/date-locale';
+import { isLocale, DEFAULT_LOCALE, LOCALES, LOCALE_LABELS } from '@/i18n/locales';
 
 // ─── Settings Sections ────────────────────────────────────────────────────────
 
@@ -42,23 +63,35 @@ const SECTION_META = [
 ] as const;
 
 type SectionId = typeof SECTION_META[number]['id'];
+// The 6 panels that share the "local buffer + top Save button" flow —
+// Backup/API Keys act immediately via their own buttons instead (a backup
+// run / a generated key isn't a form field to buffer and save later).
+type WiredSection = 'general' | 'theme' | 'languages' | 'email' | 'sms' | 'security';
+
+function bytesToSize(bytes: number | null): string {
+  if (bytes === null) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 // ─── Toggle Switch ────────────────────────────────────────────────────────────
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <button
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600',
-        checked ? 'bg-indigo-600' : 'bg-slate-200'
+        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 disabled:cursor-not-allowed',
+        checked ? 'bg-primary' : 'bg-secondary'
       )}
     >
       <span
         className={cn(
-          'inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
+          'inline-block h-4 w-4 rounded-full bg-card shadow-sm transition-transform',
           checked ? 'translate-x-6' : 'translate-x-1'
         )}
       />
@@ -70,10 +103,10 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 function FieldRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-6 py-4 border-b border-slate-50 last:border-0">
+    <div className="flex items-start justify-between gap-6 py-4 border-b border-border last:border-0">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-800">{label}</p>
-        {hint && <p className="text-xs text-slate-400 mt-0.5">{hint}</p>}
+        <p className="text-sm font-medium text-card-foreground">{label}</p>
+        {hint && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
       </div>
       <div className="flex-shrink-0">{children}</div>
     </div>
@@ -83,7 +116,7 @@ function FieldRow({ label, hint, children }: { label: string; hint?: string; chi
 function SettingsLoadingState() {
   const t = useTranslations('SuperAdminSettings');
   return (
-    <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-400">
+    <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
       <Loader2 className="h-4 w-4 animate-spin" />
       {t('loadingEllipsis')}
     </div>
@@ -138,9 +171,9 @@ function GeneralPanel({ general, onChange }: { general: GeneralSettings; onChang
         <div className="flex items-center gap-3">
           {general.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={general.logoUrl} alt={t('fieldLogo')} className="h-9 w-28 object-contain rounded-lg border border-slate-200" />
+            <img src={general.logoUrl} alt={t('fieldLogo')} className="h-9 w-28 object-contain rounded-lg border border-border" />
           ) : (
-            <div className="h-9 w-28 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-xs text-slate-400">
+            <div className="h-9 w-28 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-xs text-muted-foreground">
               {t('noFileLabel')}
             </div>
           )}
@@ -152,7 +185,7 @@ function GeneralPanel({ general, onChange }: { general: GeneralSettings; onChang
         <div className="flex items-center gap-3">
           {general.faviconUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={general.faviconUrl} alt={t('fieldFavicon')} className="h-8 w-8 object-contain rounded border border-slate-200" />
+            <img src={general.faviconUrl} alt={t('fieldFavicon')} className="h-8 w-8 object-contain rounded border border-border" />
           )}
           <Button variant="outline" size="sm" onClick={() => faviconInputRef.current?.click()}>{t('uploadButton')}</Button>
           <input ref={faviconInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload('faviconUrl')} />
@@ -170,30 +203,28 @@ function GeneralPanel({ general, onChange }: { general: GeneralSettings; onChang
   );
 }
 
-function ThemePanel() {
+function ThemePanel({ theme, onChange }: { theme: ThemeSettings; onChange: (patch: Partial<ThemeSettings>) => void }) {
   const t = useTranslations('SuperAdminSettings');
-  const theme = useSASettingsStore((s) => s.settings.theme);
-  const updateTheme = useSASettingsStore((s) => s.updateTheme);
 
   return (
     <div className="space-y-0">
       <FieldRow label={t('fieldDarkMode')} hint={t('darkModeHint')}>
-        <Toggle checked={theme.darkMode} onChange={(v) => updateTheme({ darkMode: v })} />
+        <Toggle checked={theme.darkMode} onChange={(v) => onChange({ darkMode: v })} />
       </FieldRow>
       <FieldRow label={t('fieldCompactSidebar')} hint={t('compactSidebarHint')}>
-        <Toggle checked={theme.compactSidebar} onChange={(v) => updateTheme({ compactSidebar: v })} />
+        <Toggle checked={theme.compactSidebar} onChange={(v) => onChange({ compactSidebar: v })} />
       </FieldRow>
       <FieldRow label={t('fieldPrimaryColor')} hint={t('primaryColorHint')}>
         <div className="flex items-center gap-2">
           <input
             type="color"
             value={theme.primaryColor}
-            onChange={(e) => updateTheme({ primaryColor: e.target.value })}
-            className="h-9 w-9 cursor-pointer rounded-lg border border-slate-200"
+            onChange={(e) => onChange({ primaryColor: e.target.value })}
+            className="h-9 w-9 cursor-pointer rounded-lg border border-border"
           />
           <Input
             value={theme.primaryColor}
-            onChange={(e) => updateTheme({ primaryColor: e.target.value })}
+            onChange={(e) => onChange({ primaryColor: e.target.value })}
             className="w-28 font-mono text-sm"
           />
         </div>
@@ -208,86 +239,114 @@ function ThemePanel() {
             { value: 'outfit', label: t('fontOutfit') },
             { value: 'system', label: t('fontSystem') },
           ]}
-          onChange={(e) => updateTheme({ fontFamily: e.target.value })}
+          onChange={(e) => onChange({ fontFamily: e.target.value as ThemeSettings['fontFamily'] })}
         />
       </FieldRow>
     </div>
   );
 }
 
-function LanguagesPanel() {
+function LanguagesPanel({ languages, onChange }: { languages: LanguagesSettings; onChange: (patch: Partial<LanguagesSettings>) => void }) {
   const t = useTranslations('SuperAdminSettings');
-  const languages = useSASettingsStore((s) => s.settings.languages);
-  const toggleLanguage = useSASettingsStore((s) => s.toggleLanguage);
 
   return (
     <div className="space-y-0">
-      {languages.map((lang) => (
-        <FieldRow key={lang.code} label={`${lang.flag} ${lang.label}`} hint={lang.default ? t('defaultLanguageHint') : undefined}>
-          <div className="flex items-center gap-3">
-            {lang.default && (
-              <span className="text-xs text-indigo-600 font-medium bg-indigo-50 px-2 py-0.5 rounded-md">{t('defaultBadge')}</span>
-            )}
-            <Toggle
-              checked={lang.enabled}
-              onChange={() => {
-                if (lang.default) {
-                  toast.error(t('defaultLanguageCannotDisable'));
-                  return;
-                }
-                toggleLanguage(lang.code);
-              }}
-            />
-          </div>
-        </FieldRow>
-      ))}
+      {LOCALES.map((code) => {
+        const isDefault = languages.default === code;
+        const isEnabled = languages.enabled.includes(code);
+        return (
+          <FieldRow
+            key={code}
+            label={`${LOCALE_LABELS[code].flag} ${LOCALE_LABELS[code].label}`}
+            hint={isDefault ? t('defaultLanguageHint') : undefined}
+          >
+            <div className="flex items-center gap-3">
+              {isDefault && <span className="text-xs text-primary font-medium bg-accent px-2 py-0.5 rounded-md">{t('defaultBadge')}</span>}
+              <Toggle
+                checked={isEnabled}
+                onChange={() => {
+                  if (isDefault) {
+                    toast.error(t('defaultLanguageCannotDisable'));
+                    return;
+                  }
+                  onChange({
+                    enabled: isEnabled ? languages.enabled.filter((c) => c !== code) : [...languages.enabled, code],
+                  });
+                }}
+              />
+            </div>
+          </FieldRow>
+        );
+      })}
     </div>
   );
 }
 
-function EmailPanel() {
+function EmailPanel({ email, onChange }: { email: EmailSettings; onChange: (patch: Partial<EmailSettings>) => void }) {
   const t = useTranslations('SuperAdminSettings');
-  const email = useSASettingsStore((s) => s.settings.email);
-  const updateEmail = useSASettingsStore((s) => s.updateEmail);
+  const testMutation = useTestEmailSettingsMutation();
+
+  async function handleTest() {
+    const result = await testMutation.mutateAsync(undefined);
+    if (result.success) toast.success(result.message || t('testEmailSentToast'));
+    else toast.error(result.message || t('genericError'));
+  }
 
   return (
     <div className="space-y-0">
       <FieldRow label={t('fieldSmtpHost')} hint={t('smtpHostHint')}>
-        <Input value={email.smtpHost} onChange={(e) => updateEmail({ smtpHost: e.target.value })} className="w-64" />
+        <Input value={email.smtpHost} onChange={(e) => onChange({ smtpHost: e.target.value })} className="w-64" />
       </FieldRow>
       <FieldRow label={t('fieldSmtpPort')} hint="">
         <Input
           type="number"
           value={email.smtpPort}
-          onChange={(e) => updateEmail({ smtpPort: Number(e.target.value) || 0 })}
+          onChange={(e) => onChange({ smtpPort: Number(e.target.value) || 0 })}
           className="w-32"
         />
       </FieldRow>
       <FieldRow label={t('fieldUsername')} hint="">
-        <Input value={email.username} onChange={(e) => updateEmail({ username: e.target.value })} className="w-64" />
+        <Input value={email.username} onChange={(e) => onChange({ username: e.target.value })} className="w-64" />
       </FieldRow>
-      <FieldRow label={t('fieldPassword')} hint="">
+      <FieldRow label={t('fieldPassword')} hint={email.hasPassword ? t('passwordSetHint') : t('passwordNotSetHint')}>
         <Input
           type="password"
-          value={email.password}
-          onChange={(e) => updateEmail({ password: e.target.value })}
+          value={email.password ?? ''}
+          placeholder={email.hasPassword ? '••••••••••' : ''}
+          onChange={(e) => onChange({ password: e.target.value })}
           className="w-64"
         />
       </FieldRow>
       <FieldRow label={t('fieldFromName')} hint={t('fromNameHint')}>
-        <Input value={email.fromName} onChange={(e) => updateEmail({ fromName: e.target.value })} className="w-64" />
+        <Input value={email.fromName} onChange={(e) => onChange({ fromName: e.target.value })} className="w-64" />
       </FieldRow>
       <FieldRow label={t('fieldEnableTls')} hint={t('enableTlsHint')}>
-        <Toggle checked={email.tlsEnabled} onChange={(v) => updateEmail({ tlsEnabled: v })} />
+        <Toggle checked={email.tlsEnabled} onChange={(v) => onChange({ tlsEnabled: v })} />
+      </FieldRow>
+      <FieldRow label={t('fieldSendTestEmail')} hint={t('sendTestEmailHint')}>
+        <Button variant="outline" size="sm" loading={testMutation.isPending} onClick={handleTest}>
+          <Mail className="h-3.5 w-3.5" />
+          {t('sendTestButton')}
+        </Button>
       </FieldRow>
     </div>
   );
 }
 
-function SMSPanel() {
+function SMSPanel({ sms, onChange }: { sms: SmsSettings; onChange: (patch: Partial<SmsSettings>) => void }) {
   const t = useTranslations('SuperAdminSettings');
-  const sms = useSASettingsStore((s) => s.settings.sms);
-  const updateSms = useSASettingsStore((s) => s.updateSms);
+  const testMutation = useTestSmsSettingsMutation();
+  const [testNumber, setTestNumber] = useState('');
+
+  async function handleTest() {
+    if (!testNumber.trim()) {
+      toast.error(t('testPhoneRequiredError'));
+      return;
+    }
+    const result = await testMutation.mutateAsync(testNumber.trim());
+    if (result.success) toast.success(result.message || t('testSmsSentToast'));
+    else toast.error(result.message || t('genericError'));
+  }
 
   return (
     <div className="space-y-0">
@@ -301,95 +360,119 @@ function SMSPanel() {
             { value: 'aws-sns', label: t('providerAwsSns') },
             { value: 'custom', label: t('providerCustom') },
           ]}
-          onChange={(e) => updateSms({ provider: e.target.value })}
+          onChange={(e) => onChange({ provider: e.target.value as SmsSettings['provider'] })}
         />
       </FieldRow>
       <FieldRow label={t('fieldAccountSid')} hint="">
         <Input
           value={sms.accountSid}
-          onChange={(e) => updateSms({ accountSid: e.target.value })}
+          onChange={(e) => onChange({ accountSid: e.target.value })}
           className="w-64 font-mono text-xs"
         />
       </FieldRow>
-      <FieldRow label={t('fieldAuthToken')} hint="">
+      <FieldRow label={t('fieldAuthToken')} hint={sms.hasAuthToken ? t('authTokenSetHint') : t('authTokenNotSetHint')}>
         <Input
           type="password"
-          value={sms.authToken}
-          onChange={(e) => updateSms({ authToken: e.target.value })}
+          value={sms.authToken ?? ''}
+          placeholder={sms.hasAuthToken ? '••••••••••' : ''}
+          onChange={(e) => onChange({ authToken: e.target.value })}
           className="w-64"
         />
       </FieldRow>
       <FieldRow label={t('fieldFromNumber')} hint={t('fromNumberHint')}>
-        <Input value={sms.fromNumber} onChange={(e) => updateSms({ fromNumber: e.target.value })} className="w-64" />
+        <Input value={sms.fromNumber} onChange={(e) => onChange({ fromNumber: e.target.value })} className="w-64" />
       </FieldRow>
       <FieldRow label={t('fieldEnableSms')} hint={t('enableSmsHint')}>
-        <Toggle checked={sms.enabled} onChange={(v) => updateSms({ enabled: v })} />
+        <Toggle checked={sms.enabled} onChange={(v) => onChange({ enabled: v })} />
+      </FieldRow>
+      <FieldRow label={t('fieldSendTestSms')} hint={t('sendTestSmsHint')}>
+        <div className="flex items-center gap-2">
+          <Input
+            value={testNumber}
+            onChange={(e) => setTestNumber(e.target.value)}
+            placeholder={t('testPhonePlaceholder')}
+            className="w-40"
+          />
+          <Button variant="outline" size="sm" loading={testMutation.isPending} onClick={handleTest}>
+            <MessageSquare className="h-3.5 w-3.5" />
+            {t('sendTestButton')}
+          </Button>
+        </div>
       </FieldRow>
     </div>
   );
 }
 
+const BACKUP_STATUS_VARIANT: Record<PlatformBackupStatus, 'success' | 'danger' | 'warning' | 'info'> = {
+  success: 'success',
+  failed: 'danger',
+  running: 'info',
+  pending: 'warning',
+};
+
 function BackupPanel() {
   const t = useTranslations('SuperAdminSettings');
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
-  const backup = useSASettingsStore((s) => s.settings.backup);
-  const updateBackup = useSASettingsStore((s) => s.updateBackup);
-  const runBackup = useSASettingsStore((s) => s.runBackup);
+  const { data: backups = [], isLoading } = usePlatformBackupsQuery();
+  const runMutation = useRunPlatformBackupMutation();
 
-  const lastBackupDate = new Date(backup.lastBackupAt);
-  const lastBackupLabel =
-    formatLocalizedDate(lastBackupDate, locale, { month: 'short', day: 'numeric', year: 'numeric' }) +
-    ' ' +
-    lastBackupDate.toLocaleTimeString(INTL_DATE_LOCALES[locale], { hour: '2-digit', minute: '2-digit' });
+  async function handleRunBackup() {
+    try {
+      await runMutation.mutateAsync();
+      toast.success(t('backupCompletedToast'));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('genericError'));
+    }
+  }
 
   return (
-    <div className="space-y-0">
-      <FieldRow label={t('fieldAutoBackup')} hint={t('autoBackupHint')}>
-        <Toggle checked={backup.autoBackup} onChange={(v) => updateBackup({ autoBackup: v })} />
-      </FieldRow>
-      <FieldRow label={t('fieldBackupFrequency')} hint="">
-        <Select
-          className="w-48"
-          value={backup.frequency}
-          options={[
-            { value: 'hourly', label: t('frequencyHourly') },
-            { value: 'daily', label: t('frequencyDaily') },
-            { value: 'weekly', label: t('frequencyWeekly') },
-          ]}
-          onChange={(e) => updateBackup({ frequency: e.target.value })}
-        />
-      </FieldRow>
-      <FieldRow label={t('fieldBackupRetention')} hint={t('backupRetentionHint')}>
-        <Select
-          className="w-48"
-          value={backup.retention}
-          options={[
-            { value: '7d', label: t('retention7d') },
-            { value: '30d', label: t('retention30d') },
-            { value: '90d', label: t('retention90d') },
-          ]}
-          onChange={(e) => updateBackup({ retention: e.target.value })}
-        />
-      </FieldRow>
-      <FieldRow label={t('fieldLastBackup')} hint="">
-        <span className="text-sm text-emerald-600 font-medium">
-          {lastBackupLabel} ✓
-        </span>
-      </FieldRow>
+    <div className="space-y-4">
       <FieldRow label={t('fieldManualBackup')} hint={t('manualBackupHint')}>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            runBackup();
-            toast.success(t('backupCompletedToast'));
-          }}
-        >
+        <Button variant="outline" size="sm" loading={runMutation.isPending} onClick={handleRunBackup}>
           <Database className="h-3.5 w-3.5" />
           {t('runBackupButton')}
         </Button>
       </FieldRow>
+
+      <div className="pt-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">{t('backupHistoryTitle')}</p>
+        {isLoading ? (
+          <SettingsLoadingState />
+        ) : backups.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">{t('backupNoneYet')}</p>
+        ) : (
+          <div className="space-y-0">
+            {backups.map((b) => (
+              <div key={b.id} className="flex items-center justify-between gap-4 py-3 border-b border-border last:border-0">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Badge label={t(`backupStatus_${b.status}`)} variant={BACKUP_STATUS_VARIANT[b.status]} />
+                    <span className="text-sm text-card-foreground">
+                      {formatLocalizedDate(new Date(b.created_at), locale, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                    {t('backupMetaLine', { size: bytesToSize(b.size_bytes), by: b.triggered_by_name ?? '—' })}
+                  </p>
+                  {b.error_message && <p className="text-xs text-red-500 mt-1 truncate">{b.error_message}</p>}
+                </div>
+                {b.status === 'success' && (
+                  <a
+                    href={platformBackupDownloadUrl(b.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    {t('downloadLabel')}
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -444,48 +527,116 @@ function SecurityPanel({ security, onChange }: { security: SecuritySettings; onC
 
 function APIKeysPanel() {
   const t = useTranslations('SuperAdminSettings');
-  const apiKeys = useSASettingsStore((s) => s.settings.apiKeys);
-  const rotateApiKey = useSASettingsStore((s) => s.rotateApiKey);
-  const generateApiKey = useSASettingsStore((s) => s.generateApiKey);
+  const { data: keys = [], isLoading } = useApiKeysQuery();
+  const createMutation = useCreateApiKeyMutation();
+  const rotateMutation = useRotateApiKeyMutation();
+  const revokeMutation = useRevokeApiKeyMutation();
+  const [newKeyName, setNewKeyName] = useState('');
+  // The raw secret is only ever present in the create/rotate response — a
+  // dismissible "shown once" callout, same UX as a GitHub personal access
+  // token. Never re-derivable from the list (list only ever has key_prefix).
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
 
-  const handleCopy = (key: string) => {
+  async function handleGenerate() {
+    if (!newKeyName.trim()) {
+      toast.error(t('apiKeyNameRequiredError'));
+      return;
+    }
+    try {
+      const created = await createMutation.mutateAsync(newKeyName.trim());
+      setRevealedKey(created.key);
+      setNewKeyName('');
+      toast.success(t('newApiKeyGeneratedToast'));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('genericError'));
+    }
+  }
+
+  async function handleRotate(id: string) {
+    try {
+      const rotated = await rotateMutation.mutateAsync(id);
+      setRevealedKey(rotated.key);
+      toast.success(t('apiKeyRotatedToast'));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('genericError'));
+    }
+  }
+
+  async function handleRevoke(id: string) {
+    try {
+      await revokeMutation.mutateAsync(id);
+      toast.success(t('apiKeyRevokedToast'));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('genericError'));
+    }
+  }
+
+  function handleCopy(key: string) {
     navigator.clipboard.writeText(key);
     toast.success(t('apiKeyCopiedToast'));
-  };
+  }
 
   return (
     <div className="space-y-4">
-      {apiKeys.map((k) => (
-        <div key={k.id} className="flex items-start gap-4 py-4 border-b border-slate-50 last:border-0">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-800">{k.name}</p>
-            <p className="text-xs font-mono text-slate-400 mt-1 truncate">{k.key}</p>
-            <p className="text-xs text-slate-400 mt-1">{t('createdUsedLabel', { created: k.createdAt, lastUsed: k.lastUsed })}</p>
+      {revealedKey && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-800">{t('newKeySecretWarning')}</p>
+          <div className="flex items-center gap-2 mt-2">
+            <code className="flex-1 text-xs font-mono bg-card rounded-lg px-3 py-2 border border-amber-200 truncate">{revealedKey}</code>
+            <Button variant="outline" size="sm" onClick={() => handleCopy(revealedKey)}>{t('copyButton')}</Button>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button variant="ghost" size="sm" onClick={() => handleCopy(k.key)}>{t('copyButton')}</Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                rotateApiKey(k.id);
-                toast.success(t('apiKeyRotatedToast'));
-              }}
-            >
-              {t('rotateButton')}
-            </Button>
-          </div>
+          <button
+            type="button"
+            className="text-xs text-amber-700 mt-2 underline"
+            onClick={() => setRevealedKey(null)}
+          >
+            {t('dismissButton')}
+          </button>
         </div>
-      ))}
-      <div className="pt-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            generateApiKey();
-            toast.success(t('newApiKeyGeneratedToast'));
-          }}
-        >
+      )}
+
+      {isLoading ? (
+        <SettingsLoadingState />
+      ) : keys.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">{t('noApiKeysYet')}</p>
+      ) : (
+        keys.map((k) => (
+          <div key={k.id} className="flex items-start gap-4 py-4 border-b border-border last:border-0">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-card-foreground">{k.name}</p>
+                {k.is_revoked && <Badge label={t('revokedBadge')} variant="danger" />}
+              </div>
+              <p className="text-xs font-mono text-muted-foreground mt-1 truncate">{k.key_prefix}••••••••</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t('createdUsedLabel', {
+                  created: formatDate(k.created_at),
+                  lastUsed: k.last_used_at ? formatDate(k.last_used_at) : t('neverLabel'),
+                })}
+              </p>
+            </div>
+            {!k.is_revoked && (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button variant="ghost" size="sm" loading={rotateMutation.isPending} onClick={() => handleRotate(k.id)}>
+                  {t('rotateButton')}
+                </Button>
+                <Button variant="ghost" size="sm" loading={revokeMutation.isPending} onClick={() => handleRevoke(k.id)}>
+                  {t('revokeButton')}
+                </Button>
+              </div>
+            )}
+          </div>
+        ))
+      )}
+
+      <div className="pt-2 flex items-center gap-2">
+        <Input
+          value={newKeyName}
+          onChange={(e) => setNewKeyName(e.target.value)}
+          placeholder={t('apiKeyNamePlaceholder')}
+          className="w-64"
+        />
+        <Button variant="outline" size="sm" onClick={handleGenerate} loading={createMutation.isPending}>
           <Key className="h-3.5 w-3.5" />
           {t('generateNewKeyButton')}
         </Button>
@@ -493,20 +644,6 @@ function APIKeysPanel() {
     </div>
   );
 }
-
-// ─── Panel Map ────────────────────────────────────────────────────────────────
-// Theme/Languages/Email/SMS/Backup/API Keys aren't wired to a backend yet
-// (see the plan doc) — those panels keep applying changes live to the local
-// mock store, same as before General/Security became real.
-
-const MOCK_PANEL_MAP: Partial<Record<SectionId, React.ReactNode>> = {
-  theme:     <ThemePanel />,
-  languages: <LanguagesPanel />,
-  email:     <EmailPanel />,
-  sms:       <SMSPanel />,
-  backup:    <BackupPanel />,
-  api:       <APIKeysPanel />,
-};
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -531,35 +668,56 @@ export default function SystemSettingsPage() {
   const { data: platformSettings, isLoading, isError, error } = usePlatformSettingsQuery();
   const updateMutation = useUpdatePlatformSettingsMutation();
 
-  // Local buffers, not a live-write-per-keystroke — General/Security only
-  // hit the network on "Save Changes" now that they're a real API, unlike
-  // the still-mock panels' instant local-store writes. Seeded from the
-  // server exactly once (a `seededRef` guard, not a `[platformSettings]`
-  // effect dependency) — these are platform-wide singletons, not a form
-  // that needs re-seeding when switching between different records, so
-  // resyncing on every refetch (a background window-refocus refetch, or
-  // the OTHER panel's own save invalidating this shared query) would
+  // Local buffers, not a live-write-per-keystroke — every wired panel only
+  // hits the network on "Save Changes". Seeded from the server exactly
+  // once (a `seededRef` guard, not a `[platformSettings]` effect
+  // dependency) — see General/Security's original comment on why: these
+  // are platform-wide singletons, and resyncing on every refetch would
   // silently clobber whichever panel currently has unsaved edits.
   const [generalForm, setGeneralForm] = useState<GeneralSettings | null>(null);
   const [securityForm, setSecurityForm] = useState<SecuritySettings | null>(null);
+  const [themeForm, setThemeForm] = useState<ThemeSettings | null>(null);
+  const [languagesForm, setLanguagesForm] = useState<LanguagesSettings | null>(null);
+  const [emailForm, setEmailForm] = useState<EmailSettings | null>(null);
+  const [smsForm, setSmsForm] = useState<SmsSettings | null>(null);
   const seededRef = useRef(false);
   useEffect(() => {
     if (platformSettings && !seededRef.current) {
       setGeneralForm(platformSettings.general);
       setSecurityForm(platformSettings.security);
+      setThemeForm(platformSettings.theme);
+      setLanguagesForm(platformSettings.languages);
+      // password/authToken are never sent by GET (see EmailSettings/
+      // SmsSettings' own docstrings) — the buffer starts blank, and a
+      // blank Save leaves the real stored secret untouched (backend's
+      // sanitize_platform_setting_incoming()).
+      setEmailForm({ ...platformSettings.email, password: '' });
+      setSmsForm({ ...platformSettings.sms, authToken: '' });
       seededRef.current = true;
     }
   }, [platformSettings]);
 
+  const WIRED_FORMS: Record<WiredSection, unknown> = {
+    general: generalForm,
+    security: securityForm,
+    theme: themeForm,
+    languages: languagesForm,
+    email: emailForm,
+    sms: smsForm,
+  };
+
+  function isWiredSection(id: SectionId): id is WiredSection {
+    return id === 'general' || id === 'security' || id === 'theme' || id === 'languages' || id === 'email' || id === 'sms';
+  }
+
   async function handleSave() {
-    const isWiredSection = activeSection === 'general' || activeSection === 'security';
-    if (!isWiredSection) {
-      // Mock panels already applied their edits live — this is just a
-      // confirmation toast, same as before.
+    if (!isWiredSection(activeSection)) {
+      // Backup/API Keys act immediately via their own buttons — nothing
+      // buffered here to save.
       toast.success(t('settingsSavedToast'));
       return;
     }
-    const formToSave = activeSection === 'general' ? generalForm : securityForm;
+    const formToSave = WIRED_FORMS[activeSection];
     if (!formToSave) {
       // Settings haven't loaded yet (or failed to) — nothing to save, and
       // the button is disabled in this state anyway; this is just a
@@ -568,29 +726,42 @@ export default function SystemSettingsPage() {
       return;
     }
     try {
-      if (activeSection === 'general') {
-        await updateMutation.mutateAsync({ general: formToSave as GeneralSettings });
-      } else {
-        await updateMutation.mutateAsync({ security: formToSave as SecuritySettings });
-      }
+      await updateMutation.mutateAsync({ [activeSection]: formToSave } as Parameters<typeof updateMutation.mutateAsync>[0]);
       toast.success(t('settingsSavedToast'));
+      // Email/SMS secret buffers are cleared back to blank after a
+      // successful save — the just-typed password/authToken was accepted
+      // and now lives server-side; keeping it in the form would just be a
+      // plaintext secret sitting in React state for no reason.
+      if (activeSection === 'email') setEmailForm((f) => f && { ...f, password: '' });
+      if (activeSection === 'sms') setSmsForm((f) => f && { ...f, authToken: '' });
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t('genericError'));
     }
   }
 
   function renderActivePanel() {
-    if (activeSection === 'general') {
+    if (isWiredSection(activeSection)) {
       if (isError) return <SettingsLoadError error={error} />;
-      if (!generalForm) return <SettingsLoadingState />;
-      return <GeneralPanel general={generalForm} onChange={(patch) => setGeneralForm((f) => f && { ...f, ...patch })} />;
+      if (!WIRED_FORMS[activeSection]) return <SettingsLoadingState />;
     }
-    if (activeSection === 'security') {
-      if (isError) return <SettingsLoadError error={error} />;
-      if (!securityForm) return <SettingsLoadingState />;
-      return <SecurityPanel security={securityForm} onChange={(patch) => setSecurityForm((f) => f && { ...f, ...patch })} />;
+    switch (activeSection) {
+      case 'general':
+        return <GeneralPanel general={generalForm!} onChange={(patch) => setGeneralForm((f) => f && { ...f, ...patch })} />;
+      case 'security':
+        return <SecurityPanel security={securityForm!} onChange={(patch) => setSecurityForm((f) => f && { ...f, ...patch })} />;
+      case 'theme':
+        return <ThemePanel theme={themeForm!} onChange={(patch) => setThemeForm((f) => f && { ...f, ...patch })} />;
+      case 'languages':
+        return <LanguagesPanel languages={languagesForm!} onChange={(patch) => setLanguagesForm((f) => f && { ...f, ...patch })} />;
+      case 'email':
+        return <EmailPanel email={emailForm!} onChange={(patch) => setEmailForm((f) => f && { ...f, ...patch })} />;
+      case 'sms':
+        return <SMSPanel sms={smsForm!} onChange={(patch) => setSmsForm((f) => f && { ...f, ...patch })} />;
+      case 'backup':
+        return <BackupPanel />;
+      case 'api':
+        return <APIKeysPanel />;
     }
-    return MOCK_PANEL_MAP[activeSection];
   }
 
   return (
@@ -602,11 +773,7 @@ export default function SystemSettingsPage() {
           <Button
             onClick={handleSave}
             loading={updateMutation.isPending}
-            disabled={
-              // generalForm/securityForm are seeded together (see seededRef
-              // above) — either being null means neither has loaded yet.
-              (activeSection === 'general' || activeSection === 'security') && (isLoading || !generalForm)
-            }
+            disabled={isWiredSection(activeSection) && (isLoading || !WIRED_FORMS[activeSection])}
           >
             <Save className="h-4 w-4" />
             {t('saveChangesButton')}
@@ -625,19 +792,19 @@ export default function SystemSettingsPage() {
                 className={cn(
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left',
                   activeSection === id
-                    ? 'bg-indigo-50 text-indigo-700'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-accent text-accent-foreground'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 )}
               >
                 <Icon
                   className={cn(
                     'h-4 w-4 flex-shrink-0',
-                    activeSection === id ? 'text-indigo-600' : 'text-slate-400'
+                    activeSection === id ? 'text-primary' : 'text-muted-foreground'
                   )}
                 />
                 <span>{label}</span>
                 {activeSection === id && (
-                  <ChevronRight className="h-3.5 w-3.5 ml-auto text-indigo-400" />
+                  <ChevronRight className="h-3.5 w-3.5 ml-auto text-primary" />
                 )}
               </button>
             ))}
@@ -647,13 +814,13 @@ export default function SystemSettingsPage() {
         {/* ── Content Panel ──────────────────────────────────────────────── */}
         <div className="lg:col-span-3">
           <Card>
-            <div className="flex items-center gap-3 mb-6 pb-5 border-b border-slate-100">
-              <div className="p-2.5 rounded-xl bg-indigo-50">
-                <ActiveIcon className="h-5 w-5 text-indigo-600" />
+            <div className="flex items-center gap-3 mb-6 pb-5 border-b border-border">
+              <div className="p-2.5 rounded-xl bg-accent">
+                <ActiveIcon className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-slate-900">{active.label}</h3>
-                <p className="text-xs text-slate-400">{active.desc}</p>
+                <h3 className="text-base font-semibold text-card-foreground">{active.label}</h3>
+                <p className="text-xs text-muted-foreground">{active.desc}</p>
               </div>
             </div>
             {renderActivePanel()}

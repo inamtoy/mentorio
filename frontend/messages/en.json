@@ -84,7 +84,10 @@
     "timezoneTashkentUZT": "Tashkent (UZT)",
     "timezoneAlmatyALMT": "Almaty (ALMT)",
     "timezoneMoscowMSK": "Moscow (MSK)",
-    "timezoneEasternET": "Eastern Time (ET)"
+    "timezoneEasternET": "Eastern Time (ET)",
+    "loadingEllipsis": "Loading…",
+    "genericError": "Something went wrong. Please try again.",
+    "languageRegionSavedToast": "Region settings saved."
   },
   "StudentNav": {
     "openMenuAriaLabel": "Open menu",
@@ -843,7 +846,9 @@
     "timezoneParisCET": "Paris (CET)",
     "timezoneDubaiGST": "Dubai (GST)",
     "timezoneKarachiPKT": "Karachi (PKT)",
-    "timezoneTokyoJST": "Tokyo (JST)"
+    "timezoneTokyoJST": "Tokyo (JST)",
+    "loadingEllipsis": "Loading…",
+    "genericError": "Something went wrong. Please try again."
   },
   "AdminNav": {
     "navGroupMain": "Main",
@@ -1599,7 +1604,8 @@
     "gatewayRemovedToast": "{provider} removed",
     "paymentGatewaysTitle": "Payment Gateways",
     "paymentGatewaysSubtitle": "Connect Payme and Click so students can pay online",
-    "loadingLabel": "Loading…"
+    "loadingLabel": "Loading…",
+    "loadingEllipsis": "Loading…"
   },
   "SuperAdminNav": {
     "openMenuAriaLabel": "Open menu",
@@ -2234,7 +2240,37 @@
     "apiKeyCopiedToast": "API key copied to clipboard",
     "apiKeyRotatedToast": "API key rotated",
     "generateNewKeyButton": "Generate New Key",
-    "newApiKeyGeneratedToast": "New API key generated"
+    "newApiKeyGeneratedToast": "New API key generated",
+    "apiKeyNamePlaceholder": "e.g. Production API Key",
+    "apiKeyNameRequiredError": "Enter a name for this key.",
+    "apiKeyRevokedToast": "API key revoked.",
+    "authTokenNotSetHint": "No auth token set yet.",
+    "authTokenSetHint": "An auth token is set.",
+    "backupHistoryTitle": "Backup History",
+    "backupMetaLine": "{size} · by {by}",
+    "backupNoneYet": "No backups yet.",
+    "backupStatus_failed": "Failed",
+    "backupStatus_pending": "Pending",
+    "backupStatus_running": "Running",
+    "backupStatus_success": "Success",
+    "dismissButton": "Dismiss",
+    "downloadLabel": "Download",
+    "fieldSendTestEmail": "Send Test Email",
+    "fieldSendTestSms": "Send Test SMS",
+    "neverLabel": "Never",
+    "newKeySecretWarning": "Copy this key now — you won't be able to see it again.",
+    "noApiKeysYet": "No API keys yet.",
+    "passwordNotSetHint": "No password set yet.",
+    "passwordSetHint": "A password is set.",
+    "revokeButton": "Revoke",
+    "revokedBadge": "Revoked",
+    "sendTestButton": "Send Test",
+    "sendTestEmailHint": "Sends a real test email using the settings above.",
+    "sendTestSmsHint": "Sends a real test SMS using the settings above.",
+    "testEmailSentToast": "Test email sent.",
+    "testPhonePlaceholder": "+998 90 123 45 67",
+    "testPhoneRequiredError": "Enter a phone number to send the test to.",
+    "testSmsSentToast": "Test SMS sent."
   },
   "SuperAdminReports": {
     "pageTitle": "Reports & Analytics",

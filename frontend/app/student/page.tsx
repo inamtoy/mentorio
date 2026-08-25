@@ -27,6 +27,7 @@ import { useAttendanceQuery } from "@/lib/queries/attendance";
 import { useStudentGradeSummaryQuery } from "@/lib/queries/grades";
 import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
+import { useMyRegionSettingsQuery } from "@/lib/queries/settings";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -42,9 +43,7 @@ function formatDate(dateStr: string, locale: Locale) {
   return formatLocalizedDate(d, locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
-// t is StudentDashboard's useTranslations return value. Real wall-clock
-// "now" — Exams is wired to the real API, unlike the fixed TODAY anchor
-// still used below for the still-mock welcome-banner date label.
+// t is StudentDashboard's useTranslations return value.
 function daysUntil(dateStr: string, t: ReturnType<typeof useTranslations<"StudentDashboard">>) {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
@@ -56,9 +55,6 @@ function daysUntil(dateStr: string, t: ReturnType<typeof useTranslations<"Studen
 }
 
 function formatRelativeTime(isoString: string, t: ReturnType<typeof useTranslations<"StudentDashboard">>) {
-  // Real wall-clock "now" — this now also formats real Notification
-  // timestamps (see the Recent Activity card below), which aren't anchored
-  // to the dashboard's fixed demo date the way STUDENT_* mock data still is.
   const now = new Date();
   const then = new Date(isoString);
   const diffMs = now.getTime() - then.getTime();
@@ -186,11 +182,13 @@ export default function StudentDashboardPage() {
   const avgGrade =
     gradedRows.length > 0 ? Math.round(gradedRows.reduce((sum, r) => sum + (r.final_grade as number), 0) / gradedRows.length) : 0;
 
+  const { data: region } = useMyRegionSettingsQuery();
   const todayLabel = formatLocalizedDate(new Date(), locale, {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
+    timeZone: region?.timezone,
   });
 
   return (

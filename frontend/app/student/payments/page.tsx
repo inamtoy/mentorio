@@ -21,11 +21,16 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { useInvoicesQuery, usePaymentsQuery, useCreateSelfInvoiceMutation } from "@/lib/queries/finance";
 import { useGatewayAccountsQuery, useInitiateCheckoutMutation } from "@/lib/queries/payment-gateways";
 import { useGroupsQuery, useMyGroupMembershipsQuery } from "@/lib/queries/groups";
+import { useMyRegionSettingsQuery } from "@/lib/queries/settings";
 import { toast } from "@/lib/store/toast-store";
-// formatDate/formatCurrency are shared across every portal and still format
-// as fixed en-US (see lib/utils.ts) — localizing them is a follow-up beyond
-// this Student-portal-only i18n pass, since they're called from dozens of
-// non-i18n-aware pages too.
+// formatCurrency is shared across every portal and still formats as fixed
+// en-US (see lib/utils.ts) — localizing it is a follow-up beyond this
+// Student-portal-only i18n pass, since it's called from dozens of
+// non-i18n-aware pages too. formatDate, unlike formatCurrency, now honors
+// the viewer's Settings > Region > dateFormat preference when passed one
+// (see lib/utils.ts's own docstring on why) — the payments/invoices table
+// below is exactly the kind of numeric date where MM/DD vs DD/MM ambiguity
+// matters most, so this page passes it.
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
 import type { Invoice } from "@/lib/api/finance";
@@ -34,6 +39,7 @@ import type { Provider } from "@/lib/api/payment-gateways";
 export default function StudentPaymentsPage() {
   const t = useTranslations("StudentPayments");
   const tc = useTranslations("Common");
+  const { data: region } = useMyRegionSettingsQuery();
 
   const PROVIDER_LABELS: Record<Provider, string> = { payme: t("methodPayme"), click: t("methodClick") };
 
@@ -151,7 +157,7 @@ export default function StudentPaymentsPage() {
     {
       key: "due_date",
       label: t("colDueDate"),
-      render: (val) => formatDate(String(val)),
+      render: (val) => formatDate(String(val), region?.dateFormat),
     },
     {
       key: "status",
@@ -240,7 +246,7 @@ export default function StudentPaymentsPage() {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-sm font-semibold text-emerald-600">+{formatCurrency(Number(tx.amount))}</p>
-                  <p className="text-xs text-slate-400">{formatDate(tx.payment_date)}</p>
+                  <p className="text-xs text-slate-400">{formatDate(tx.payment_date, region?.dateFormat)}</p>
                 </div>
               </div>
             ))

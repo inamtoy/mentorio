@@ -84,7 +84,10 @@
     "timezoneTashkentUZT": "Ташкент (UZT)",
     "timezoneAlmatyALMT": "Алматы (ALMT)",
     "timezoneMoscowMSK": "Москва (MSK)",
-    "timezoneEasternET": "Восточное время (ET)"
+    "timezoneEasternET": "Восточное время (ET)",
+    "loadingEllipsis": "Загрузка…",
+    "genericError": "Что-то пошло не так. Попробуйте ещё раз.",
+    "languageRegionSavedToast": "Настройки региона сохранены."
   },
   "StudentNav": {
     "openMenuAriaLabel": "Открыть меню",
@@ -843,7 +846,9 @@
     "timezoneParisCET": "Париж (CET)",
     "timezoneDubaiGST": "Дубай (GST)",
     "timezoneKarachiPKT": "Карачи (PKT)",
-    "timezoneTokyoJST": "Токио (JST)"
+    "timezoneTokyoJST": "Токио (JST)",
+    "loadingEllipsis": "Загрузка…",
+    "genericError": "Что-то пошло не так. Попробуйте ещё раз."
   },
   "AdminNav": {
     "navGroupMain": "Главное",
@@ -1599,7 +1604,8 @@
     "gatewayRemovedToast": "{provider} удалён",
     "paymentGatewaysTitle": "Платёжные системы",
     "paymentGatewaysSubtitle": "Подключите Payme и Click, чтобы студенты могли платить онлайн",
-    "loadingLabel": "Загрузка…"
+    "loadingLabel": "Загрузка…",
+    "loadingEllipsis": "Загрузка…"
   },
   "SuperAdminNav": {
     "openMenuAriaLabel": "Открыть меню",
@@ -2234,7 +2240,37 @@
     "apiKeyCopiedToast": "API-ключ скопирован в буфер обмена",
     "apiKeyRotatedToast": "API-ключ обновлён",
     "generateNewKeyButton": "Создать новый ключ",
-    "newApiKeyGeneratedToast": "Новый API-ключ создан"
+    "newApiKeyGeneratedToast": "Новый API-ключ создан",
+    "apiKeyNamePlaceholder": "например, Production API Key",
+    "apiKeyNameRequiredError": "Введите название для этого ключа.",
+    "apiKeyRevokedToast": "API-ключ отозван.",
+    "authTokenNotSetHint": "Токен авторизации ещё не задан.",
+    "authTokenSetHint": "Токен авторизации установлен.",
+    "backupHistoryTitle": "История резервных копий",
+    "backupMetaLine": "{size} · выполнил(а): {by}",
+    "backupNoneYet": "Резервных копий пока нет.",
+    "backupStatus_failed": "Ошибка",
+    "backupStatus_pending": "Ожидание",
+    "backupStatus_running": "Выполняется",
+    "backupStatus_success": "Успешно",
+    "dismissButton": "Закрыть",
+    "downloadLabel": "Скачать",
+    "fieldSendTestEmail": "Отправить тестовое письмо",
+    "fieldSendTestSms": "Отправить тестовое SMS",
+    "neverLabel": "Никогда",
+    "newKeySecretWarning": "Скопируйте этот ключ сейчас — второй раз увидеть его не получится.",
+    "noApiKeysYet": "API-ключей пока нет.",
+    "passwordNotSetHint": "Пароль ещё не задан.",
+    "passwordSetHint": "Пароль установлен.",
+    "revokeButton": "Отозвать",
+    "revokedBadge": "Отозван",
+    "sendTestButton": "Отправить тест",
+    "sendTestEmailHint": "Отправляет реальное тестовое письмо с указанными выше настройками.",
+    "sendTestSmsHint": "Отправляет реальное тестовое SMS с указанными выше настройками.",
+    "testEmailSentToast": "Тестовое письмо отправлено.",
+    "testPhonePlaceholder": "+998 90 123 45 67",
+    "testPhoneRequiredError": "Введите номер телефона для отправки теста.",
+    "testSmsSentToast": "Тестовое SMS отправлено."
   },
   "SuperAdminReports": {
     "pageTitle": "Отчёты и аналитика",

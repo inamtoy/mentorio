@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   User,
   Building2,
@@ -10,6 +10,7 @@ import {
   Save,
   ChevronRight,
   CreditCard,
+  Loader2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/ui/page-header";
@@ -20,6 +21,9 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/lib/store/toast-store";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { PaymentGatewaysTab } from "./_components/payment-gateways-tab";
+import { useMyRegionSettingsQuery, useUpdateMyRegionSettingsMutation } from "@/lib/queries/settings";
+import type { RegionSettings } from "@/lib/api/settings";
+import { ApiError } from "@/lib/api/client";
 
 export function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
   return (
@@ -72,14 +76,35 @@ export default function SettingsPage() {
 
   const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
 
-  // Timezone/date-format stay mock/local, same as Teacher/Student Settings'
-  // Language tab — the interface language itself is real, sourced live from
+  // Real, backend-persisted (foundation.Setting, scope=user) — see
+  // lib/api/settings.ts's RegionSettings. The interface language itself
+  // stays a separate, always-immediate mechanism sourced live from
   // LanguageSwitcher below (see app/teacher/settings/page.tsx's identical
   // pattern and its comment on why the switcher lives only in Settings).
-  const [regionSettings, setRegionSettings] = useState({
-    timezone: "America/New_York",
-    dateFormat: "MM/DD/YYYY",
-  });
+  // Seeded from the server exactly once (seededRef, not a
+  // `[regionData]` effect dependency) — same "don't clobber unsaved
+  // edits on a background refetch" reasoning as every other buffered
+  // form on this page.
+  const { data: regionData } = useMyRegionSettingsQuery();
+  const updateRegionMutation = useUpdateMyRegionSettingsMutation();
+  const [regionSettings, setRegionSettings] = useState<RegionSettings | null>(null);
+  const regionSeededRef = useRef(false);
+  useEffect(() => {
+    if (regionData && !regionSeededRef.current) {
+      setRegionSettings(regionData);
+      regionSeededRef.current = true;
+    }
+  }, [regionData]);
+
+  async function handleSaveRegion() {
+    if (!regionSettings) return;
+    try {
+      await updateRegionMutation.mutateAsync(regionSettings);
+      toast.success(t("languageRegionSavedToast"));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t("genericError"));
+    }
+  }
 
   function handleSaveProfile() {
     toast.success(t("profileUpdatedToast"));
@@ -303,47 +328,59 @@ export default function SettingsPage() {
                   <LanguageSwitcher variant="full" className="w-full [&>select]:w-full" />
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium text-slate-700 block mb-1.5">{t("timezoneLabel")}</label>
-                  <select
-                    className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
-                    value={regionSettings.timezone}
-                    onChange={(e) => setRegionSettings({ ...regionSettings, timezone: e.target.value })}
-                  >
-                    <option value="America/New_York">{t('timezoneEasternET')}</option>
-                    <option value="America/Chicago">{t('timezoneCentralCT')}</option>
-                    <option value="America/Denver">{t('timezoneMountainMT')}</option>
-                    <option value="America/Los_Angeles">{t('timezonePacificPT')}</option>
-                    <option value="Europe/London">{t('timezoneLondonGMT')}</option>
-                    <option value="Europe/Paris">{t('timezoneParisCET')}</option>
-                    <option value="Asia/Tashkent">{t('timezoneTashkentUZT')}</option>
-                    <option value="Asia/Dubai">{t('timezoneDubaiGST')}</option>
-                    <option value="Asia/Karachi">{t('timezoneKarachiPKT')}</option>
-                    <option value="Asia/Tokyo">{t('timezoneTokyoJST')}</option>
-                  </select>
-                </div>
+                {!regionSettings ? (
+                  <div className="flex items-center gap-2 py-6 text-sm text-slate-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t("loadingEllipsis")}
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 block mb-1.5">{t("timezoneLabel")}</label>
+                      <select
+                        className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
+                        value={regionSettings.timezone}
+                        onChange={(e) => setRegionSettings({ ...regionSettings, timezone: e.target.value })}
+                      >
+                        <option value="America/New_York">{t('timezoneEasternET')}</option>
+                        <option value="America/Chicago">{t('timezoneCentralCT')}</option>
+                        <option value="America/Denver">{t('timezoneMountainMT')}</option>
+                        <option value="America/Los_Angeles">{t('timezonePacificPT')}</option>
+                        <option value="Europe/London">{t('timezoneLondonGMT')}</option>
+                        <option value="Europe/Paris">{t('timezoneParisCET')}</option>
+                        <option value="Asia/Tashkent">{t('timezoneTashkentUZT')}</option>
+                        <option value="Asia/Dubai">{t('timezoneDubaiGST')}</option>
+                        <option value="Asia/Karachi">{t('timezoneKarachiPKT')}</option>
+                        <option value="Asia/Tokyo">{t('timezoneTokyoJST')}</option>
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="text-sm font-medium text-slate-700 block mb-1.5">{t("dateFormatLabel")}</label>
-                  <select
-                    className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
-                    value={regionSettings.dateFormat}
-                    onChange={(e) => setRegionSettings({ ...regionSettings, dateFormat: e.target.value })}
-                  >
-                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                    <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                    <option value="DD MMM YYYY">DD MMM YYYY</option>
-                    <option value="MMM DD, YYYY">MMM DD, YYYY</option>
-                  </select>
-                </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 block mb-1.5">{t("dateFormatLabel")}</label>
+                      <select
+                        className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
+                        value={regionSettings.dateFormat}
+                        onChange={(e) => setRegionSettings({ ...regionSettings, dateFormat: e.target.value as RegionSettings["dateFormat"] })}
+                      >
+                        {/* Only the 3 tokens the backend actually validates/
+                            applies (see backend/foundation/services.py's
+                            DATE_FORMAT_CHOICES) — the mock version listed 2
+                            extra ("DD MMM YYYY"/"MMM DD, YYYY") nothing here
+                            ever implemented. */}
+                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                        <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                      </select>
+                    </div>
 
-                <div className="flex justify-end pt-2">
-                  <Button onClick={() => toast.success(t("languageRegionSavedToast"))}>
-                    <Save className="h-4 w-4" />
-                    {t("saveSettingsButton")}
-                  </Button>
-                </div>
+                    <div className="flex justify-end pt-2">
+                      <Button onClick={handleSaveRegion} loading={updateRegionMutation.isPending}>
+                        <Save className="h-4 w-4" />
+                        {t("saveSettingsButton")}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </Card>
           )}

@@ -84,7 +84,10 @@
     "timezoneTashkentUZT": "Toshkent (UZT)",
     "timezoneAlmatyALMT": "Almati (ALMT)",
     "timezoneMoscowMSK": "Moskva (MSK)",
-    "timezoneEasternET": "Sharqiy vaqt (ET)"
+    "timezoneEasternET": "Sharqiy vaqt (ET)",
+    "loadingEllipsis": "Yuklanmoqda…",
+    "genericError": "Nimadir xato ketdi. Qaytadan urinib ko‘ring.",
+    "languageRegionSavedToast": "Hudud sozlamalari saqlandi."
   },
   "StudentNav": {
     "openMenuAriaLabel": "Menyuni ochish",
@@ -843,7 +846,9 @@
     "timezoneParisCET": "Parij (CET)",
     "timezoneDubaiGST": "Dubay (GST)",
     "timezoneKarachiPKT": "Karachi (PKT)",
-    "timezoneTokyoJST": "Tokio (JST)"
+    "timezoneTokyoJST": "Tokio (JST)",
+    "loadingEllipsis": "Yuklanmoqda…",
+    "genericError": "Nimadir xato ketdi. Qaytadan urinib ko‘ring."
   },
   "AdminNav": {
     "navGroupMain": "Asosiy",
@@ -1599,7 +1604,8 @@
     "gatewayRemovedToast": "{provider} o'chirildi",
     "paymentGatewaysTitle": "To'lov tizimlari",
     "paymentGatewaysSubtitle": "O'quvchilar onlayn to'lashi uchun Payme va Clickni ulang",
-    "loadingLabel": "Yuklanmoqda…"
+    "loadingLabel": "Yuklanmoqda…",
+    "loadingEllipsis": "Yuklanmoqda…"
   },
   "SuperAdminNav": {
     "openMenuAriaLabel": "Menyuni ochish",
@@ -2234,7 +2240,37 @@
     "apiKeyCopiedToast": "API kalit vaqtinchalik xotiraga nusxalandi",
     "apiKeyRotatedToast": "API kalit yangilandi",
     "generateNewKeyButton": "Yangi kalit yaratish",
-    "newApiKeyGeneratedToast": "Yangi API kalit yaratildi"
+    "newApiKeyGeneratedToast": "Yangi API kalit yaratildi",
+    "apiKeyNamePlaceholder": "masalan, Production API Key",
+    "apiKeyNameRequiredError": "Ushbu kalit uchun nom kiriting.",
+    "apiKeyRevokedToast": "API kalit bekor qilindi.",
+    "authTokenNotSetHint": "Auth token hali kiritilmagan.",
+    "authTokenSetHint": "Auth token kiritilgan.",
+    "backupHistoryTitle": "Zaxira nusxalar tarixi",
+    "backupMetaLine": "{size} · bajardi: {by}",
+    "backupNoneYet": "Hozircha zaxira nusxa yo‘q.",
+    "backupStatus_failed": "Xato",
+    "backupStatus_pending": "Kutilmoqda",
+    "backupStatus_running": "Bajarilmoqda",
+    "backupStatus_success": "Muvaffaqiyatli",
+    "dismissButton": "Yopish",
+    "downloadLabel": "Yuklab olish",
+    "fieldSendTestEmail": "Test email yuborish",
+    "fieldSendTestSms": "Test SMS yuborish",
+    "neverLabel": "Hech qachon",
+    "newKeySecretWarning": "Ushbu kalitni hozir nusxalang — uni qayta ko‘rib bo‘lmaydi.",
+    "noApiKeysYet": "Hozircha API kalitlar yo‘q.",
+    "passwordNotSetHint": "Parol hali kiritilmagan.",
+    "passwordSetHint": "Parol kiritilgan.",
+    "revokeButton": "Bekor qilish",
+    "revokedBadge": "Bekor qilingan",
+    "sendTestButton": "Test yuborish",
+    "sendTestEmailHint": "Yuqoridagi sozlamalar bilan haqiqiy test email yuboradi.",
+    "sendTestSmsHint": "Yuqoridagi sozlamalar bilan haqiqiy test SMS yuboradi.",
+    "testEmailSentToast": "Test email yuborildi.",
+    "testPhonePlaceholder": "+998 90 123 45 67",
+    "testPhoneRequiredError": "Test yuborish uchun telefon raqamini kiriting.",
+    "testSmsSentToast": "Test SMS yuborildi."
   },
   "SuperAdminReports": {
     "pageTitle": "Hisobotlar va tahlil",

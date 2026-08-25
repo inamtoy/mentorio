@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   User,
@@ -24,6 +24,8 @@ import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { useStudentsQuery, useUpdateStudentMutation } from '@/lib/queries/students';
 import type { StudentProfile } from '@/lib/api/students';
+import { useMyRegionSettingsQuery, useUpdateMyRegionSettingsMutation } from '@/lib/queries/settings';
+import type { RegionSettings } from '@/lib/api/settings';
 import { toast } from '@/lib/store/toast-store';
 import { ApiError } from '@/lib/api/client';
 import { cn, getInitials } from '@/lib/utils';
@@ -172,10 +174,28 @@ export default function StudentSettingsPage() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light');
   const [accent, setAccent] = useState('#6366f1');
 
-  const [regionSettings, setRegionSettings] = useState({
-    timezone: 'Asia/Tashkent',
-    dateFormat: 'MM/DD/YYYY',
-  });
+  // Real, backend-persisted (foundation.Setting, scope=user) — see
+  // app/teacher/settings/page.tsx's identical pattern and comment.
+  const { data: regionData } = useMyRegionSettingsQuery();
+  const updateRegionMutation = useUpdateMyRegionSettingsMutation();
+  const [regionSettings, setRegionSettings] = useState<RegionSettings | null>(null);
+  const regionSeededRef = useRef(false);
+  useEffect(() => {
+    if (regionData && !regionSeededRef.current) {
+      setRegionSettings(regionData);
+      regionSeededRef.current = true;
+    }
+  }, [regionData]);
+
+  async function handleSaveRegion() {
+    if (!regionSettings) return;
+    try {
+      await updateRegionMutation.mutateAsync(regionSettings);
+      toast.success(t('languageRegionSavedToast'));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : t('genericError'));
+    }
+  }
 
   const ACCENT_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6'];
 
@@ -377,37 +397,46 @@ export default function StudentSettingsPage() {
                   <LanguageSwitcher variant="full" className="w-full [&>select]:w-full" />
                 </Field>
 
-                <Field label={t('timezone')}>
-                  <select
-                    className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
-                    value={regionSettings.timezone}
-                    onChange={(e) => setRegionSettings({ ...regionSettings, timezone: e.target.value })}
-                  >
-                    <option value="Asia/Tashkent">{t('timezoneTashkentUZT')}</option>
-                    <option value="Asia/Almaty">{t('timezoneAlmatyALMT')}</option>
-                    <option value="Europe/Moscow">{t('timezoneMoscowMSK')}</option>
-                    <option value="America/New_York">{t('timezoneEasternET')}</option>
-                  </select>
-                </Field>
+                {!regionSettings ? (
+                  <div className="flex items-center gap-2 py-6 text-sm text-slate-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t('loadingEllipsis')}
+                  </div>
+                ) : (
+                  <>
+                    <Field label={t('timezone')}>
+                      <select
+                        className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
+                        value={regionSettings.timezone}
+                        onChange={(e) => setRegionSettings({ ...regionSettings, timezone: e.target.value })}
+                      >
+                        <option value="Asia/Tashkent">{t('timezoneTashkentUZT')}</option>
+                        <option value="Asia/Almaty">{t('timezoneAlmatyALMT')}</option>
+                        <option value="Europe/Moscow">{t('timezoneMoscowMSK')}</option>
+                        <option value="America/New_York">{t('timezoneEasternET')}</option>
+                      </select>
+                    </Field>
 
-                <Field label={t('dateFormat')}>
-                  <select
-                    className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
-                    value={regionSettings.dateFormat}
-                    onChange={(e) => setRegionSettings({ ...regionSettings, dateFormat: e.target.value })}
-                  >
-                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                    <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                  </select>
-                </Field>
+                    <Field label={t('dateFormat')}>
+                      <select
+                        className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
+                        value={regionSettings.dateFormat}
+                        onChange={(e) => setRegionSettings({ ...regionSettings, dateFormat: e.target.value as RegionSettings['dateFormat'] })}
+                      >
+                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                        <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                      </select>
+                    </Field>
 
-                <div className="flex justify-end pt-2">
-                  <Button>
-                    <Save className="h-4 w-4" />
-                    {t('saveSettings')}
-                  </Button>
-                </div>
+                    <div className="flex justify-end pt-2">
+                      <Button onClick={handleSaveRegion} loading={updateRegionMutation.isPending}>
+                        <Save className="h-4 w-4" />
+                        {t('saveSettings')}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </Card>
           )}

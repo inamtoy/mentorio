@@ -4,6 +4,7 @@ import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { QueryProvider } from "./query-provider";
+import { ThemeApplier } from "@/components/layout/theme-applier";
 
 export const metadata: Metadata = {
   title: "Mentorio — Education Management System",
@@ -33,6 +34,7 @@ export default async function RootLayout({
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <QueryProvider>
+            <ThemeApplier />
             {children}
             <Toaster />
           </QueryProvider>

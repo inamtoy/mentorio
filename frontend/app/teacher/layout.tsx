@@ -29,6 +29,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { useLogout } from "@/lib/hooks/use-logout";
 import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
+import { usePlatformBrandingQuery, useMyRegionSettingsQuery } from "@/lib/queries/settings";
 
 // ─── Nav Config ───────────────────────────────────────────────────────────────
 // Labels are TeacherNav translation keys, resolved at render time via t().
@@ -115,28 +116,28 @@ function TeacherSidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       )}
       <aside
         className={cn(
-          "fixed left-0 top-0 h-full w-[260px] bg-white border-r border-slate-100 z-40 flex flex-col transition-all duration-300",
+          "fixed left-0 top-0 h-full w-[260px] bg-card border-r border-border z-40 flex flex-col transition-all duration-300",
           "lg:z-30",
           collapsed ? "lg:w-16" : "lg:w-[260px]",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
       {/* Logo */}
-      <div className="flex items-center h-16 px-4 border-b border-slate-100 gap-3 flex-shrink-0">
+      <div className="flex items-center h-16 px-4 border-b border-border gap-3 flex-shrink-0">
         {/* eslint-disable-next-line @next/next/no-img-element -- static local asset, matches the plain <img> convention already used for branding.logoUrl on the login page */}
         <img src="/logo.png" alt="Mentorio" className="flex-shrink-0 h-12 w-12 object-contain rounded-xl" />
         <div className={cn("flex items-center gap-2 min-w-0", collapsed && "lg:hidden")}>
-          <span className="text-xl font-bold text-slate-900 tracking-tight">
+          <span className="text-xl font-bold text-card-foreground tracking-tight">
             Mentorio
           </span>
-          <span className="text-[11px] font-semibold bg-indigo-100 text-indigo-700 rounded-md px-1.5 py-0.5 leading-none flex-shrink-0">
+          <span className="text-[11px] font-semibold bg-accent text-accent-foreground rounded-md px-1.5 py-0.5 leading-none flex-shrink-0">
             Teacher
           </span>
         </div>
         <button
           onClick={onToggle}
           className={cn(
-            "ml-auto flex-shrink-0 h-7 w-7 rounded-lg hidden lg:flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors",
+            "ml-auto flex-shrink-0 h-7 w-7 rounded-lg hidden lg:flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors",
             collapsed && "rotate-180"
           )}
           aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
@@ -151,7 +152,7 @@ function TeacherSidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           <div key={group.groupKey}>
             <p
               className={cn(
-                "text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 px-2",
+                "text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 px-2",
                 collapsed && "lg:hidden"
               )}
             >
@@ -173,8 +174,8 @@ function TeacherSidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                       className={cn(
                         "flex items-center gap-3 h-9 rounded-xl px-2.5 text-sm font-medium transition-all group",
                         isActive
-                          ? "bg-indigo-50 text-indigo-700"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                         collapsed && "lg:justify-center"
                       )}
                     >
@@ -182,13 +183,13 @@ function TeacherSidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                         className={cn(
                           "h-[18px] w-[18px] flex-shrink-0",
                           isActive
-                            ? "text-indigo-600"
-                            : "text-slate-400 group-hover:text-slate-700"
+                            ? "text-primary"
+                            : "text-muted-foreground group-hover:text-foreground"
                         )}
                       />
                       <span className={cn("truncate", collapsed && "lg:hidden")}>{label}</span>
                       {isActive && (
-                        <span className={cn("ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500 flex-shrink-0", collapsed && "lg:hidden")} />
+                        <span className={cn("ml-auto h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0", collapsed && "lg:hidden")} />
                       )}
                     </Link>
                   </li>
@@ -218,6 +219,7 @@ function TeacherHeader({ sidebarCollapsed, onMenuClick }: HeaderProps) {
   const authUser = useAuthStore((s) => s.user);
   const titleKey = PAGE_TITLE_KEYS[pathname];
   const title = titleKey ? t(titleKey) : t("portalFallbackTitle");
+  const { data: region } = useMyRegionSettingsQuery();
   const { data: notifications = [] } = useNotificationsQuery();
   const unreadCount = notifications.filter((n) => !n.read).length;
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -240,29 +242,30 @@ function TeacherHeader({ sidebarCollapsed, onMenuClick }: HeaderProps) {
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-100 z-20 flex items-center gap-4 px-4 sm:px-6 transition-all duration-300",
+        "fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-20 flex items-center gap-4 px-4 sm:px-6 transition-all duration-300",
         sidebarCollapsed ? "lg:left-16" : "lg:left-[260px]"
       )}
     >
       <button
         onClick={onMenuClick}
         aria-label={t("openMenuAriaLabel")}
-        className="lg:hidden h-9 w-9 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-500 transition-colors flex-shrink-0"
+        className="lg:hidden h-9 w-9 flex items-center justify-center rounded-xl hover:bg-secondary text-muted-foreground transition-colors flex-shrink-0"
       >
         <Menu className="h-5 w-5" />
       </button>
 
       {/* Page title */}
       <div className="min-w-0">
-        <h2 className="text-lg font-semibold text-slate-900 leading-none truncate">
+        <h2 className="text-lg font-semibold text-card-foreground leading-none truncate">
           {title}
         </h2>
-        <p className="text-xs text-slate-400 mt-0.5 hidden sm:block">
+        <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
           {formatLocalizedDate(new Date(), locale, {
             weekday: "long",
             year: "numeric",
             month: "long",
             day: "numeric",
+            timeZone: region?.timezone,
           })}
         </p>
       </div>
@@ -271,18 +274,18 @@ function TeacherHeader({ sidebarCollapsed, onMenuClick }: HeaderProps) {
 
       {/* Search */}
       <div className="relative hidden md:block">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <input
           type="text"
           placeholder={t("quickSearchPlaceholder")}
-          className="h-9 w-60 pl-9 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+          className="h-9 w-60 pl-9 pr-4 rounded-xl border border-border bg-secondary text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:bg-card transition-all"
         />
       </div>
 
       {/* Notifications */}
       <Link
         href="/teacher/notifications"
-        className="relative h-9 w-9 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+        className="relative h-9 w-9 flex items-center justify-center rounded-xl hover:bg-secondary text-muted-foreground transition-colors"
         aria-label={t("notificationsAriaLabel", { count: unreadCount })}
       >
         <Bell className="h-5 w-5" />
@@ -297,52 +300,52 @@ function TeacherHeader({ sidebarCollapsed, onMenuClick }: HeaderProps) {
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setDropdownOpen((o) => !o)}
-          className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-slate-100 transition-colors"
+          className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-secondary transition-colors"
           aria-expanded={dropdownOpen}
           aria-haspopup="true"
         >
-          <div className="h-8 w-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+          <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm flex-shrink-0">
             {getInitials(authUser?.fullName ?? t("roleTeacher"))}
           </div>
           <div className="hidden sm:block text-left">
-            <p className="text-sm font-medium text-slate-900 leading-none">
+            <p className="text-sm font-medium text-card-foreground leading-none">
               {authUser?.fullName ?? t("roleTeacher")}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">{t("roleTeacher")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("roleTeacher")}</p>
           </div>
           <ChevronDown
             className={cn(
-              "h-4 w-4 text-slate-400 transition-transform hidden sm:block",
+              "h-4 w-4 text-muted-foreground transition-transform hidden sm:block",
               dropdownOpen && "rotate-180"
             )}
           />
         </button>
 
         {dropdownOpen && (
-          <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-lg border border-slate-100 py-1.5 z-50">
-            <div className="px-4 py-2.5 border-b border-slate-50">
-              <p className="text-sm font-semibold text-slate-900">
+          <div className="absolute right-0 top-full mt-2 w-52 bg-card rounded-2xl shadow-lg border border-border py-1.5 z-50">
+            <div className="px-4 py-2.5 border-b border-border">
+              <p className="text-sm font-semibold text-card-foreground">
                 {authUser?.fullName ?? t("roleTeacher")}
               </p>
-              <p className="text-xs text-slate-400">{authUser?.loginId}</p>
+              <p className="text-xs text-muted-foreground">{authUser?.loginId}</p>
             </div>
             <Link
               href="/teacher/profile"
               onClick={() => setDropdownOpen(false)}
-              className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+              className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
             >
-              <UserCircle className="h-4 w-4 text-slate-400" />
+              <UserCircle className="h-4 w-4 text-muted-foreground" />
               {t("navProfile")}
             </Link>
             <Link
               href="/teacher/settings"
               onClick={() => setDropdownOpen(false)}
-              className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+              className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
             >
-              <Settings className="h-4 w-4 text-slate-400" />
+              <Settings className="h-4 w-4 text-muted-foreground" />
               {t("navSettings")}
             </Link>
-            <div className="border-t border-slate-50 mt-1 pt-1">
+            <div className="border-t border-border mt-1 pt-1">
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors w-full"
@@ -365,11 +368,15 @@ export default function TeacherLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  // See components/layout/app-shell.tsx's identical comment — real
+  // default from Super-Admin Settings' Theme > compactSidebar, not a
+  // forced state.
+  const { data: branding } = usePlatformBrandingQuery();
+  const [collapsed, setCollapsed] = useState(() => branding?.theme.compactSidebar ?? false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <TeacherSidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed((c) => !c)}

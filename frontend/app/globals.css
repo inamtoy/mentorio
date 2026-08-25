@@ -6,6 +6,7 @@
   --card: #ffffff;
   --card-foreground: #0f172a;
   --primary: #6366f1;
+  --primary-hover: #4f46e5;
   --primary-foreground: #ffffff;
   --secondary: #f1f5f9;
   --secondary-foreground: #475569;
@@ -20,7 +21,9 @@
   --ring: #6366f1;
   --radius: 0.75rem;
   --sidebar-width: 260px;
+  --sidebar-width-collapsed: 64px;
   --header-height: 64px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   /* Status colors */
   --success: #22c55e;
@@ -30,11 +33,35 @@
   --pink: #ec4899;
 }
 
+/* Super-Admin Settings' Theme panel — darkMode. Redefines the same tokens
+ * above (never a separate set), set via `data-theme` on <html> by
+ * components/layout/theme-applier.tsx. Deliberately scoped to the shared
+ * shell (Card/Button/Sidebar/Header, all retrofitted to consume these
+ * tokens instead of hardcoded Tailwind literals) — most page content still
+ * hardcodes its own colors (see the plan doc this shipped against), so
+ * this is a real but bounded "dark shell", not a full app-wide repaint. */
+:root[data-theme="dark"] {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --secondary: #1e293b;
+  --secondary-foreground: #cbd5e1;
+  --muted: #1e293b;
+  --muted-foreground: #64748b;
+  --accent: #312e81;
+  --accent-foreground: #c7d2fe;
+  --border: #334155;
+  --input: #334155;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-muted: var(--muted);
@@ -51,7 +78,7 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

@@ -82,23 +82,23 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       )}
       <aside
         className={cn(
-          "fixed left-0 top-0 h-full w-[260px] bg-white border-r border-slate-100 z-40 flex flex-col transition-all duration-300",
+          "fixed left-0 top-0 h-full w-[260px] bg-card border-r border-border z-40 flex flex-col transition-all duration-300",
           "lg:z-30",
           collapsed ? "lg:w-16" : "lg:w-[260px]",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
       {/* Logo */}
-      <div className="flex items-center h-16 px-4 border-b border-slate-100 gap-3">
+      <div className="flex items-center h-16 px-4 border-b border-border gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element -- static local asset, matches the plain <img> convention already used for branding.logoUrl on the login page */}
         <img src="/logo.png" alt="Mentorio" className="flex-shrink-0 h-12 w-12 object-contain rounded-xl" />
-        <span className={cn("text-xl font-bold text-slate-900 tracking-tight", collapsed && "lg:hidden")}>
+        <span className={cn("text-xl font-bold text-card-foreground tracking-tight", collapsed && "lg:hidden")}>
           Mentorio
         </span>
         <button
           onClick={onToggle}
           className={cn(
-            "ml-auto flex-shrink-0 h-7 w-7 rounded-lg hidden lg:flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors",
+            "ml-auto flex-shrink-0 h-7 w-7 rounded-lg hidden lg:flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors",
             collapsed && "rotate-180"
           )}
           aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
@@ -113,7 +113,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           <div key={group.groupKey}>
             <p
               className={cn(
-                "text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 px-2",
+                "text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 px-2",
                 collapsed && "lg:hidden"
               )}
             >
@@ -133,8 +133,8 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                       className={cn(
                         "flex items-center gap-3 h-9 rounded-xl px-2.5 text-sm font-medium transition-all group",
                         isActive
-                          ? "bg-indigo-50 text-indigo-700"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                         collapsed && "lg:justify-center"
                       )}
                     >
@@ -142,13 +142,13 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
                         className={cn(
                           "h-[18px] w-[18px] flex-shrink-0",
                           isActive
-                            ? "text-indigo-600"
-                            : "text-slate-400 group-hover:text-slate-700"
+                            ? "text-primary"
+                            : "text-muted-foreground group-hover:text-foreground"
                         )}
                       />
                       <span className={cn(collapsed && "lg:hidden")}>{label}</span>
                       {isActive && (
-                        <span className={cn("ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500", collapsed && "lg:hidden")} />
+                        <span className={cn("ml-auto h-1.5 w-1.5 rounded-full bg-primary", collapsed && "lg:hidden")} />
                       )}
                     </Link>
                   </li>

@@ -21,7 +21,14 @@ from rest_framework.test import APIClient
 
 from common.context import apply_org_context
 from foundation.models import Organization, Role, Setting, User, UserRole
-from foundation.services import DEFAULT_GENERAL_SETTINGS, DEFAULT_SECURITY_SETTINGS
+from foundation.services import (
+    DEFAULT_EMAIL_SETTINGS,
+    DEFAULT_GENERAL_SETTINGS,
+    DEFAULT_LANGUAGES_SETTINGS,
+    DEFAULT_SECURITY_SETTINGS,
+    DEFAULT_SMS_SETTINGS,
+    DEFAULT_THEME_SETTINGS,
+)
 
 pytestmark = pytest.mark.django_db(databases=["default", "auth_bypass_rls"], transaction=True)
 
@@ -276,3 +283,160 @@ def test_password_policy_strong_accepts_a_qualifying_password():
     )
 
     assert response.status_code == 200
+
+
+# ─── Theme/Languages/Email/SMS — 2026-08-25's "make the mock panels real" ──
+
+
+def test_platform_settings_now_has_theme_languages_email_and_sms_keys():
+    org = _make_org()
+    client = APIClient()
+    _make_super_admin_login(client, org, "+998900820012")
+
+    body = client.get("/api/v1/settings/platform/").json()["data"]
+
+    assert set(DEFAULT_THEME_SETTINGS) <= set(body["theme"])
+    assert set(DEFAULT_LANGUAGES_SETTINGS) <= set(body["languages"])
+    assert set(body["email"]) == {"smtpHost", "smtpPort", "username", "fromName", "tlsEnabled", "hasPassword"}
+    assert set(body["sms"]) == {"provider", "accountSid", "fromNumber", "enabled", "hasAuthToken"}
+
+
+def test_email_password_is_never_echoed_back_and_survives_a_password_less_save():
+    org = _make_org()
+    client = APIClient()
+    _make_super_admin_login(client, org, "+998900820013")
+
+    client.put(
+        "/api/v1/settings/platform/",
+        {"email": {**DEFAULT_EMAIL_SETTINGS, "smtpHost": "smtp.example.com", "password": "s3cr3t"}},
+        format="json",
+    )
+    first_get = client.get("/api/v1/settings/platform/").json()["data"]["email"]
+    assert "password" not in first_get
+    assert first_get["hasPassword"] is True
+
+    # Saving the rest of the panel again without retyping the password (the
+    # real GET response never contains it to prefill) must not wipe it —
+    # sanitize_platform_setting_incoming()'s whole point.
+    client.put(
+        "/api/v1/settings/platform/",
+        {"email": {**DEFAULT_EMAIL_SETTINGS, "smtpHost": "smtp.example.com", "password": "", "fromName": "New Name"}},
+        format="json",
+    )
+    stored = Setting.objects.using(BYPASS_ALIAS).get(scope="platform", key="email").value
+    assert stored["password"] == "s3cr3t"
+    assert stored["fromName"] == "New Name"
+
+
+def test_sms_auth_token_is_never_echoed_back():
+    org = _make_org()
+    client = APIClient()
+    _make_super_admin_login(client, org, "+998900820014")
+
+    client.put(
+        "/api/v1/settings/platform/",
+        {"sms": {**DEFAULT_SMS_SETTINGS, "accountSid": "AC123", "authToken": "tok123"}},
+        format="json",
+    )
+    body = client.get("/api/v1/settings/platform/").json()["data"]["sms"]
+
+    assert "authToken" not in body
+    assert body["hasAuthToken"] is True
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"primaryColor": "not-a-color"},
+        {"fontFamily": "comic-sans"},
+        {"darkMode": "yes"},
+    ],
+)
+def test_theme_settings_reject_malformed_values(payload):
+    org = _make_org()
+    client = APIClient()
+    _make_super_admin_login(client, org, "+998900820015")
+
+    response = client.put("/api/v1/settings/platform/", {"theme": payload}, format="json")
+
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"enabled": ["en", "fr"]},  # fr has no translations
+        {"enabled": []},  # must stay non-empty
+        {"default": "ru", "enabled": ["en", "uz"]},  # default must be in enabled
+    ],
+)
+def test_languages_settings_reject_malformed_values(payload):
+    org = _make_org()
+    client = APIClient()
+    _make_super_admin_login(client, org, "+998900820016")
+
+    response = client.put("/api/v1/settings/platform/", {"languages": payload}, format="json")
+
+    assert response.status_code == 400
+
+
+def test_platform_branding_now_includes_theme():
+    org = _make_org()
+    client = APIClient()
+    _make_super_admin_login(client, org, "+998900820017")
+    client.put("/api/v1/settings/platform/", {"theme": {"primaryColor": "#123456"}}, format="json")
+
+    response = APIClient().get("/api/v1/settings/platform/branding/")
+
+    assert response.status_code == 200
+    assert response.json()["data"]["theme"]["primaryColor"] == "#123456"
+
+
+# ─── Region settings (Admin/Teacher/Student Settings' Region tab) ─────────
+# See test_region_settings.py for the dedicated MyRegionSettingsView suite —
+# these two just confirm PlatformSettingsView's RBAC gate is untouched by
+# the new panels (still 403 for a non-super-admin, still 200 with every key
+# for a super-admin), which the tests above already exercise indirectly.
+
+
+# ─── Email/SMS test-send ────────────────────────────────────────────────────
+# No real SMTP server / Twilio account exists in the test environment, so
+# these only exercise the parts that don't need one: permission gating and
+# the "nothing configured yet" early-return path — see
+# foundation.services.send_test_email/send_test_sms's own docstrings for
+# why a provider-side failure is a normal (ok=False), not a 500.
+
+
+def test_center_admin_cannot_send_test_email_or_sms():
+    org = _make_org()
+    admin = _make_login(org, "+998900820018", "center_admin")
+    client = APIClient()
+    _login(client, admin)
+
+    assert client.post("/api/v1/settings/platform/email/test/", {"to": "a@example.com"}, format="json").status_code == 403
+    assert client.post("/api/v1/settings/platform/sms/test/", {"to": "+998900000000"}, format="json").status_code == 403
+
+
+def test_test_email_without_smtp_host_configured_fails_cleanly():
+    org = _make_org()
+    client = APIClient()
+    _make_super_admin_login(client, org, "+998900820019")
+
+    response = client.post("/api/v1/settings/platform/email/test/", {"to": "a@example.com"}, format="json")
+
+    # 200, not a 500 — an unconfigured/failed send is a normal, displayable
+    # result, not a request-level error.
+    assert response.status_code == 200
+    assert response.json()["success"] is False
+
+
+def test_test_sms_without_twilio_configured_fails_cleanly():
+    org = _make_org()
+    client = APIClient()
+    _make_super_admin_login(client, org, "+998900820020")
+    client.put("/api/v1/settings/platform/", {"sms": {**DEFAULT_SMS_SETTINGS, "enabled": True}}, format="json")
+
+    response = client.post("/api/v1/settings/platform/sms/test/", {"to": "+998900000000"}, format="json")
+
+    assert response.status_code == 200
+    assert response.json()["success"] is False

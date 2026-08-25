@@ -5,3 +5,8 @@ __pycache__/
 db.sqlite3
 *.log
 .pytest_cache/
+
+# foundation.services.run_platform_backup()'s pg_dump output (Super-Admin
+# Settings' Backup panel) — BACKUP_DIR default, see config/settings/base.py.
+# Real DB dumps, never meant to be committed.
+backups/

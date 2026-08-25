@@ -1,7 +1,9 @@
 from django.db import transaction
+from django.http import FileResponse
+from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,20 +11,32 @@ from rest_framework.views import APIView
 from common.audit import audit_log, audited
 from common.permissions import HasModulePermission, is_platform_user, user_has_permission
 from foundation.filters import AuditLogFilter, BranchFilter, OrganizationFilter, UserFilter
-from foundation.models import AuditLog, Organization, Branch, Permission, Role, User
+from foundation.models import ApiKey, AuditLog, Organization, Branch, Permission, PlatformBackup, Role, User
 from foundation.serializers import (
+    ApiKeySerializer,
     AuditLogSerializer,
     BranchSerializer,
     OrganizationSerializer,
     PermissionSerializer,
+    PlatformBackupSerializer,
     RoleSerializer,
     UserSerializer,
 )
 from foundation.services import (
     PLATFORM_SETTINGS_DEFAULTS,
     PLATFORM_SETTINGS_VALIDATORS,
+    USER_SETTINGS_VALIDATORS,
+    generate_api_key,
     get_platform_setting,
+    get_user_setting,
+    mask_platform_setting_secrets,
+    rotate_api_key,
+    run_platform_backup,
+    sanitize_platform_setting_incoming,
+    send_test_email,
+    send_test_sms,
     set_platform_setting,
+    set_user_setting,
 )
 
 BYPASS_ALIAS = "auth_bypass_rls"  # see auth_custom/services/session_service.py — same role, same reason:
@@ -252,16 +266,16 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class PlatformSettingsView(APIView):
-    """General + Security platform-wide config for the Super-Admin Settings
-    page — see foundation.services' docstring on PLATFORM_SETTINGS_DEFAULTS
-    for why these two panels live here as generic key-value Setting rows
-    rather than a dedicated model. Theme/Languages/Email/SMS/Backup/API-Keys
-    aren't wired yet (frontend mock only, see the plan doc) and have no
-    backend surface at all — only "general"/"security" are ever read here.
-    Plain APIView, not a ModelViewSet: this isn't a collection of rows, it's
-    two singleton config blobs, so `user_has_permission` is checked
-    directly rather than via HasModulePermission's action-keyed map (same
-    style as payment_gateways.views.CheckoutInitiateView).
+    """General/Security/Theme/Languages/Email/SMS platform-wide config for
+    the Super-Admin Settings page — see foundation.services' docstring on
+    PLATFORM_SETTINGS_DEFAULTS for why every panel here is a generic
+    key-value Setting row rather than a dedicated model. Backup/API-Keys
+    are the two panels that DO need dedicated models (real rows with real
+    behavior, not a JSON blob) — see PlatformBackupListView/ApiKeyViewSet
+    below. Plain APIView, not a ModelViewSet: this isn't a collection of
+    rows, it's a handful of singleton config blobs, so `user_has_permission`
+    is checked directly rather than via HasModulePermission's action-keyed
+    map (same style as payment_gateways.views.CheckoutInitiateView).
     """
 
     permission_classes = [IsAuthenticated]
@@ -270,7 +284,14 @@ class PlatformSettingsView(APIView):
         if not user_has_permission(request.user, "platform_settings", "view"):
             raise PermissionDenied("You do not have permission to view platform settings.")
         return Response(
-            {"success": True, "message": "", "data": {key: get_platform_setting(key) for key in PLATFORM_SETTINGS_DEFAULTS}}
+            {
+                "success": True,
+                "message": "",
+                "data": {
+                    key: mask_platform_setting_secrets(key, get_platform_setting(key))
+                    for key in PLATFORM_SETTINGS_DEFAULTS
+                },
+            }
         )
 
     @transaction.atomic
@@ -290,6 +311,12 @@ class PlatformSettingsView(APIView):
                 continue
             if not isinstance(incoming, dict):
                 raise ValidationError({key: "Must be an object."})
+            # Drops a blank Email password / SMS auth token before
+            # validating/merging — see sanitize_platform_setting_incoming()'s
+            # docstring for why (the GET response never contains the real
+            # secret to prefill, so a blank field here means "unchanged",
+            # not "clear it").
+            incoming = sanitize_platform_setting_incoming(key, incoming)
             # Real per-field validation, not just "is a dict" — this data
             # is read by LoginView's lockout check and
             # password_policy.validate_password_policy on every login/
@@ -310,13 +337,19 @@ class PlatformSettingsView(APIView):
         updated = {}
         for key, merged in merged_by_key.items():
             setting = set_platform_setting(key, merged)
-            updated[key] = merged
+            # Masked the same way GET is — the response to this very PUT
+            # must not echo the just-saved Email password/SMS auth token
+            # back in plaintext either.
+            updated[key] = mask_platform_setting_secrets(key, merged)
             # entity_id is a real UUIDField — the Setting row's own id, not
             # the panel key ("general"/"security", not a UUID at all); the
             # section name still goes in metadata for readability.
             audit_log(
+                # Masked `new_values` too — an audit log row is still a log,
+                # and CLAUDE.md's "never log passwords" applies just as much
+                # to Email's password / SMS's authToken here.
                 request, action="update", entity_type="platform_settings", entity_id=str(setting.id),
-                new_values=merged, metadata={"section": key},
+                new_values=updated[key], metadata={"section": key},
             )
 
         return Response({"success": True, "message": "Settings saved", "data": updated})
@@ -324,11 +357,15 @@ class PlatformSettingsView(APIView):
 
 class PlatformBrandingView(APIView):
     """Public, unauthenticated — the login page needs the platform's name/
-    tagline/logo *before* anyone is signed in. Safe by construction: only
-    ever reads the "general" panel's already-public-facing fields. Goes
-    through the BYPASSRLS alias, same reasoning as auth_custom.LoginView's
-    own initial lookup — no token means no org context is ever established
-    for this request (see common/middleware.py's docstring), and relying on
+    tagline/logo *before* anyone is signed in. Also where `theme` reaches
+    every OTHER portal's shell (Admin/Teacher/Student, not just Super-
+    Admin's own screen) — see components/layout/theme-applier.tsx, which
+    reads this same endpoint from the root layout. Safe by construction:
+    only ever reads already-public-facing fields (no secrets, no per-org
+    data). Goes through the BYPASSRLS alias, same reasoning as
+    auth_custom.LoginView's own initial lookup — no token means no org
+    context is ever established for this request (see
+    common/middleware.py's docstring), and relying on
     `current_setting(..., true)` to cleanly resolve to NULL in that state
     proved unreliable in practice (a prior request's session-level GUC can
     still be visible), so this sidesteps RLS entirely rather than depend on
@@ -340,6 +377,7 @@ class PlatformBrandingView(APIView):
 
     def get(self, request):
         general = get_platform_setting("general", using=BYPASS_ALIAS)
+        theme = get_platform_setting("theme", using=BYPASS_ALIAS)
         return Response(
             {
                 "success": True,
@@ -349,6 +387,164 @@ class PlatformBrandingView(APIView):
                     "tagline": general["tagline"],
                     "logoUrl": general["logoUrl"],
                     "faviconUrl": general["faviconUrl"],
+                    "theme": theme,
                 },
             }
         )
+
+
+class MyRegionSettingsView(APIView):
+    """Per-user timezone/dateFormat — Admin/Teacher/Student Settings'
+    Region tab. Self-service (a user only ever manages their own row), so
+    unlike PlatformSettingsView this needs no `platform_settings` RBAC
+    check — just IsAuthenticated, same trust level as changing your own
+    password.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({"success": True, "message": "", "data": get_user_setting(request.user, "region")})
+
+    def put(self, request):
+        incoming = request.data
+        if not isinstance(incoming, dict):
+            raise ValidationError("Request body must be an object.")
+        USER_SETTINGS_VALIDATORS["region"](incoming)
+        merged = {**get_user_setting(request.user, "region"), **incoming}
+        set_user_setting(request.user, "region", merged)
+        return Response({"success": True, "message": "Settings saved", "data": merged})
+
+
+class EmailTestView(APIView):
+    """Real SMTP send attempt using the stored Email panel config — see
+    foundation.services.send_test_email()'s docstring for why this only
+    actually succeeds once real credentials are entered."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not user_has_permission(request.user, "platform_settings", "update"):
+            raise PermissionDenied("You do not have permission to update platform settings.")
+        # foundation.User has no email field at all (see
+        # 0008_remove_user_email.py) — General's supportEmail is the only
+        # real email address this platform already has on file, so it's the
+        # sensible default destination when the caller doesn't supply one.
+        to = request.data.get("to") or get_platform_setting("general")["supportEmail"]
+        if not to:
+            raise ValidationError({"to": "A destination email address is required."})
+        ok, message = send_test_email(to)
+        return Response({"success": ok, "message": message, "data": None})
+
+
+class SmsTestView(APIView):
+    """Real Twilio send attempt using the stored SMS panel config — see
+    foundation.services.send_test_sms()'s docstring."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not user_has_permission(request.user, "platform_settings", "update"):
+            raise PermissionDenied("You do not have permission to update platform settings.")
+        to = request.data.get("to")
+        if not to:
+            raise ValidationError({"to": "A destination phone number is required."})
+        ok, message = send_test_sms(to)
+        return Response({"success": ok, "message": message, "data": None})
+
+
+class PlatformBackupListView(APIView):
+    """List + trigger manual runs — Super-Admin Settings' Backup panel.
+    Plain APIView pair rather than a ModelViewSet: only list/create are
+    meaningful (a backup is never edited, and deleting old dump rows/files
+    isn't part of this feature), so a full ModelViewSet's routes would
+    mostly be dead surface — same reasoning as PlatformSettingsView above.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not user_has_permission(request.user, "platform_settings", "view"):
+            raise PermissionDenied("You do not have permission to view platform settings.")
+        backups = PlatformBackup.objects.all()[:50]
+        return Response({"success": True, "message": "", "data": PlatformBackupSerializer(backups, many=True).data})
+
+    def post(self, request):
+        if not user_has_permission(request.user, "platform_settings", "update"):
+            raise PermissionDenied("You do not have permission to update platform settings.")
+        backup = run_platform_backup(triggered_by=request.user)
+        audit_log(
+            request, action="run_backup", entity_type="platform_backup", entity_id=str(backup.id),
+            metadata={"status": backup.status},
+        )
+        status_code = 201 if backup.status == "success" else 502
+        return Response(
+            {"success": backup.status == "success", "message": backup.error_message or "Backup completed",
+             "data": PlatformBackupSerializer(backup).data},
+            status=status_code,
+        )
+
+
+class PlatformBackupDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, backup_id):
+        if not user_has_permission(request.user, "platform_settings", "view"):
+            raise PermissionDenied("You do not have permission to view platform settings.")
+        backup = PlatformBackup.objects.filter(id=backup_id, status="success").first()
+        if backup is None or not backup.storage_path:
+            raise NotFound("Backup not found or not downloadable.")
+        audit_log(request, action="download_backup", entity_type="platform_backup", entity_id=str(backup.id))
+        return FileResponse(open(backup.storage_path, "rb"), as_attachment=True, filename=f"{backup.id}.dump")
+
+
+class ApiKeyViewSet(viewsets.ViewSet):
+    """List/create/revoke — Super-Admin Settings' API Keys panel. A plain
+    ViewSet, not ModelViewSet: ApiKeySerializer is read-only (creation goes
+    through generate_api_key(), which is the only place the raw secret is
+    ever produced) and "delete" here means revoke, not a real DELETE.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        if not user_has_permission(request.user, "platform_settings", "view"):
+            raise PermissionDenied("You do not have permission to view platform settings.")
+        keys = ApiKey.objects.all()
+        return Response({"success": True, "message": "", "data": ApiKeySerializer(keys, many=True).data})
+
+    def create(self, request):
+        if not user_has_permission(request.user, "platform_settings", "update"):
+            raise PermissionDenied("You do not have permission to update platform settings.")
+        name = (request.data.get("name") or "").strip()
+        if not name:
+            raise ValidationError({"name": "This field is required."})
+        api_key, raw_key = generate_api_key(name, created_by=request.user)
+        audit_log(request, action="create", entity_type="api_key", entity_id=str(api_key.id), new_values={"name": name})
+        data = ApiKeySerializer(api_key).data
+        data["key"] = raw_key  # only ever present in this one response
+        return Response({"success": True, "message": "API key created", "data": data}, status=201)
+
+    @action(detail=True, methods=["post"])
+    def rotate(self, request, pk=None):
+        if not user_has_permission(request.user, "platform_settings", "update"):
+            raise PermissionDenied("You do not have permission to update platform settings.")
+        old_key = ApiKey.objects.filter(pk=pk).first()
+        if old_key is None:
+            raise NotFound("API key not found.")
+        new_key, raw_key = rotate_api_key(old_key, created_by=request.user)
+        audit_log(request, action="rotate", entity_type="api_key", entity_id=str(new_key.id), metadata={"replaced": pk})
+        data = ApiKeySerializer(new_key).data
+        data["key"] = raw_key
+        return Response({"success": True, "message": "API key rotated", "data": data}, status=201)
+
+    def destroy(self, request, pk=None):
+        if not user_has_permission(request.user, "platform_settings", "update"):
+            raise PermissionDenied("You do not have permission to update platform settings.")
+        api_key = ApiKey.objects.filter(pk=pk).first()
+        if api_key is None:
+            raise NotFound("API key not found.")
+        api_key.revoked_at = timezone.now()
+        api_key.save(update_fields=["revoked_at"])
+        audit_log(request, action="revoke", entity_type="api_key", entity_id=str(api_key.id))
+        return Response({"success": True, "message": "API key revoked", "data": None})

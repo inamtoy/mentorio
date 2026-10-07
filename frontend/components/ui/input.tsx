@@ -187,9 +187,18 @@ interface SelectProps {
 const EMPTY_VALUE_SENTINEL = "__empty__";
 
 export function Select({ options, value, onChange, placeholder, className, disabled, name, ...props }: SelectProps) {
+  // Only remap "" to the sentinel when some real option actually uses ""
+  // as its value (the "All X" filter pattern the comment above describes).
+  // Otherwise "" means "nothing selected yet" (an optional field with no
+  // empty option in its list) — passed through to Radix as-is, since its
+  // own shouldShowPlaceholder() only recognizes "" or undefined, never the
+  // sentinel, as "show the placeholder". Without this guard, an optional
+  // Select stuck at value="" renders completely blank instead of the
+  // placeholder, because Radix sees a "selected" value matching no Item.
+  const hasEmptyOption = options.some((opt) => opt.value === "");
   return (
     <SelectPrimitive.Root
-      value={value === "" ? EMPTY_VALUE_SENTINEL : value}
+      value={value === "" && hasEmptyOption ? EMPTY_VALUE_SENTINEL : value}
       onValueChange={(v) => onChange?.({ target: { value: v === EMPTY_VALUE_SENTINEL ? "" : v } })}
       disabled={disabled}
       name={name}

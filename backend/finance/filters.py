@@ -1,6 +1,6 @@
 import django_filters
 
-from finance.models import Invoice, Payment
+from finance.models import Expense, Invoice, Payment, Payroll
 
 
 class InvoiceFilter(django_filters.FilterSet):
@@ -23,3 +23,21 @@ class PaymentFilter(django_filters.FilterSet):
     class Meta:
         model = Payment
         fields = ["organization", "invoice", "student_profile", "date_from", "date_to"]
+
+
+class ExpenseFilter(django_filters.FilterSet):
+    date_from = django_filters.DateFilter(field_name="expense_date", lookup_expr="gte")
+    date_to = django_filters.DateFilter(field_name="expense_date", lookup_expr="lte")
+
+    class Meta:
+        model = Expense
+        fields = ["organization", "branch", "category", "status", "date_from", "date_to"]
+
+
+class PayrollFilter(django_filters.FilterSet):
+    date_from = django_filters.DateFilter(field_name="period_start", lookup_expr="gte")
+    date_to = django_filters.DateFilter(field_name="period_start", lookup_expr="lte")
+
+    class Meta:
+        model = Payroll
+        fields = ["organization", "teacher_profile", "status", "date_from", "date_to"]

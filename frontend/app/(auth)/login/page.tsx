@@ -42,14 +42,6 @@ const BRAND_MESH_BACKGROUND = [
   "linear-gradient(145deg, rgb(21,159,245) 0%, rgb(59,32,219) 47%, rgb(215,166,251) 100%)",
 ].join(", ");
 
-function Spark({ size }: { size: number }) {
-  return (
-    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9" />
-    </svg>
-  );
-}
-
 // ─── Form field ───────────────────────────────────────────────────────────────
 
 function FieldShell({ icon, error, children }: { icon: React.ReactNode; error?: string; children: React.ReactNode }) {
@@ -159,9 +151,6 @@ export default function LoginPage() {
             <span className="absolute right-[5%] bottom-[17%] h-[260px] w-[260px] rounded-full bg-[rgba(206,242,255,0.72)] blur-[30px]" />
             <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(31,14,129,0.4),transparent_58%)]" />
           </div>
-          <span className="absolute top-7 left-7 z-10 grid h-10 w-10 place-items-center">
-            <Spark size={30} />
-          </span>
           <div className="absolute right-[42px] bottom-11 left-[42px] z-10 max-w-[360px]">
             <p className="mb-2.5 text-[13px] font-medium text-white/80">Everything you need to learn, all in one place</p>
             <h2 className="text-[30px] leading-[1.16] font-bold tracking-[-0.04em]">Your learning hub for growth and progress.</h2>
@@ -175,18 +164,18 @@ export default function LoginPage() {
 
         {/* Form panel */}
         <div className="relative flex min-w-0 flex-col bg-white px-6 pt-7 pb-8 sm:px-[54px] sm:pt-[38px] sm:pb-11 min-[901px]:px-[68px] min-[901px]:py-9">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={logoUrl}
-            alt={platformName}
-            className="mx-auto mb-10 block h-auto max-h-14 w-[150px] object-contain sm:mx-0 sm:-ml-1.5 sm:w-[168px] sm:object-left"
-          />
+          {/* Same width container as the form below, so the logo's left edge lines up with the inputs. */}
+          <div className="mb-10 w-full max-w-[430px] sm:mx-auto">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={logoUrl}
+              alt={platformName}
+              className="mx-auto block h-auto max-h-14 w-[150px] object-contain sm:mx-0 sm:w-[168px] sm:object-left"
+            />
+          </div>
 
           <div className="w-full max-w-[430px] sm:mx-auto sm:my-auto">
             <header className="mb-7 min-[901px]:mb-[30px]">
-              <span className="mb-[11px] grid h-[30px] w-[30px] place-items-center text-[#563ce7] sm:mb-3.5">
-                <Spark size={22} />
-              </span>
               <h1 className="text-[27px] leading-[1.2] font-bold tracking-[-0.04em] text-[#131626] sm:text-[31px]">Welcome back</h1>
               <p className="mt-2.5 text-sm leading-[1.6] text-[#77798a]">Sign in to continue to your {platformName} LMS account.</p>
             </header>

@@ -87,7 +87,11 @@
     "timezoneEasternET": "Sharqiy vaqt (ET)",
     "loadingEllipsis": "Yuklanmoqda…",
     "genericError": "Nimadir xato ketdi. Qaytadan urinib ko‘ring.",
-    "languageRegionSavedToast": "Hudud sozlamalari saqlandi."
+    "languageRegionSavedToast": "Hudud sozlamalari saqlandi.",
+    "fillAllPasswordFieldsToast": "Barcha parol maydonlarini to'ldiring",
+    "passwordMismatchToast": "Yangi parol va tasdiqlash mos kelmadi",
+    "passwordUpdatedToast": "Parol yangilandi",
+    "passwordUpdateFailedToast": "Parolni yangilab bo'lmadi."
   },
   "StudentNav": {
     "openMenuAriaLabel": "Menyuni ochish",
@@ -848,7 +852,8 @@
     "timezoneKarachiPKT": "Karachi (PKT)",
     "timezoneTokyoJST": "Tokio (JST)",
     "loadingEllipsis": "Yuklanmoqda…",
-    "genericError": "Nimadir xato ketdi. Qaytadan urinib ko‘ring."
+    "genericError": "Nimadir xato ketdi. Qaytadan urinib ko‘ring.",
+    "passwordUpdateFailedToast": "Parolni yangilab bo'lmadi."
   },
   "AdminNav": {
     "navGroupMain": "Asosiy",
@@ -1682,7 +1687,8 @@
     "paymentGatewaysTitle": "To'lov tizimlari",
     "paymentGatewaysSubtitle": "O'quvchilar onlayn to'lashi uchun Payme va Clickni ulang",
     "loadingLabel": "Yuklanmoqda…",
-    "loadingEllipsis": "Yuklanmoqda…"
+    "loadingEllipsis": "Yuklanmoqda…",
+    "passwordUpdateFailedToast": "Parolni yangilab bo'lmadi."
   },
   "SuperAdminNav": {
     "openMenuAriaLabel": "Menyuni ochish",
@@ -2509,5 +2515,17 @@
     "avatarUpdateFailedToast": "Avatarni yangilab bo'lmadi.",
     "sessionRevokedToast": "Sessiya bekor qilindi",
     "sessionRevokeFailedToast": "Sessiyani bekor qilib bo'lmadi."
+  },
+  "ResetPassword": {
+    "title": "Parolni tiklash",
+    "description": "Parolini unutgan va Telegram orqali tiklay olmaydigan foydalanuvchilar uchun. Vaqtinchalik parol yaratiladi, foydalanuvchi keyingi kirishda uni o'zgartirishi shart.",
+    "resetButton": "Vaqtinchalik parol yaratish",
+    "confirmText": "Foydalanuvchi barcha qurilmalardan darhol chiqarib yuboriladi. Davom etasizmi?",
+    "confirmButton": "Parolni tiklash",
+    "cancelButton": "Bekor qilish",
+    "doneHint": "Bu vaqtinchalik parolni foydalanuvchiga bering. U faqat bir marta ko'rsatiladi va keyingi kirishda o'zgartirilishi shart.",
+    "copyButton": "Nusxalash",
+    "copied": "Nusxalandi",
+    "failedToast": "Parolni tiklab bo'lmadi."
   }
 }

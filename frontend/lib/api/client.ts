@@ -106,11 +106,27 @@ async function apiFetchWithRefresh<T>(path: string, init: RequestInit, isRetry: 
 
   const body = (await response.json().catch(() => null)) as Envelope<T> | null;
 
+  if (response.status === 403 && isPasswordChangeRequired(body?.data)) {
+    // The account is on an admin-set password — the backend refuses
+    // everything until it's replaced (common/authentication.py).
+    if (typeof window !== "undefined" && window.location.pathname !== CHANGE_PASSWORD_PATH) {
+      window.location.assign(CHANGE_PASSWORD_PATH);
+    }
+  }
+
   if (!response.ok || !body || !body.success) {
     throw new ApiError(body?.message ?? "Request failed.", response.status, extractFieldErrors(body?.data));
   }
 
   return body.data;
+}
+
+const CHANGE_PASSWORD_PATH = "/change-password";
+
+// Mirrors common/authentication.py::PASSWORD_CHANGE_REQUIRED.
+function isPasswordChangeRequired(data: unknown): boolean {
+  const code = (data as { code?: unknown } | null)?.code;
+  return Array.isArray(code) && code.includes("password_change_required");
 }
 
 export interface PaginatedEnvelope<T> {

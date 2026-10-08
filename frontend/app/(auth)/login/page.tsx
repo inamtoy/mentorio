@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, User, Lock, AlertCircle, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -9,7 +10,13 @@ import { ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { usePlatformBrandingQuery } from "@/lib/queries/settings";
 import { seedLocaleCookieIfUnset } from "@/i18n/locales";
-import { cn } from "@/lib/utils";
+import { ROLE_PORTAL_MAP } from "@/lib/portals";
+import {
+  AUTH_ICON_CLASS as ICON_CLASS,
+  AUTH_INPUT_CLASS as INPUT_CLASS,
+  AUTH_PRIMARY_BUTTON_CLASS,
+  FieldShell,
+} from "@/components/auth/auth-field";
 
 // The login page is deliberately NOT translated/switchable — always
 // English, hardcoded, no useTranslations()/LanguageSwitcher here. The
@@ -19,16 +26,6 @@ import { cn } from "@/lib/utils";
 // pick. See the user's explicit call on this over the original design
 // (which had a switcher here too; the fixed language was originally
 // Uzbek, changed to English on a later explicit request).
-
-// ─── Role → portal routing ─────────────────────────────────────────────────────
-
-const ROLE_PORTAL_MAP: Record<string, string> = {
-  super_admin: "/super-admin",
-  center_admin: "/",
-  admin: "/",
-  teacher: "/teacher",
-  student: "/student",
-};
 
 // ─── Brand panel art ──────────────────────────────────────────────────────────
 
@@ -41,32 +38,6 @@ const BRAND_MESH_BACKGROUND = [
   "radial-gradient(circle at 17% 57%, rgb(41,15,202), transparent 39%)",
   "linear-gradient(145deg, rgb(21,159,245) 0%, rgb(59,32,219) 47%, rgb(215,166,251) 100%)",
 ].join(", ");
-
-// ─── Form field ───────────────────────────────────────────────────────────────
-
-function FieldShell({ icon, error, children }: { icon: React.ReactNode; error?: string; children: React.ReactNode }) {
-  return (
-    <>
-      <div
-        className={cn(
-          "group relative flex h-[53px] items-center rounded-[11px] border bg-white shadow-[0_1px_2px_rgba(20,24,50,0.024)] transition-[border-color,box-shadow] duration-150",
-          error
-            ? "border-red-300 focus-within:shadow-[0_0_0_3px_rgba(239,68,68,0.1)]"
-            : "border-[#e0e1ea] focus-within:border-[#6960df] focus-within:shadow-[0_0_0_3px_rgba(100,89,220,0.1)]",
-        )}
-      >
-        <span className="grid w-[47px] flex-none place-items-center text-[#9b9cac] group-focus-within:text-[#5d51d5]">{icon}</span>
-        {children}
-      </div>
-      {error && <p className="mt-1.5 text-xs text-red-500">{error}</p>}
-    </>
-  );
-}
-
-const INPUT_CLASS =
-  "h-full min-w-0 flex-1 border-0 bg-transparent pr-3 text-sm text-[#222433] outline-none placeholder:text-[#a4a5b2] disabled:opacity-60";
-
-const ICON_CLASS = "h-[19px] w-[19px]";
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -124,7 +95,10 @@ export default function LoginPage() {
       // router.refresh() re-runs server components (RootLayout included)
       // against the freshly-seeded cookie first, same as LanguageSwitcher.
       if (cookieChanged) router.refresh();
-      setTimeout(() => router.push(portal), 500);
+      // An admin-set password must be replaced before the portal is usable
+      // — the backend 403s everything else until then.
+      const destination = user.mustChangePassword ? "/change-password" : portal;
+      setTimeout(() => router.push(destination), 500);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Something went wrong. Please try again.";
       setErrors({ general: message });
@@ -223,9 +197,9 @@ export default function LoginPage() {
                   <label htmlFor="password" className="text-[13px] font-semibold text-[#333545]">
                     Password
                   </label>
-                  <a href="#" className="text-[12.5px] font-medium text-[#5948d8] transition-colors hover:text-[#3826b4]">
+                  <Link href="/forgot-password" className="text-[12.5px] font-medium text-[#5948d8] transition-colors hover:text-[#3826b4]">
                     Forgot password?
-                  </a>
+                  </Link>
                 </div>
                 <FieldShell icon={<Lock className={ICON_CLASS} strokeWidth={1.8} />} error={errors.password}>
                   <input
@@ -265,7 +239,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading || success}
-                className="flex h-[54px] w-full items-center justify-center gap-2.5 rounded-[11px] bg-[linear-gradient(100deg,#642ee8_0%,#3f5cf1_100%)] px-5 text-sm font-semibold text-white shadow-[0_2px_4px_rgba(49,40,145,0.15),0_10px_24px_rgba(79,63,219,0.21)] transition-[transform,box-shadow,filter] duration-150 hover:enabled:-translate-y-px hover:enabled:saturate-[1.08] hover:enabled:shadow-[0_2px_5px_rgba(49,40,145,0.18),0_13px_28px_rgba(79,63,219,0.26)] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[rgba(95,78,222,0.2)] disabled:cursor-wait disabled:opacity-80 sm:h-[53px]"
+                className={AUTH_PRIMARY_BUTTON_CLASS}
               >
                 {success ? (
                   <>

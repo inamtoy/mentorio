@@ -87,7 +87,11 @@
     "timezoneEasternET": "Восточное время (ET)",
     "loadingEllipsis": "Загрузка…",
     "genericError": "Что-то пошло не так. Попробуйте ещё раз.",
-    "languageRegionSavedToast": "Настройки региона сохранены."
+    "languageRegionSavedToast": "Настройки региона сохранены.",
+    "fillAllPasswordFieldsToast": "Заполните все поля пароля",
+    "passwordMismatchToast": "Новый пароль и подтверждение не совпадают",
+    "passwordUpdatedToast": "Пароль обновлён",
+    "passwordUpdateFailedToast": "Не удалось обновить пароль."
   },
   "StudentNav": {
     "openMenuAriaLabel": "Открыть меню",
@@ -848,7 +852,8 @@
     "timezoneKarachiPKT": "Карачи (PKT)",
     "timezoneTokyoJST": "Токио (JST)",
     "loadingEllipsis": "Загрузка…",
-    "genericError": "Что-то пошло не так. Попробуйте ещё раз."
+    "genericError": "Что-то пошло не так. Попробуйте ещё раз.",
+    "passwordUpdateFailedToast": "Не удалось обновить пароль."
   },
   "AdminNav": {
     "navGroupMain": "Главное",
@@ -1682,7 +1687,8 @@
     "paymentGatewaysTitle": "Платёжные системы",
     "paymentGatewaysSubtitle": "Подключите Payme и Click, чтобы студенты могли платить онлайн",
     "loadingLabel": "Загрузка…",
-    "loadingEllipsis": "Загрузка…"
+    "loadingEllipsis": "Загрузка…",
+    "passwordUpdateFailedToast": "Не удалось обновить пароль."
   },
   "SuperAdminNav": {
     "openMenuAriaLabel": "Открыть меню",
@@ -2509,5 +2515,17 @@
     "avatarUpdateFailedToast": "Не удалось обновить аватар.",
     "sessionRevokedToast": "Сессия отозвана",
     "sessionRevokeFailedToast": "Не удалось отозвать сессию."
+  },
+  "ResetPassword": {
+    "title": "Сброс пароля",
+    "description": "Для пользователей, которые забыли пароль и не могут восстановить его через Telegram. Создаётся временный пароль — при следующем входе его нужно сменить.",
+    "resetButton": "Создать временный пароль",
+    "confirmText": "Пользователь будет сразу выведен из системы на всех устройствах. Продолжить?",
+    "confirmButton": "Сбросить пароль",
+    "cancelButton": "Отмена",
+    "doneHint": "Передайте этот временный пароль пользователю. Он показывается только один раз и должен быть изменён при следующем входе.",
+    "copyButton": "Копировать",
+    "copied": "Скопировано",
+    "failedToast": "Не удалось сбросить пароль."
   }
 }

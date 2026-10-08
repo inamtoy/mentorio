@@ -11,6 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ResetPasswordPanel } from "@/components/users/reset-password-panel";
 import { Input, Select } from "@/components/ui/input";
 import { toast } from "@/lib/store/toast-store";
 import { useAuthStore } from "@/lib/store/auth-store";
@@ -260,6 +261,12 @@ function TeacherFormFields({
 
           {mode === "edit" && teacher && (
             <Input value={teacher.user_login_id} disabled placeholder={t("fieldLoginId")} className="col-span-2" />
+          )}
+
+          {mode === "edit" && teacher && (
+            <div className="col-span-2">
+              <ResetPasswordPanel userId={teacher.user} />
+            </div>
           )}
 
           {mode === "create" && (

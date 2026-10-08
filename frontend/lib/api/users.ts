@@ -66,3 +66,13 @@ export async function changePassword(userId: string, currentPassword: string, ne
     body: JSON.stringify({ password: newPassword, current_password: currentPassword }),
   });
 }
+
+/** Admin-side reset (UserViewSet.reset_password): the server generates a
+ * temporary password, returns it exactly once, signs the user out
+ * everywhere, and forces a change at their next sign-in. */
+export async function resetUserPassword(userId: string): Promise<string> {
+  const data = await apiFetch<{ temporary_password: string }>(`/api/v1/users/${userId}/reset-password/`, {
+    method: "POST",
+  });
+  return data.temporary_password;
+}

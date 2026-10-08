@@ -166,9 +166,13 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "organization", "organization_name", "branch", "branch_name", "login_id", "member_code",
             "first_name", "last_name", "middle_name", "full_name", "phone",
             "password", "avatar_url", "gender", "date_of_birth", "status", "language",
-            "role_ids", "roles", "last_login", "created_at", "updated_at",
+            "role_ids", "roles", "must_change_password", "last_login", "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "login_id", "member_code", "last_login", "created_at", "updated_at"]
+        # must_change_password is only ever set server-side (UserViewSet.
+        # perform_update / reset_password), never accepted from a client.
+        read_only_fields = [
+            "id", "login_id", "member_code", "must_change_password", "last_login", "created_at", "updated_at",
+        ]
 
     def get_roles(self, obj):
         return [

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from django.utils import timezone
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from common.cookies import ACCESS_COOKIE
@@ -51,4 +51,24 @@ class SessionValidatingJWTAuthentication(JWTAuthentication):
 
         Session.objects.filter(pk=session.pk).update(last_activity_at=timezone.now())
 
+        if user.must_change_password and not _allowed_before_password_change(request, user):
+            raise PermissionDenied(
+                {
+                    "password": ["You must set a new password before continuing."],
+                    "code": [PASSWORD_CHANGE_REQUIRED],
+                }
+            )
+
         return user, validated_token
+
+
+# Matched by the frontend's apiFetch() to send the user to /change-password.
+PASSWORD_CHANGE_REQUIRED = "password_change_required"
+
+
+def _allowed_before_password_change(request, user) -> bool:
+    """While an admin-picked password is still in place, the only things
+    the account may do are read/replace its own user record (that's how
+    the password gets changed — UserViewSet's self path) and sign out."""
+    path = request.path
+    return path == "/api/v1/auth/logout/" or path == f"/api/v1/users/{user.id}/"

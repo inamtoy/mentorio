@@ -1,5 +1,9 @@
+import hmac
+import json
+import logging
 from datetime import timedelta
 
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed
@@ -8,13 +12,20 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from auth_custom.models import LoginAttempt, Session
-from auth_custom.serializers import LoginSerializer, SessionSerializer
-from auth_custom.services import token_service
+from auth_custom.serializers import (
+    LoginSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetStartSerializer,
+    SessionSerializer,
+)
+from auth_custom.services import password_reset_service, telegram_client, token_service
 from auth_custom.services.session_service import BYPASS_ALIAS, revoke_session
-from common.audit import audit_log
+from common.audit import audit_log, get_client_ip
 from common.cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
 from foundation.models import User
 from foundation.services import get_platform_setting, primary_role_slug
+
+logger = logging.getLogger(__name__)
 
 # How far back "recent failures" looks for the Max Login Attempts lockout —
 # self-recovers once a login_id's failures age out of this window, rather
@@ -79,6 +90,9 @@ class LoginView(APIView):
                         # Seeds the frontend's locale cookie on a device that
                         # hasn't picked one yet — see lib/api/auth.ts's login().
                         "language": user.language,
+                        # The portal is off-limits until this is cleared —
+                        # see SessionValidatingJWTAuthentication.
+                        "must_change_password": user.must_change_password,
                     },
                 },
             }
@@ -226,3 +240,84 @@ class SessionRevokeView(APIView):
         revoke_session(session, reason="user_revoked")
         audit_log(request, action="update", entity_type="session", entity_id=str(session.id))
         return Response({"success": True, "message": "Session revoked", "data": None})
+
+
+class PasswordResetStartView(APIView):
+    """Step 1 of the Telegram reset (see password_reset_service's docstring
+    for the whole flow). Always 200 with a bot link, whether or not the
+    login_id exists."""
+
+    authentication_classes: list = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        if not telegram_client.is_configured():
+            return Response(
+                {
+                    "success": False,
+                    "message": "Password reset via Telegram isn't available right now. Please contact your administrator.",
+                    "data": None,
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        serializer = PasswordResetStartSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        started = password_reset_service.start_reset(
+            login_id=serializer.validated_data["login_id"], ip_address=get_client_ip(request)
+        )
+        return Response(
+            {
+                "success": True,
+                "message": "Open the Telegram bot to receive your code.",
+                "data": {
+                    "token": started.token,
+                    "bot_url": started.bot_url,
+                    "expires_in_seconds": started.expires_in_seconds,
+                },
+            }
+        )
+
+
+class PasswordResetConfirmView(APIView):
+    authentication_classes: list = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        password_reset_service.confirm_reset(
+            token=serializer.validated_data["token"],
+            code=serializer.validated_data["code"],
+            new_password=serializer.validated_data["new_password"],
+            request=request,
+        )
+        return Response(
+            {"success": True, "message": "Password changed. Sign in with your new password.", "data": None}
+        )
+
+
+class TelegramWebhookView(APIView):
+    """Production transport for bot updates (local dev polls instead — see
+    `manage.py run_telegram_bot`). Telegram proves itself only through the
+    secret it echoes back in this header, so a missing/blank configured
+    secret refuses everything rather than trusting anyone.
+
+    Always 200 once authenticated: a non-2xx makes Telegram redeliver the
+    same update over and over.
+    """
+
+    authentication_classes: list = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        expected = settings.TELEGRAM_WEBHOOK_SECRET
+        received = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if not expected or not hmac.compare_digest(expected, received):
+            return Response({"success": False, "message": "Forbidden.", "data": None}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            update = request.data if isinstance(request.data, dict) else json.loads(request.body)
+            password_reset_service.handle_update(update)
+        except Exception:  # noqa: BLE001 — see docstring: never make Telegram retry
+            logger.exception("Telegram update handling failed")
+        return Response({"success": True, "message": "", "data": None})

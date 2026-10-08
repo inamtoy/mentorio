@@ -152,7 +152,15 @@ class RefreshView(APIView):
         try:
             tokens = token_service.rotate_tokens(raw_refresh_token=raw_refresh, request=request)
         except ValueError as exc:
-            raise AuthenticationFailed(str(exc)) from exc
+            # A dead refresh token (expired/revoked) must not linger in the
+            # browser: proxy.ts treats its mere presence as "signed in" and
+            # would keep rendering portal shells instead of /login.
+            response = Response(
+                {"success": False, "message": f"{exc} Please sign in again.", "data": None},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+            clear_auth_cookies(response)
+            return response
 
         response = Response({"success": True, "message": "", "data": None})
         set_auth_cookies(response, access=tokens["access"], refresh=tokens["refresh"], role=tokens.get("role"))

@@ -105,6 +105,28 @@ uv run python manage.py runserver
 that, plus the password you're prompted for, is what the frontend's existing
 "Login" field (not email — see below) authenticates with.
 
+## Telegram bot and notifications
+
+One bot (`TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME` /
+`TELEGRAM_WEBHOOK_SECRET` in `.env`) serves both password reset and
+notifications. Users and parents connect by opening the bot and sharing
+their own number; it's matched against `User.phone` and
+`StudentParent.phone` in every center.
+
+Notifications (invoice issued, invoice due within 3 days, student marked
+absent) are written to an outbox (`notification.notification_deliveries`)
+in the same transaction as the event. Nothing is sent to Telegram during a
+request: a separate worker drains the outbox, with retries.
+
+| Process | Local dev | Production |
+|---|---|---|
+| Bot updates | `manage.py run_telegram_bot` (polling) | webhook: `manage.py set_telegram_webhook https://<domain>/api/v1/auth/telegram/webhook/` once |
+| Sending | `manage.py send_notifications --loop` | same, as a long-running service (several instances are safe) |
+| Payment reminders | `manage.py send_payment_reminders` by hand | daily cron, e.g. `0 9 * * *` |
+
+Polling and the webhook can't run at the same time on one bot: use a
+separate bot for local development.
+
 ## Why no email/username login, and no email field at all
 
 `foundation.users` has no `email` column — login is by `login_id`, never

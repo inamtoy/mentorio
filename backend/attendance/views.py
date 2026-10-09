@@ -7,6 +7,7 @@ from attendance.serializers import AttendanceSerializer
 from common.audit import audited
 from common.permissions import HasModulePermission
 from foundation.views import SoftDeleteDestroyMixin
+from notifications.services import events as notification_events
 
 ATTENDANCE_PERMISSION_MAP = {
     "list": ("attendance", "view"),
@@ -55,12 +56,20 @@ class AttendanceViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         self._check_owns_group(serializer.validated_data["group"])
-        serializer.save()
+        attendance = serializer.save()
+        if attendance.status == "absent":
+            notification_events.student_absent(attendance)
 
     def perform_update(self, serializer):
         group = serializer.validated_data.get("group", serializer.instance.group)
         self._check_owns_group(group)
-        serializer.save()
+        was_absent = serializer.instance.status == "absent"
+        attendance = serializer.save()
+        # Only the transition into "absent" notifies; editing notes on an
+        # already-absent record doesn't. Re-marking after a correction is
+        # covered by the event's dedupe (one notice per record).
+        if attendance.status == "absent" and not was_absent:
+            notification_events.student_absent(attendance)
 
     @audited(action="create", entity_type="attendance")
     def create(self, request, *args, **kwargs):

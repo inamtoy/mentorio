@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import logging
 import secrets
 from dataclasses import dataclass
 from datetime import timedelta
@@ -39,8 +38,6 @@ from auth_custom.services.phone import digits_only, phones_match
 from auth_custom.services.session_service import BYPASS_ALIAS, hash_token, revoke_all_user_sessions
 from foundation.models import User
 
-logger = logging.getLogger(__name__)
-
 # Shared by start() for real and fake requests alike, and reused by the
 # confirm step for every failure mode, so neither leaks which case it hit.
 INVALID_CODE_MESSAGE = "The code is incorrect or has expired. Start the reset again if needed."
@@ -48,16 +45,11 @@ INVALID_CODE_MESSAGE = "The code is incorrect or has expired. Start the reset ag
 
 # ─── Bot copy (Uzbek — the bot speaks to every center's users) ───────────────
 
-MSG_WELCOME = (
-    "Assalomu alaykum! Bu <b>Mentorio</b> rasmiy boti.\n\n"
-    "Parolni tiklash uchun Mentorio kirish sahifasida <b>Forgot password?</b> tugmasini bosing."
-)
 MSG_SHARE_CONTACT = (
     "🔐 <b>Mentorio: parolni tiklash</b>\n\n"
     "Shaxsingizni tasdiqlash uchun pastdagi <b>«📱 Raqamni yuborish»</b> tugmasini bosing. "
     "Raqamingiz Mentorio profilingizdagi raqam bilan solishtiriladi."
 )
-MSG_NOT_OWN_CONTACT = "Iltimos, boshqa odamning kontaktini emas, pastdagi tugma orqali <b>o'z raqamingizni</b> yuboring."
 MSG_NOT_VERIFIED = (
     "❌ Raqamni tasdiqlab bo'lmadi.\n\n"
     "Sabablari:\n"
@@ -183,58 +175,32 @@ def confirm_reset(*, token: str, code: str, new_password: str, request) -> User:
             metadata={"field": "password", "via": "telegram_reset"},
         )
 
-    _notify_quietly(reset.telegram_chat_id, MSG_PASSWORD_CHANGED)
+    telegram_client.send_quietly(reset.telegram_chat_id, MSG_PASSWORD_CHANGED)
     return user
 
 
 # ─── Bot side ─────────────────────────────────────────────────────────────────
 
 
-def handle_update(update: dict) -> None:
-    """Entry point for one Telegram update — called by both the webhook view
-    and the local `run_telegram_bot` polling command. Never raises for bad
-    input: a malformed update is simply ignored."""
-    message = update.get("message")
-    if not isinstance(message, dict):
-        return
-    chat = message.get("chat") or {}
-    sender = message.get("from") or {}
-    chat_id = chat.get("id")
-    if chat.get("type") != "private" or not chat_id:
-        return
-
-    text = (message.get("text") or "").strip()
-    if text.startswith("/start"):
-        _handle_start(chat_id, text.removeprefix("/start").strip())
-    elif "contact" in message:
-        _handle_contact(chat_id, sender, message["contact"])
-    else:
-        _notify_quietly(chat_id, MSG_WELCOME)
+# Updates reach these two through auth_custom.services.telegram_bot, which
+# owns routing (and the own-contact check) for every flow the bot serves.
 
 
-def _handle_start(chat_id: int, start_param: str) -> None:
-    if not start_param:
-        _notify_quietly(chat_id, MSG_WELCOME)
-        return
-
-    # Bind the request to this chat. An unknown/expired token silently binds
-    # nothing — the reply is the same either way, see the module docstring.
+def bind_chat(chat_id: int, token: str) -> None:
+    """`/start <token>` from the reset deep link: bind the request to this
+    chat and ask for the contact. An unknown/expired token silently binds
+    nothing — the reply is the same either way, see the module docstring."""
     PasswordReset.objects.using(BYPASS_ALIAS).filter(
-        token_hash=hash_token(start_param),
+        token_hash=hash_token(token),
         used_at__isnull=True,
         code_hash__isnull=True,
         expires_at__gt=timezone.now(),
     ).update(telegram_chat_id=chat_id)
-    _notify_quietly(chat_id, MSG_SHARE_CONTACT, reply_markup=SHARE_CONTACT_KEYBOARD)
+    telegram_client.send_quietly(chat_id, MSG_SHARE_CONTACT, reply_markup=SHARE_CONTACT_KEYBOARD)
 
 
-def _handle_contact(chat_id: int, sender: dict, contact: dict) -> None:
-    # A forwarded contact card carries someone else's user_id (or none):
-    # only a contact the sender shared about THEMSELVES proves they own it.
-    if not sender.get("id") or contact.get("user_id") != sender.get("id"):
-        _notify_quietly(chat_id, MSG_NOT_OWN_CONTACT, reply_markup=SHARE_CONTACT_KEYBOARD)
-        return
-
+def handle_contact(chat_id: int, sender: dict, contact: dict) -> None:
+    """The chat's own contact, shared while the chat is in the reset flow."""
     now = timezone.now()
     with transaction.atomic(using=BYPASS_ALIAS):
         reset = (
@@ -259,7 +225,7 @@ def _handle_contact(chat_id: int, sender: dict, contact: dict) -> None:
             _link_telegram_account(reset.user, chat_id, sender, contact)
             reply, markup = MSG_CODE.format(code=code), REMOVE_KEYBOARD
 
-    _notify_quietly(chat_id, reply, reply_markup=markup)
+    telegram_client.send_quietly(chat_id, reply, reply_markup=markup)
 
 
 def _link_telegram_account(user, chat_id: int, sender: dict, contact: dict) -> None:
@@ -283,14 +249,3 @@ def _hash_code(reset: PasswordReset, code: str) -> str:
     brute-forced from a plain hash if the table ever leaked."""
     key = settings.SECRET_KEY.encode()
     return hmac.new(key, f"{reset.pk}:{code}".encode(), hashlib.sha256).hexdigest()
-
-
-def _notify_quietly(chat_id: int | None, text: str, *, reply_markup: dict | None = None) -> None:
-    """A Telegram outage must never fail the HTTP request or the DB work
-    around it — log and move on."""
-    if not chat_id:
-        return
-    try:
-        telegram_client.send_message(chat_id, text, reply_markup=reply_markup)
-    except telegram_client.TelegramError:
-        logger.warning("Telegram sendMessage failed for chat %s", chat_id, exc_info=True)

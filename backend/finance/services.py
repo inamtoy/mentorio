@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.db.models import Sum
 
-from finance.models import Invoice
+from finance.models import Invoice, Payroll
 
 
 def invoice_paid_amount(invoice: Invoice) -> Decimal:
@@ -28,3 +28,7 @@ def recompute_invoice_status(invoice: Invoice) -> None:
     if status != invoice.status:
         invoice.status = status
         invoice.save(update_fields=["status"])
+
+
+def payroll_net_amount(payroll: Payroll) -> Decimal:
+    return payroll.base_salary + payroll.bonus - payroll.deductions - payroll.tax_amount

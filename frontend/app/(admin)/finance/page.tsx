@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { DollarSign, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react";
+import { DollarSign, TrendingUp, AlertCircle, CheckCircle2, Receipt, Wallet, Clock } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -13,14 +13,29 @@ import { SearchInput, Select } from "@/components/ui/input";
 import { StatCard } from "@/components/ui/stat-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { useInvoicesPageQuery, useInvoicesQuery, usePaymentsQuery, useDeleteInvoiceMutation } from "@/lib/queries/finance";
+import {
+  useInvoicesPageQuery,
+  useInvoicesQuery,
+  usePaymentsQuery,
+  useDeleteInvoiceMutation,
+  useExpensesPageQuery,
+  useExpensesQuery,
+  useDeleteExpenseMutation,
+  usePayrollPageQuery,
+  usePayrollQuery,
+  useDeletePayrollMutation,
+} from "@/lib/queries/finance";
 import { toast } from "@/lib/store/toast-store";
 import { formatCurrency } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
-import type { Invoice } from "@/lib/api/finance";
+import type { Invoice, Expense, Payroll } from "@/lib/api/finance";
 import { FinanceRevenueChart } from "@/components/charts/finance-chart";
 import { InvoiceFormDialog } from "./_components/invoice-form-dialog";
 import { InvoiceDetailPanel } from "./_components/invoice-detail-panel";
+import { ExpenseFormDialog } from "./_components/expense-form-dialog";
+import { ExpenseDetailPanel } from "./_components/expense-detail-panel";
+import { PayrollFormDialog } from "./_components/payroll-form-dialog";
+import { PayrollDetailPanel } from "./_components/payroll-detail-panel";
 import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
 import { daysFromTodayIso } from "@/lib/utils";
@@ -31,21 +46,75 @@ import { monthKey, lastNMonthKeys, monthLabel, EMPTY_ARRAY } from "@/lib/growth-
 // (6), which is the Admin Dashboard's shorter overview window instead.
 const REVENUE_CHART_MONTHS = 12;
 
-// Invoices/payments accumulate every billing cycle for every student with
-// no natural cap (see lib/api/finance.ts's listInvoices/listPayments
-// comments). Unlike Attendance's page, this one can't default to a short
-// window — "Total Overdue" and "Total Pending" are headline KPIs computed
-// from the same unfiltered fetch, and an unpaid invoice from 6+ months ago
-// is exactly the kind of thing this page exists to surface, not hide. A
-// full year is a pragmatic compromise: bounded (stops the silent-
-// truncation bug), while still covering the overwhelming majority of
-// real-world overdue cases. A properly correct fix would query "still
-// open" statuses (pending/partially_paid/overdue) with no date bound
-// separately from a date-bounded "recent activity" list — bigger change,
-// left for a follow-up if a year ever proves too short in practice.
+// Invoices/payments/expenses/payroll all accumulate every cycle with no
+// natural cap — same bounded-window tradeoff across all three tabs (see the
+// Invoices tab's own longer comment on this).
 const RECENT_WINDOW_DAYS = 365;
 
+type FinanceTab = "invoices" | "expenses" | "payroll";
+
 export default function FinancePage() {
+  const t = useTranslations("AdminFinance");
+  const [activeTab, setActiveTab] = useState<FinanceTab>("invoices");
+  const [invoiceFormOpen, setInvoiceFormOpen] = useState(false);
+  const [expenseFormOpen, setExpenseFormOpen] = useState(false);
+  const [payrollFormOpen, setPayrollFormOpen] = useState(false);
+
+  const TABS: { key: FinanceTab; label: string }[] = [
+    { key: "invoices", label: t("tabInvoices") },
+    { key: "expenses", label: t("tabExpenses") },
+    { key: "payroll", label: t("tabPayroll") },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={t("pageTitle")}
+        subtitle={`${t("pageSubtitle")} — ${t("last12MonthsNote")}`}
+        actions={
+          activeTab === "invoices" ? (
+            <Button onClick={() => setInvoiceFormOpen(true)}>
+              <DollarSign className="h-4 w-4" />
+              {t("newInvoiceButton")}
+            </Button>
+          ) : activeTab === "expenses" ? (
+            <Button onClick={() => setExpenseFormOpen(true)}>
+              <Receipt className="h-4 w-4" />
+              {t("newExpenseButton")}
+            </Button>
+          ) : (
+            <Button onClick={() => setPayrollFormOpen(true)}>
+              <Wallet className="h-4 w-4" />
+              {t("newPayrollButton")}
+            </Button>
+          )
+        }
+      />
+
+      <div className="flex border-b border-slate-100">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab.key ? "border-indigo-500 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "invoices" && <InvoicesTab formOpen={invoiceFormOpen} onFormOpenChange={setInvoiceFormOpen} />}
+      {activeTab === "expenses" && <ExpensesTab formOpen={expenseFormOpen} onFormOpenChange={setExpenseFormOpen} />}
+      {activeTab === "payroll" && <PayrollTab formOpen={payrollFormOpen} onFormOpenChange={setPayrollFormOpen} />}
+    </div>
+  );
+}
+
+// ─── Invoices ──────────────────────────────────────────────────────────────
+
+function InvoicesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onFormOpenChange: (open: boolean) => void }) {
   const t = useTranslations("AdminFinance");
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
@@ -73,10 +142,6 @@ export default function FinancePage() {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   const [dateFrom] = useState(() => daysFromTodayIso(-RECENT_WINDOW_DAYS));
 
-  // Stats (Total Collected/Pending/Overdue, Paid count) read the full
-  // (still 1-year-bounded) list — unaffected by the table's own
-  // filters/pagination below, same tradeoff as the other converted list
-  // pages.
   const { data: invoicesData } = useInvoicesQuery({ organizationId: organizationId ?? "", dateFrom });
   const invoices = invoicesData ?? [];
   const { data: paymentsData } = usePaymentsQuery({ organizationId: organizationId ?? "", dateFrom });
@@ -98,7 +163,6 @@ export default function FinancePage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
   const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
 
   const {
@@ -177,17 +241,6 @@ export default function FinancePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={t("pageTitle")}
-        subtitle={`${t("pageSubtitle")} — ${t("last12MonthsNote")}`}
-        actions={
-          <Button onClick={() => setFormOpen(true)}>
-            <DollarSign className="h-4 w-4" />
-            {t("newInvoiceButton")}
-          </Button>
-        }
-      />
-
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label={t("statTotalCollected")} value={formatCurrency(totalRevenue)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
         <StatCard label={t("statPending")} value={formatCurrency(totalPending)} icon={<TrendingUp className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
@@ -256,7 +309,7 @@ export default function FinancePage() {
         />
       )}
 
-      <InvoiceFormDialog open={formOpen} onOpenChange={setFormOpen} />
+      <InvoiceFormDialog open={formOpen} onOpenChange={onFormOpenChange} />
 
       <ConfirmDialog
         open={!!deletingInvoice}
@@ -270,6 +323,305 @@ export default function FinancePage() {
             await deleteMutation.mutateAsync(deletingInvoice.id);
             toast.success(t("deleteSuccessToast"));
             if (selectedId === deletingInvoice.id) setSelectedId(null);
+          } catch (err) {
+            toast.error(err instanceof ApiError ? err.message : t("genericError"));
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+// ─── Expenses ──────────────────────────────────────────────────────────────
+
+function ExpensesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onFormOpenChange: (open: boolean) => void }) {
+  const t = useTranslations("AdminFinance");
+  const rawLocale = useLocale();
+  const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
+
+  const STATUS_OPTIONS = [
+    { value: "", label: t("statusAll") },
+    { value: "pending", label: t("statusPending") },
+    { value: "approved", label: t("statusApproved") },
+    { value: "rejected", label: t("statusRejected") },
+    { value: "paid", label: t("statusPaid") },
+  ];
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    rent: t("expenseCategoryRent"),
+    utilities: t("expenseCategoryUtilities"),
+    salaries_other: t("expenseCategorySalariesOther"),
+    supplies: t("expenseCategorySupplies"),
+    marketing: t("expenseCategoryMarketing"),
+    maintenance: t("expenseCategoryMaintenance"),
+    equipment: t("expenseCategoryEquipment"),
+    software: t("expenseCategorySoftware"),
+    taxes: t("expenseCategoryTaxes"),
+    other: t("expenseCategoryOther"),
+  };
+
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  const [dateFrom] = useState(() => daysFromTodayIso(-RECENT_WINDOW_DAYS));
+
+  const { data: expensesData } = useExpensesQuery({ organizationId: organizationId ?? "", dateFrom });
+  const expenses = expensesData ?? EMPTY_ARRAY;
+  const deleteMutation = useDeleteExpenseMutation();
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
+
+  const { data: expensesPage, isLoading } = useExpensesPageQuery({
+    organizationId: organizationId ?? "",
+    status: (statusFilter || undefined) as Expense["status"] | undefined,
+    search: search || undefined,
+    dateFrom,
+    page,
+  });
+  const tableRows = expensesPage?.results ?? [];
+
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+  function updateStatusFilter(value: string) {
+    setStatusFilter(value);
+    setPage(1);
+  }
+
+  const selectedExpense = expenses.find((e) => e.id === selectedId) ?? null;
+  const totalPending = expenses.filter((e) => e.status === "pending").reduce((s, e) => s + Number(e.amount), 0);
+  const totalApproved = expenses.filter((e) => e.status === "approved").reduce((s, e) => s + Number(e.amount), 0);
+  const totalPaid = expenses.filter((e) => e.status === "paid").reduce((s, e) => s + Number(e.amount), 0);
+  const paidCount = expenses.filter((e) => e.status === "paid").length;
+
+  const EXPENSE_COLUMNS: Column<Expense>[] = [
+    {
+      key: "title",
+      label: t("columnTitle"),
+      render: (_, row) => (
+        <div>
+          <p className="font-medium text-slate-900">{row.title}</p>
+          <p className="text-xs text-slate-400">{row.vendor_name ?? CATEGORY_LABELS[row.category]}</p>
+        </div>
+      ),
+    },
+    {
+      key: "category",
+      label: t("columnCategory"),
+      render: (val) => CATEGORY_LABELS[String(val)] ?? String(val),
+    },
+    {
+      key: "amount",
+      label: t("columnAmount"),
+      render: (val) => <span className="font-medium text-slate-900">{formatCurrency(Number(val))}</span>,
+    },
+    {
+      key: "expense_date",
+      label: t("columnDate"),
+      render: (val) => formatLocalizedDate(new Date(String(val) + "T00:00:00"), locale, { month: "short", day: "numeric", year: "numeric" }),
+    },
+    {
+      key: "status",
+      label: t("columnStatus"),
+      render: (val) => <StatusBadge status={String(val)} />,
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label={t("statPendingApproval")} value={formatCurrency(totalPending)} icon={<Clock className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
+        <StatCard label={t("statAwaitingPayment")} value={formatCurrency(totalApproved)} icon={<TrendingUp className="h-5 w-5 text-blue-600" />} iconBg="bg-blue-50" />
+        <StatCard label={t("statTotalPaidOut")} value={formatCurrency(totalPaid)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
+        <StatCard label={t("statPaidExpenses")} value={`${paidCount}/${expenses.length}`} icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
+      </div>
+
+      <Card
+        noPadding
+        title={t("expensesTitle")}
+        subtitle={t("expensesCount", { count: expensesPage?.totalCount ?? 0 })}
+        actions={
+          <div className="flex items-center gap-2">
+            <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t("searchExpensePlaceholder")} />
+            <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => updateStatusFilter(e.target.value)} className="w-40" />
+          </div>
+        }
+      >
+        <DataTable
+          columns={EXPENSE_COLUMNS}
+          data={tableRows}
+          keyField="id"
+          emptyMessage={isLoading ? t("loadingExpenses") : t("noExpensesFound")}
+          onRowClick={(row) => setSelectedId(row.id)}
+        />
+        {expensesPage && expensesPage.pageCount > 1 && (
+          <div className="py-4 border-t border-slate-50">
+            <Pagination page={page} pageCount={expensesPage.pageCount} onPageChange={setPage} />
+          </div>
+        )}
+      </Card>
+
+      {selectedExpense && (
+        <ExpenseDetailPanel
+          expense={selectedExpense}
+          onBack={() => setSelectedId(null)}
+          onDelete={() => setDeletingExpense(selectedExpense)}
+        />
+      )}
+
+      <ExpenseFormDialog open={formOpen} onOpenChange={onFormOpenChange} />
+
+      <ConfirmDialog
+        open={!!deletingExpense}
+        onOpenChange={(open) => !open && setDeletingExpense(null)}
+        title={t("deleteExpenseDialogTitle")}
+        description={t("deleteExpenseDialogDescription", { name: deletingExpense?.title ?? "" })}
+        confirmLabel={t("deleteConfirmLabel")}
+        onConfirm={async () => {
+          if (!deletingExpense) return;
+          try {
+            await deleteMutation.mutateAsync(deletingExpense.id);
+            toast.success(t("deleteSuccessToast"));
+            if (selectedId === deletingExpense.id) setSelectedId(null);
+          } catch (err) {
+            toast.error(err instanceof ApiError ? err.message : t("genericError"));
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+// ─── Payroll ──────────────────────────────────────────────────────────────
+
+function PayrollTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onFormOpenChange: (open: boolean) => void }) {
+  const t = useTranslations("AdminFinance");
+  const rawLocale = useLocale();
+  const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
+
+  const STATUS_OPTIONS = [
+    { value: "", label: t("statusAll") },
+    { value: "draft", label: t("statusDraft") },
+    { value: "approved", label: t("statusApproved") },
+    { value: "paid", label: t("statusPaid") },
+    { value: "cancelled", label: t("statusCancelled") },
+  ];
+
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
+  const [dateFrom] = useState(() => daysFromTodayIso(-RECENT_WINDOW_DAYS));
+
+  const { data: payrollData } = usePayrollQuery({ organizationId: organizationId ?? "", dateFrom });
+  const payroll = payrollData ?? EMPTY_ARRAY;
+  const deleteMutation = useDeletePayrollMutation();
+
+  const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deletingPayroll, setDeletingPayroll] = useState<Payroll | null>(null);
+
+  const { data: payrollPage, isLoading } = usePayrollPageQuery({
+    organizationId: organizationId ?? "",
+    status: (statusFilter || undefined) as Payroll["status"] | undefined,
+    dateFrom,
+    page,
+  });
+  const tableRows = payrollPage?.results ?? [];
+
+  function updateStatusFilter(value: string) {
+    setStatusFilter(value);
+    setPage(1);
+  }
+
+  const selectedPayroll = payroll.find((p) => p.id === selectedId) ?? null;
+  const totalDraft = payroll.filter((p) => p.status === "draft").reduce((s, p) => s + p.net_amount, 0);
+  const totalApproved = payroll.filter((p) => p.status === "approved").reduce((s, p) => s + p.net_amount, 0);
+  const totalPaid = payroll.filter((p) => p.status === "paid").reduce((s, p) => s + p.net_amount, 0);
+  const paidCount = payroll.filter((p) => p.status === "paid").length;
+
+  const PAYROLL_COLUMNS: Column<Payroll>[] = [
+    {
+      key: "teacher_name",
+      label: t("columnTeacher"),
+      render: (_, row) => (
+        <div className="flex items-center gap-3">
+          <Avatar name={row.teacher_name} size="sm" />
+          <div>
+            <p className="font-medium text-slate-900">{row.teacher_name}</p>
+            <p className="text-xs text-slate-400">
+              {formatLocalizedDate(new Date(row.period_start + "T00:00:00"), locale, { month: "short", day: "numeric" })}
+              {" – "}
+              {formatLocalizedDate(new Date(row.period_end + "T00:00:00"), locale, { month: "short", day: "numeric", year: "numeric" })}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "net_amount",
+      label: t("columnNetAmount"),
+      render: (val) => <span className="font-medium text-slate-900">{formatCurrency(Number(val))}</span>,
+    },
+    {
+      key: "status",
+      label: t("columnStatus"),
+      render: (val) => <StatusBadge status={String(val)} />,
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label={t("statDraftPayroll")} value={formatCurrency(totalDraft)} icon={<Clock className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
+        <StatCard label={t("statAwaitingPayment")} value={formatCurrency(totalApproved)} icon={<TrendingUp className="h-5 w-5 text-blue-600" />} iconBg="bg-blue-50" />
+        <StatCard label={t("statTotalPaidOut")} value={formatCurrency(totalPaid)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
+        <StatCard label={t("statPaidPayroll")} value={`${paidCount}/${payroll.length}`} icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
+      </div>
+
+      <Card
+        noPadding
+        title={t("payrollTitle")}
+        subtitle={t("payrollCount", { count: payrollPage?.totalCount ?? 0 })}
+        actions={<Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => updateStatusFilter(e.target.value)} className="w-40" />}
+      >
+        <DataTable
+          columns={PAYROLL_COLUMNS}
+          data={tableRows}
+          keyField="id"
+          emptyMessage={isLoading ? t("loadingPayroll") : t("noPayrollFound")}
+          onRowClick={(row) => setSelectedId(row.id)}
+        />
+        {payrollPage && payrollPage.pageCount > 1 && (
+          <div className="py-4 border-t border-slate-50">
+            <Pagination page={page} pageCount={payrollPage.pageCount} onPageChange={setPage} />
+          </div>
+        )}
+      </Card>
+
+      {selectedPayroll && (
+        <PayrollDetailPanel
+          payroll={selectedPayroll}
+          onBack={() => setSelectedId(null)}
+          onDelete={() => setDeletingPayroll(selectedPayroll)}
+        />
+      )}
+
+      <PayrollFormDialog open={formOpen} onOpenChange={onFormOpenChange} />
+
+      <ConfirmDialog
+        open={!!deletingPayroll}
+        onOpenChange={(open) => !open && setDeletingPayroll(null)}
+        title={t("deletePayrollDialogTitle")}
+        description={t("deletePayrollDialogDescription", { name: deletingPayroll?.teacher_name ?? "" })}
+        confirmLabel={t("deleteConfirmLabel")}
+        onConfirm={async () => {
+          if (!deletingPayroll) return;
+          try {
+            await deleteMutation.mutateAsync(deletingPayroll.id);
+            toast.success(t("deleteSuccessToast"));
+            if (selectedId === deletingPayroll.id) setSelectedId(null);
           } catch (err) {
             toast.error(err instanceof ApiError ? err.message : t("genericError"));
           }

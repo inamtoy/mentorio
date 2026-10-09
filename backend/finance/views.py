@@ -9,10 +9,10 @@ from rest_framework.response import Response
 
 from common.audit import audit_log, audited
 from common.permissions import HasModulePermission, user_has_permission
-from finance.filters import InvoiceFilter, PaymentFilter
-from finance.models import Invoice, Payment
+from finance.filters import ExpenseFilter, InvoiceFilter, PayrollFilter, PaymentFilter
+from finance.models import Expense, Invoice, Payment, Payroll
 from finance.numbering import generate_invoice_number
-from finance.serializers import InvoiceSerializer, PaymentSerializer
+from finance.serializers import ExpenseSerializer, InvoiceSerializer, PayrollSerializer, PaymentSerializer
 from finance.services import recompute_invoice_status
 from foundation.views import SoftDeleteDestroyMixin
 from groups.models import Group, GroupMember
@@ -24,6 +24,20 @@ FINANCE_PERMISSION_MAP = {
     "update": ("finance", "update"),
     "partial_update": ("finance", "update"),
     "destroy": ("finance", "delete"),
+}
+
+# Extends FINANCE_PERMISSION_MAP with the custom status-transition actions
+# Expense/PayrollViewSet add below. HasModulePermission falls through to
+# "allow" for any view action key it doesn't recognize in permission_map, so
+# without these explicit entries approve/reject/cancel/mark_paid would be
+# left completely ungated — all four are "update"-level under the same
+# center_admin-only `finance` module every other write here requires.
+FINANCE_WRITE_ACTIONS_PERMISSION_MAP = {
+    **FINANCE_PERMISSION_MAP,
+    "approve": ("finance", "update"),
+    "reject": ("finance", "update"),
+    "cancel": ("finance", "update"),
+    "mark_paid": ("finance", "update"),
 }
 
 
@@ -156,3 +170,123 @@ class PaymentViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
         response = super().destroy(request, *args, **kwargs)
         recompute_invoice_status(invoice)
         return response
+
+
+class ExpenseViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
+    """No object-scoping on get_queryset() — unlike Invoice/Payment there is
+    no student/teacher carve-out for this data at all (see
+    FINANCE_PERMISSION_MAP's docstring note in foundation/permissions_catalog.py:
+    finance is module-wide, center_admin-only). Org spend is purely internal/
+    operational.
+    """
+
+    queryset = Expense.objects.all().select_related("branch").order_by("-expense_date")
+    serializer_class = ExpenseSerializer
+    permission_classes = [HasModulePermission]
+    filterset_class = ExpenseFilter
+    search_fields = ["title", "vendor_name"]
+    entity_type = "expense"
+    permission_map = FINANCE_WRITE_ACTIONS_PERMISSION_MAP
+
+    @audited(action="create", entity_type="expense")
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @audited(action="delete", entity_type="expense")
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=["post"])
+    @audited(action="approve", entity_type="expense")
+    def approve(self, request, pk=None):
+        expense = self.get_object()
+        if expense.status != "pending":
+            raise ValidationError({"status": "Only a pending expense can be approved."})
+        expense.status = "approved"
+        expense.approved_by = request.user.id
+        expense.save(update_fields=["status", "approved_by"])
+        return Response(ExpenseSerializer(expense).data)
+
+    @action(detail=True, methods=["post"])
+    @audited(action="reject", entity_type="expense")
+    def reject(self, request, pk=None):
+        expense = self.get_object()
+        if expense.status != "pending":
+            raise ValidationError({"status": "Only a pending expense can be rejected."})
+        expense.status = "rejected"
+        expense.approved_by = request.user.id
+        expense.save(update_fields=["status", "approved_by"])
+        return Response(ExpenseSerializer(expense).data)
+
+    @action(detail=True, methods=["post"], url_path="mark-paid")
+    @audited(action="mark_paid", entity_type="expense")
+    def mark_paid(self, request, pk=None):
+        expense = self.get_object()
+        if expense.status != "approved":
+            raise ValidationError({"status": "Only an approved expense can be marked paid."})
+        expense.status = "paid"
+        expense.paid_at = timezone.now()
+        payment_method = request.data.get("payment_method")
+        if payment_method:
+            expense.payment_method = payment_method
+        expense.save(update_fields=["status", "paid_at", "payment_method"])
+        return Response(ExpenseSerializer(expense).data)
+
+
+class PayrollViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
+    """Same no-object-scoping reasoning as ExpenseViewSet above — payroll
+    figures are center_admin-only. A teacher already sees their own pay
+    *rate* via teacher_salary:view (teacher/views.py::TeacherSalaryViewSet);
+    extending that same self-view to payroll *runs* is a materially larger
+    change than this feature asked for and is left for a follow-up.
+    """
+
+    queryset = Payroll.objects.all().select_related("teacher_profile__user").order_by("-period_start")
+    serializer_class = PayrollSerializer
+    permission_classes = [HasModulePermission]
+    filterset_class = PayrollFilter
+    entity_type = "payroll"
+    permission_map = FINANCE_WRITE_ACTIONS_PERMISSION_MAP
+
+    @audited(action="create", entity_type="payroll")
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @audited(action="delete", entity_type="payroll")
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=["post"])
+    @audited(action="approve", entity_type="payroll")
+    def approve(self, request, pk=None):
+        payroll = self.get_object()
+        if payroll.status != "draft":
+            raise ValidationError({"status": "Only a draft payroll record can be approved."})
+        payroll.status = "approved"
+        payroll.approved_by = request.user.id
+        payroll.save(update_fields=["status", "approved_by"])
+        return Response(PayrollSerializer(payroll).data)
+
+    @action(detail=True, methods=["post"])
+    @audited(action="cancel", entity_type="payroll")
+    def cancel(self, request, pk=None):
+        payroll = self.get_object()
+        if payroll.status not in ("draft", "approved"):
+            raise ValidationError({"status": "A paid or already-cancelled payroll record cannot be cancelled."})
+        payroll.status = "cancelled"
+        payroll.save(update_fields=["status"])
+        return Response(PayrollSerializer(payroll).data)
+
+    @action(detail=True, methods=["post"], url_path="mark-paid")
+    @audited(action="mark_paid", entity_type="payroll")
+    def mark_paid(self, request, pk=None):
+        payroll = self.get_object()
+        if payroll.status != "approved":
+            raise ValidationError({"status": "Only an approved payroll record can be marked paid."})
+        payroll.status = "paid"
+        payroll.paid_at = timezone.now()
+        payment_method = request.data.get("payment_method")
+        if payment_method:
+            payroll.payment_method = payment_method
+        payroll.save(update_fields=["status", "paid_at", "payment_method"])
+        return Response(PayrollSerializer(payroll).data)

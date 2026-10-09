@@ -70,6 +70,8 @@ export function StatusBadge({ status }: { status: string }) {
     refunded: { label: "Refunded", variant: "purple" },
     overdue: { label: "Overdue", variant: "danger" },
     cancelled: { label: "Cancelled", variant: "secondary" },
+    approved: { label: "Approved", variant: "success" },
+    rejected: { label: "Rejected", variant: "danger" },
     scheduled: { label: "Scheduled", variant: "info" },
     completed: { label: "Completed", variant: "success" },
     present: { label: "Present", variant: "success" },

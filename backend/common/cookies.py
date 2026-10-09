@@ -12,7 +12,7 @@ def set_auth_cookies(response, *, access: str, refresh: str, role: str | None = 
     over plain http.
 
     `role` (the user's primary role slug, e.g. "teacher") rides along as a
-    third httpOnly cookie, same lifetime as the access token. It is NOT a
+    third httpOnly cookie, same lifetime as the REFRESH token. It is NOT a
     security boundary — the backend's own RBAC checks (HasModulePermission
     etc.) are what actually authorize every request, unchanged by this. It
     exists solely so `proxy.ts` can redirect a signed-in user away from a
@@ -20,6 +20,12 @@ def set_auth_cookies(response, *, access: str, refresh: str, role: str | None = 
     decoding/verifying the JWT — same "presence-only" spirit as the existing
     access/refresh cookie check, just extended to "which portal" instead of
     just "signed in or not".
+
+    It must outlive the access token: `proxy.ts` treats "refresh cookie
+    present" as signed in, so a role cookie that expired after 15 minutes
+    left a 30-day session with no portal hint, and the proxy used to fall
+    through to the Admin portal (`/`) for every role — including logged-out
+    visitors carrying a stale refresh cookie.
     """
 
     common = {
@@ -30,9 +36,10 @@ def set_auth_cookies(response, *, access: str, refresh: str, role: str | None = 
     }
     access_max_age = int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds())
     response.set_cookie(ACCESS_COOKIE, access, max_age=access_max_age, **common)
-    response.set_cookie(REFRESH_COOKIE, refresh, max_age=int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()), **common)
+    refresh_max_age = int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
+    response.set_cookie(REFRESH_COOKIE, refresh, max_age=refresh_max_age, **common)
     if role:
-        response.set_cookie(ROLE_COOKIE, role, max_age=access_max_age, **common)
+        response.set_cookie(ROLE_COOKIE, role, max_age=refresh_max_age, **common)
 
 
 def clear_auth_cookies(response) -> None:

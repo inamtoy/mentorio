@@ -1,6 +1,6 @@
 """Telegram password reset — the full browser ↔ bot ↔ backend round trip,
-driven through the real HTTP endpoints plus password_reset_service.
-handle_update() (what both the webhook and the polling command call).
+driven through the real HTTP endpoints plus telegram_bot.handle_update()
+(what both the webhook and the polling command call).
 Telegram itself is replaced by a recorder; no network.
 
 Same `transaction=True` + BYPASS_ALIAS fixture reasoning as test_login.py.
@@ -16,7 +16,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from auth_custom.models import PasswordReset, Session, TelegramAccount
-from auth_custom.services import password_reset_service, telegram_client
+from auth_custom.services import password_reset_service, telegram_bot, telegram_client
 from auth_custom.services.session_service import hash_token
 from common.context import apply_org_context
 from foundation.models import AuditLog, Organization, Setting, User
@@ -80,7 +80,7 @@ def _bot(text=None, contact=None, *, chat_id=CHAT_ID, from_id=TG_USER_ID):
         message["text"] = text
     if contact is not None:
         message["contact"] = contact
-    password_reset_service.handle_update({"update_id": 1, "message": message})
+    telegram_bot.handle_update({"update_id": 1, "message": message})
 
 
 def _own_contact(phone="998901234567", user_id=TG_USER_ID):
@@ -174,7 +174,7 @@ def test_forwarded_contact_of_someone_else_is_refused(user, sent):
     # Right phone, but the card belongs to a different Telegram user.
     _bot(contact=_own_contact(user_id=TG_USER_ID + 1))
 
-    assert sent[-1][1] == password_reset_service.MSG_NOT_OWN_CONTACT
+    assert sent[-1][1] == telegram_bot.MSG_NOT_OWN_CONTACT
     assert PasswordReset.objects.using(BYPASS_ALIAS).get(user=user).code_hash is None
 
 
@@ -252,7 +252,7 @@ def test_webhook_requires_the_secret_header(user, sent):
         HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN=WEBHOOK_SECRET,
     )
     assert real.status_code == 200
-    assert sent[-1][1] == password_reset_service.MSG_WELCOME
+    assert sent[-1][1] == telegram_bot.MSG_WELCOME
 
 
 def test_codes_are_stored_hashed(user, sent):

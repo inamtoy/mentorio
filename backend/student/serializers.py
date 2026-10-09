@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from notifications.services.telegram_links import parent_link_is_current
 from student.models import EmergencyContact, StudentDocument, StudentParent, StudentProfile
 
 
@@ -22,14 +23,22 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
 
 class StudentParentSerializer(serializers.ModelSerializer):
+    # Whether this parent gets the child's notifications in Telegram — they
+    # connect themselves by sharing their number with the bot.
+    telegram_connected = serializers.SerializerMethodField()
+
     class Meta:
         model = StudentParent
         fields = [
             "id", "organization", "student_profile", "user", "relation", "first_name", "last_name",
             "phone", "email", "workplace", "occupation", "is_primary_contact", "can_pickup", "notes",
-            "created_at", "updated_at",
+            "telegram_connected", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_telegram_connected(self, obj) -> bool:
+        link = getattr(obj, "telegram_link", None)
+        return bool(link and link.active and parent_link_is_current(link))
 
 
 class EmergencyContactSerializer(serializers.ModelSerializer):

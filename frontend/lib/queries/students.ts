@@ -68,9 +68,10 @@ export function useUpdateStudentMutation() {
   return useMutation({
     mutationFn: ({ profileId, input }: { profileId: string; input: UpdateStudentInput }) =>
       updateStudent(profileId, input),
-    onSuccess: () => {
+    onSuccess: (_profile, { profileId }) => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
       queryClient.invalidateQueries({ queryKey: ["students-page"] });
+      queryClient.invalidateQueries({ queryKey: ["student-parents", profileId] });
     },
   });
 }

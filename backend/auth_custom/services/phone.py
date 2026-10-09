@@ -23,3 +23,12 @@ def phones_match(a: str | None, b: str | None) -> bool:
     if len(da) < _SIGNIFICANT_DIGITS or len(db) < _SIGNIFICANT_DIGITS:
         return False
     return da[-_SIGNIFICANT_DIGITS:] == db[-_SIGNIFICANT_DIGITS:]
+
+
+def phone_key(raw: str | None) -> str | None:
+    """The value common.db.PhoneKey computes in SQL, for the Python side of
+    a lookup. None when there aren't enough digits to match anything."""
+    digits = digits_only(raw)
+    if len(digits) < _SIGNIFICANT_DIGITS:
+        return None
+    return digits[-_SIGNIFICANT_DIGITS:]

@@ -16,6 +16,7 @@ from finance.serializers import ExpenseSerializer, InvoiceSerializer, PayrollSer
 from finance.services import recompute_invoice_status
 from foundation.views import SoftDeleteDestroyMixin
 from groups.models import Group, GroupMember
+from notifications.services import events as notification_events
 
 FINANCE_PERMISSION_MAP = {
     "list": ("finance", "view"),
@@ -64,6 +65,10 @@ class InvoiceViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
         if student_profile is not None and not user_has_permission(self.request.user, "finance", "create"):
             return qs.filter(student_profile=student_profile)
         return qs
+
+    def perform_create(self, serializer):
+        invoice = serializer.save()
+        notification_events.invoice_issued(invoice)
 
     @audited(action="create", entity_type="invoice")
     def create(self, request, *args, **kwargs):
@@ -122,6 +127,7 @@ class InvoiceViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
             due_date=timezone.now().date() + timedelta(days=7),
             created_by=request.user.id,
         )
+        notification_events.invoice_issued(invoice)
         audit_log(
             request, action="create", entity_type="invoice", entity_id=str(invoice.id),
             metadata={"self_created": True, "group": str(group.id)},

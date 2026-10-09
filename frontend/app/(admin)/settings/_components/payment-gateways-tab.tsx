@@ -14,7 +14,7 @@ import {
   useUpdateGatewayAccountMutation,
   useDeleteGatewayAccountMutation,
 } from "@/lib/queries/payment-gateways";
-import { ToggleSwitch } from "../page";
+import { ToggleSwitch } from "@/components/ui/toggle-switch";
 import { toast } from "@/lib/store/toast-store";
 import { ApiError } from "@/lib/api/client";
 import type { PaymentGatewayAccount, Provider } from "@/lib/api/payment-gateways";

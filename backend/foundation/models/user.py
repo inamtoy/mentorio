@@ -1,7 +1,7 @@
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import models
 
-from common.db import schema_table
+from common.db import PhoneKey, schema_table
 from common.models import OrganizationScopedMixin, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
 from foundation.managers import UserManager
 
@@ -100,6 +100,10 @@ class User(
                 name="idx_users_name",
                 condition=models.Q(deleted_at__isnull=True),
             ),
+            # Telegram contact sharing looks users up by number across every
+            # org (notifications.services.telegram_links) — free-text phones
+            # need the normalized key indexed, not the raw column.
+            models.Index(PhoneKey("phone"), name="idx_users_phone_key", condition=models.Q(deleted_at__isnull=True)),
         ]
 
     def __str__(self) -> str:

@@ -3,7 +3,7 @@ from auth_custom.models.password_reset import PasswordReset
 from auth_custom.models.phone_verification import PhoneVerification
 from auth_custom.models.refresh_token import RefreshToken
 from auth_custom.models.session import Session
-from auth_custom.models.telegram_account import TelegramAccount
+from auth_custom.models.telegram_account import TelegramAccount, TelegramChatState
 
 __all__ = [
     "LoginAttempt",
@@ -12,4 +12,5 @@ __all__ = [
     "RefreshToken",
     "Session",
     "TelegramAccount",
+    "TelegramChatState",
 ]

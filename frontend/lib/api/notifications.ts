@@ -64,3 +64,25 @@ export async function markNotificationRead(id: string, read: boolean = true): Pr
 export async function deleteNotification(id: string): Promise<void> {
   await apiFetch(`/api/v1/notifications/${id}/`, { method: "DELETE" });
 }
+
+/** The caller's own Telegram link for notifications. Connecting happens in
+ * the bot (open `bot_url`, share your number) — backend
+ * notifications.views.MyTelegramView only reports and toggles it.
+ * `bot_url` is null when the server has no bot configured. */
+export interface MyTelegram {
+  connected: boolean;
+  username: string | null;
+  notifications_enabled: boolean;
+  bot_url: string | null;
+}
+
+export async function getMyTelegram(): Promise<MyTelegram> {
+  return apiFetch<MyTelegram>("/api/v1/notifications/telegram/");
+}
+
+export async function updateMyTelegram(notificationsEnabled: boolean): Promise<MyTelegram> {
+  return apiFetch<MyTelegram>("/api/v1/notifications/telegram/", {
+    method: "PATCH",
+    body: JSON.stringify({ notifications_enabled: notificationsEnabled }),
+  });
+}

@@ -16,7 +16,13 @@ import { Input, Select } from "@/components/ui/input";
 import { toast } from "@/lib/store/toast-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { studentSchema, type StudentFormValues } from "@/lib/schemas/student-schema";
-import { useCreateStudentMutation, useStudentRoleQuery, useUpdateStudentMutation, useUserQuery } from "@/lib/queries/students";
+import {
+  useCreateStudentMutation,
+  useStudentParentsQuery,
+  useStudentRoleQuery,
+  useUpdateStudentMutation,
+  useUserQuery,
+} from "@/lib/queries/students";
 import { ApiError } from "@/lib/api/client";
 import type { StudentProfile } from "@/lib/api/students";
 
@@ -86,6 +92,8 @@ function StudentFormFields({
 
   const { data: studentRole } = useStudentRoleQuery(organizationId);
   const { data: userRecord, isLoading: userLoading } = useUserQuery(student?.user ?? null);
+  const { data: parents, isLoading: parentsLoading } = useStudentParentsQuery(student?.id ?? null);
+  const primaryParent = parents?.find((p) => p.is_primary_contact) ?? parents?.[0];
   const createMutation = useCreateStudentMutation();
   const updateMutation = useUpdateStudentMutation();
 
@@ -103,7 +111,7 @@ function StudentFormFields({
   // pattern for one-time state derived from an async source, see "Storing
   // information from previous renders" in the React docs) avoids the
   // extra post-mount render pass a useEffect would add here.
-  if (mode === "edit" && !initialized && userRecord && student) {
+  if (mode === "edit" && !initialized && userRecord && parents && student) {
     setInitialized(true);
     setValues({
       firstName: userRecord.first_name,
@@ -113,8 +121,8 @@ function StudentFormFields({
       dateOfBirth: userRecord.date_of_birth ?? "",
       studentCode: student.student_code,
       status: student.status,
-      parentName: "",
-      parentPhone: "",
+      parentName: primaryParent ? `${primaryParent.first_name} ${primaryParent.last_name}`.trim() : "",
+      parentPhone: primaryParent?.phone ?? "",
     });
   }
 
@@ -124,7 +132,12 @@ function StudentFormFields({
   }
 
   async function handleSubmit() {
-    const schema = mode === "create" ? studentSchema : studentSchema.omit({ parentName: true, parentPhone: true });
+    // A parent is required when creating. When editing, a student who has
+    // no parent on file may stay that way (both fields blank), but a parent
+    // that's being added or kept needs both a name and a phone.
+    const parentBlank = !values.parentName.trim() && !values.parentPhone.trim();
+    const skipParent = mode === "edit" && parentBlank && !primaryParent;
+    const schema = skipParent ? studentSchema.omit({ parentName: true, parentPhone: true }) : studentSchema;
     const result = schema.safeParse(values);
     if (!result.success) {
       const fieldErrors: Partial<Record<keyof StudentFormValues, string>> = {};
@@ -187,6 +200,15 @@ function StudentFormFields({
             dateOfBirth: values.dateOfBirth,
             studentCode: values.studentCode,
             status: values.status,
+            parent:
+              skipParent || !organizationId
+                ? undefined
+                : {
+                    organizationId,
+                    existingParentId: primaryParent?.id,
+                    name: values.parentName,
+                    phone: values.parentPhone,
+                  },
           },
         });
         toast.success(t("updatedToast"));
@@ -199,7 +221,7 @@ function StudentFormFields({
     }
   }
 
-  if (mode === "edit" && (userLoading || !initialized)) {
+  if (mode === "edit" && (userLoading || parentsLoading || !initialized)) {
     return (
       <DialogBody>
         <p className="text-sm text-slate-400 py-8 text-center">{t("loadingStudent")}</p>
@@ -263,20 +285,24 @@ function StudentFormFields({
             </div>
           )}
 
+          <Input
+            placeholder={t("fieldParentName")}
+            value={values.parentName}
+            onChange={(e) => setField("parentName", e.target.value)}
+            error={errors.parentName}
+          />
+          <Input
+            placeholder={t("fieldParentPhone")}
+            value={values.parentPhone}
+            onChange={(e) => setField("parentPhone", e.target.value)}
+            error={errors.parentPhone}
+          />
+          {mode === "edit" && (
+            <p className="col-span-2 -mt-2 text-xs text-slate-400">{t("parentPhoneTelegramHint")}</p>
+          )}
+
           {mode === "create" && (
             <>
-              <Input
-                placeholder={t("fieldParentName")}
-                value={values.parentName}
-                onChange={(e) => setField("parentName", e.target.value)}
-                error={errors.parentName}
-              />
-              <Input
-                placeholder={t("fieldParentPhone")}
-                value={values.parentPhone}
-                onChange={(e) => setField("parentPhone", e.target.value)}
-                error={errors.parentPhone}
-              />
               <Input
                 type="password"
                 placeholder={t("fieldPassword")}

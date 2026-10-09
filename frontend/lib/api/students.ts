@@ -33,6 +33,9 @@ export interface StudentParent {
   email: string | null;
   is_primary_contact: boolean;
   can_pickup: boolean;
+  /** Read-only: the parent shared this number with the Telegram bot and
+   * gets the child's notifications there. */
+  telegram_connected: boolean;
 }
 
 export interface ListStudentsParams {
@@ -102,9 +105,40 @@ export interface CreateStudentInput {
   parentPhone: string;
 }
 
+/** The forms collect a parent as one "full name" field; the backend stores
+ * first/last separately. A single word fills both (last_name is required). */
+function splitParentName(fullName: string): { first_name: string; last_name: string } {
+  const [first, ...rest] = fullName.trim().split(/\s+/);
+  return { first_name: first, last_name: rest.join(" ") || first };
+}
+
+/** The primary parent contact as the student forms edit it. Changing the
+ * phone disconnects the old number's Telegram link on the backend side
+ * (the link only counts while it matches the number on file). */
+export interface PrimaryParentInput {
+  name: string;
+  phone: string;
+}
+
+async function createPrimaryParent(
+  organizationId: string,
+  studentProfileId: string,
+  parent: PrimaryParentInput
+): Promise<void> {
+  await apiFetch("/api/v1/students/parents/", {
+    method: "POST",
+    body: JSON.stringify({
+      organization: organizationId,
+      student_profile: studentProfileId,
+      relation: "guardian",
+      ...splitParentName(parent.name),
+      phone: parent.phone || null,
+      is_primary_contact: true,
+    }),
+  });
+}
+
 export async function createStudent(input: CreateStudentInput): Promise<StudentProfile> {
-  const [firstName, ...rest] = input.parentName.trim().split(" ");
-  const parentLastName = rest.join(" ") || firstName;
 
   const user = await apiFetch<{ id: string }>("/api/v1/users/", {
     method: "POST",
@@ -133,18 +167,7 @@ export async function createStudent(input: CreateStudentInput): Promise<StudentP
       }),
     });
 
-    await apiFetch("/api/v1/students/parents/", {
-      method: "POST",
-      body: JSON.stringify({
-        organization: input.organizationId,
-        student_profile: profile.id,
-        relation: "guardian",
-        first_name: firstName || input.parentName,
-        last_name: parentLastName,
-        phone: input.parentPhone || null,
-        is_primary_contact: true,
-      }),
-    });
+    await createPrimaryParent(input.organizationId, profile.id, { name: input.parentName, phone: input.parentPhone });
 
     return profile;
   } catch (err) {
@@ -169,6 +192,9 @@ export interface UpdateStudentInput {
   dateOfBirth?: string;
   studentCode?: string;
   status?: StudentStatus;
+  /** Upserts the primary parent: `existingParentId` set -> update that
+   * record, otherwise create one. Omit to leave parents untouched. */
+  parent?: PrimaryParentInput & { organizationId: string; existingParentId?: string };
 }
 
 export async function updateStudent(profileId: string, input: UpdateStudentInput): Promise<StudentProfile> {
@@ -187,10 +213,24 @@ export async function updateStudent(profileId: string, input: UpdateStudentInput
   if (input.studentCode !== undefined) profilePatch.student_code = input.studentCode;
   if (input.status !== undefined) profilePatch.status = input.status;
 
-  return apiFetch<StudentProfile>(`/api/v1/students/${profileId}/`, {
+  const profile = await apiFetch<StudentProfile>(`/api/v1/students/${profileId}/`, {
     method: "PATCH",
     body: JSON.stringify(profilePatch),
   });
+
+  if (input.parent) {
+    const { organizationId, existingParentId, ...parent } = input.parent;
+    if (existingParentId) {
+      await apiFetch(`/api/v1/students/parents/${existingParentId}/`, {
+        method: "PATCH",
+        body: JSON.stringify({ ...splitParentName(parent.name), phone: parent.phone || null }),
+      });
+    } else {
+      await createPrimaryParent(organizationId, profileId, parent);
+    }
+  }
+
+  return profile;
 }
 
 export async function deleteStudent(profileId: string): Promise<void> {

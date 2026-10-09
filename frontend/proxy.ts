@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { ROLE_PORTAL_MAP } from "@/lib/portals";
 
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/forgot-password"];
 
-// Mirrors login page's ROLE_PORTAL_MAP (app/(auth)/login/page.tsx) — keep
-// both in sync if a role or portal is ever added/renamed.
-const ROLE_PORTAL_MAP: Record<string, string> = {
-  super_admin: "/super-admin",
-  center_admin: "/",
-  admin: "/",
-  teacher: "/teacher",
-  student: "/student",
-};
+// Needs a session (it changes the signed-in user's own password) but belongs
+// to no portal — every role may open it.
+const ANY_ROLE_PATHS = ["/change-password"];
 
 // Path prefixes that belong to a specific portal and the roles allowed in
 // it. The admin portal is everything NOT claimed by one of the others
@@ -68,6 +63,10 @@ export function proxy(request: NextRequest) {
 
   if (!hasSession || !role || !home) {
     return redirectToLogin(request);
+  }
+
+  if (ANY_ROLE_PATHS.some((path) => isUnderPrefix(pathname, path))) {
+    return NextResponse.next();
   }
 
   // Not under any of the three named portals = it's the Admin portal

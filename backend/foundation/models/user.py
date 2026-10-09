@@ -70,6 +70,12 @@ class User(
     # login-signal machinery still updates it via the `last_login` attribute).
     last_login = models.DateTimeField(null=True, blank=True, db_column="last_login_at")
     phone_verified_at = models.DateTimeField(null=True, blank=True)
+    # Set when someone other than the user picked the current password (an
+    # admin's reset) — the user must replace it before using anything else.
+    # Enforced server-side in SessionValidatingJWTAuthentication, not just a
+    # frontend redirect. Cleared by any self-chosen password (settings change
+    # or Telegram reset).
+    must_change_password = models.BooleanField(default=False)
 
     objects = UserManager()
 

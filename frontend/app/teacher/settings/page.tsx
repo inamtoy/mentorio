@@ -16,6 +16,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useChangeOwnPassword } from '@/lib/hooks/use-change-own-password';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -158,25 +159,14 @@ export default function TeacherSettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>('account');
 
   // Security form
-  const [passwords, setPasswords] = useState({
-    current: '',
-    next: '',
-    confirm: '',
+  const { passwords, setPasswords, submit: handleUpdatePassword, isPending: passwordPending } = useChangeOwnPassword({
+    fillAll: t('fillAllPasswordFieldsToast'),
+    mismatch: t('passwordMismatchToast'),
+    success: t('passwordUpdatedToast'),
+    failed: t('passwordUpdateFailedToast'),
   });
   const [twoFAEnabled, setTwoFAEnabled] = useState(false);
 
-  function handleUpdatePassword() {
-    if (!passwords.current || !passwords.next || !passwords.confirm) {
-      toast.error(t('fillAllPasswordFieldsToast'));
-      return;
-    }
-    if (passwords.next !== passwords.confirm) {
-      toast.error(t('passwordMismatchToast'));
-      return;
-    }
-    toast.success(t('passwordUpdatedToast'));
-    setPasswords({ current: '', next: '', confirm: '' });
-  }
 
   // Notifications
   const [notifToggles, setNotifToggles] = useState({
@@ -331,7 +321,7 @@ export default function TeacherSettingsPage() {
                     />
                   </Field>
                   <div className="flex justify-end pt-2">
-                    <Button onClick={handleUpdatePassword}>
+                    <Button onClick={handleUpdatePassword} loading={passwordPending}>
                       <Lock className="h-4 w-4" />
                       {t('updatePassword')}
                     </Button>

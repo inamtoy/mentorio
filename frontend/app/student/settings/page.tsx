@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { useChangeOwnPassword } from '@/lib/hooks/use-change-own-password';
 import {
   User,
   Bell,
@@ -159,7 +160,12 @@ export default function StudentSettingsPage() {
 
   const [activeTab, setActiveTab] = useState<TabId>('account');
 
-  const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
+  const { passwords, setPasswords, submit: handleUpdatePassword, isPending: passwordPending } = useChangeOwnPassword({
+    fillAll: t('fillAllPasswordFieldsToast'),
+    mismatch: t('passwordMismatchToast'),
+    success: t('passwordUpdatedToast'),
+    failed: t('passwordUpdateFailedToast'),
+  });
   const [twoFAEnabled, setTwoFAEnabled] = useState(false);
 
   const [notifToggles, setNotifToggles] = useState({
@@ -282,7 +288,7 @@ export default function StudentSettingsPage() {
                     />
                   </Field>
                   <div className="flex justify-end pt-2">
-                    <Button>
+                    <Button onClick={handleUpdatePassword} loading={passwordPending}>
                       <Lock className="h-4 w-4" />
                       {t('updatePassword')}
                     </Button>

@@ -12,7 +12,8 @@ aggregates live from the real tables instead. Adding four more cached
 tables nothing would ever refresh would just mean permanently-stale data
 behind a `refresh_reports` command nobody calls — so this follows the
 proven pattern instead: four read-only views, aggregated on each request
-from Attendance/Submission/ExamResult/Assignment/Lesson/Invoice/Payment,
+from Attendance/Submission/ExamResult/Assignment/Lesson/Invoice/Payment/
+Expense/Payroll,
 scoped to the caller's own organization by RLS (see
 `common/middleware.py::OrganizationContextMiddleware`) the same way every
 other view in this codebase relies on it rather than filtering
@@ -49,7 +50,8 @@ from rest_framework.views import APIView
 from attendance.models import Attendance
 from common.permissions import HasModulePermission
 from exams.models import ExamResult
-from finance.models import Invoice, Payment
+from finance.models import Expense, Invoice, Payment, Payroll
+from finance.services import payroll_net_amount_expression
 from groups.models import Group, GroupMember
 from homework.models import Assignment, Submission
 from schedule.models import Lesson
@@ -461,13 +463,28 @@ class AttendanceSummaryReportView(APIView):
 class FinanceSummaryReportView(APIView):
     """Org-wide financial summary for the given period.
 
-    No `total_expenses`/`net_profit`/`payroll_total` fields — the same
-    "no expense data exists anywhere in this backend" reality the Admin
-    Finance revenue chart already dropped its Expenses bar for (commit
-    9f074c2): `finance` never got Expense/Payroll models (trimmed from
-    `database/12-finance.sql`, see `finance/models/invoice.py`'s
-    docstring), so those fields would just be fabricated zeros. Add them
-    here if those models ever exist.
+    `total_expenses`/`payroll_total`/`net_profit` are cash-basis: money
+    that actually left the org inside [start, end], set against
+    `total_collected` (money that actually came in, by `payment_date`).
+    So only `status="paid"` Expense/Payroll rows count, windowed by the
+    local date of `paid_at` (the moment `mark_paid` moved the money; it is
+    always set on a paid row, and never on any other status). Deliberately
+    NOT `approved`: an approved Payroll can still be cancelled, and an
+    approved Expense is still unpaid — neither is money out yet, and
+    counting them would mix an accrual figure into a cash-basis net
+    profit. `pending`/`rejected`/`draft`/`cancelled` never represent money
+    out. Soft-deleted rows are excluded by the default manager, and org
+    isolation comes from RLS, exactly like the Invoice/Payment queries.
+
+    `payroll_total` sums net pay (`finance.services.
+    payroll_net_amount_expression`, the SQL twin of the serializer's
+    `net_amount`) — what the teacher was actually paid. Withheld tax is
+    excluded so that a center logging its tax remittances as a
+    `category="taxes"` Expense doesn't double-count it.
+
+    No `branch` filter: Invoice/Payment have no branch to filter revenue
+    by, and Payroll has none either, so a branch-filtered expense total
+    netted against org-wide revenue would be a meaningless figure.
 
     `total_outstanding`/`total_overdue` are snapshot balances as of `end`
     (every still-open invoice issued on or before `end`, minus payments
@@ -523,6 +540,16 @@ class FinanceSummaryReportView(APIView):
             total_overdue=Coalesce(Sum("balance", filter=Q(due_date__lt=end)), Decimal("0")),
         )
 
+        # `paid_at__date` is evaluated in the current Django timezone — the
+        # same one `_resolve_period` takes `today` from.
+        paid_in_period = {"status": "paid", "paid_at__date__gte": start, "paid_at__date__lte": end}
+        total_expenses = Expense.objects.filter(**paid_in_period).aggregate(
+            total=Coalesce(Sum("amount"), Decimal("0"))
+        )["total"]
+        payroll_total = Payroll.objects.filter(**paid_in_period).aggregate(
+            total=Coalesce(Sum(payroll_net_amount_expression()), Decimal("0"))
+        )["total"]
+
         new_enrollments = StudentProfile.objects.filter(enrollment_date__gte=start, enrollment_date__lte=end).count()
 
         data = {
@@ -532,6 +559,9 @@ class FinanceSummaryReportView(APIView):
             "total_collected": total_collected,
             "total_outstanding": balance_totals["total_outstanding"],
             "total_overdue": balance_totals["total_overdue"],
+            "total_expenses": total_expenses,
+            "payroll_total": payroll_total,
+            "net_profit": total_collected - total_expenses - payroll_total,
             "new_enrollments": new_enrollments,
             "currency": "UZS",
         }

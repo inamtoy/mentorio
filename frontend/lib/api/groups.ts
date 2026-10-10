@@ -32,6 +32,8 @@ export interface Group {
    * its course's when unset. null when neither is set. */
   effective_price: string | null;
   currency: string;
+  /** Day of the month (1–28) each student's monthly invoice falls due. */
+  billing_day: number;
   notes: string | null;
   created_at: string;
   updated_at: string | null;
@@ -126,6 +128,7 @@ export interface GroupInput {
   startTime: string;
   endTime: string;
   price: number;
+  billingDay: number;
 }
 
 export async function createGroup(input: GroupInput): Promise<Group> {
@@ -145,6 +148,7 @@ export async function createGroup(input: GroupInput): Promise<Group> {
       start_time: input.startTime,
       end_time: input.endTime,
       price: input.price,
+      billing_day: input.billingDay,
     }),
   });
 }
@@ -163,6 +167,7 @@ export async function updateGroup(groupId: string, input: Partial<GroupInput>): 
   if (input.startTime !== undefined) patch.start_time = input.startTime;
   if (input.endTime !== undefined) patch.end_time = input.endTime;
   if (input.price !== undefined) patch.price = input.price;
+  if (input.billingDay !== undefined) patch.billing_day = input.billingDay;
 
   return apiFetch<Group>(`/api/v1/groups/${groupId}/`, { method: "PATCH", body: JSON.stringify(patch) });
 }

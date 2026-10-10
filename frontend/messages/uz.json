@@ -1200,7 +1200,9 @@
     "priceNotSet": "Belgilanmagan",
     "createFirstInvoiceLabel": "Birinchi oy uchun hisob-faktura yaratish ({amount})",
     "noPriceNoInvoiceHint": "Guruhga narx belgilanmagan, shuning uchun qo'shishda hisob-faktura yaratilmaydi",
-    "studentEnrolledWithInvoiceToast": "O'quvchi yozildi, {amount} hisob-faktura yaratildi"
+    "studentEnrolledWithInvoiceToast": "O'quvchi yozildi, {amount} hisob-faktura yaratildi",
+    "fieldBillingDay": "To'lov kuni",
+    "billingDayOption": "Har oyning {day}-sanasi"
   },
   "AdminSchedule": {
     "pageTitle": "Dars jadvali",
@@ -1496,7 +1498,8 @@
     "expenseMarkedPaidToast": "Xarajat to'langan deb belgilandi",
     "payrollApprovedToast": "Ish haqi tasdiqlandi",
     "payrollCancelledToast": "Ish haqi bekor qilindi",
-    "payrollMarkedPaidToast": "Ish haqi to'langan deb belgilandi"
+    "payrollMarkedPaidToast": "Ish haqi to'langan deb belgilandi",
+    "billingPeriodLabel": "To'lov oyi"
   },
   "AdminReports": {
     "pageTitle": "Hisobotlar",

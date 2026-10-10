@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, Users, Clock, MapPin, Pencil, Trash2, UserPlus, X, DollarSign } from "lucide-react";
+import { ChevronLeft, Users, Clock, MapPin, Pencil, Trash2, UserPlus, X, DollarSign, CalendarDays } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -116,6 +116,7 @@ export function GroupDetailPanel({ group, onBack, onEdit, onDelete }: GroupDetai
             />
             <InfoRow icon={<Users className="h-4 w-4" />} label={t("enrollmentLabel")} value={`${group.enrolled_count}/${group.max_students}`} />
             <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("monthlyPriceLabel")} value={monthlyPrice ?? t("priceNotSet")} />
+            <InfoRow icon={<CalendarDays className="h-4 w-4" />} label={t("fieldBillingDay")} value={t("billingDayOption", { day: group.billing_day })} />
           </div>
         </div>
 

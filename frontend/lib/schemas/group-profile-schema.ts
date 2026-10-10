@@ -19,6 +19,8 @@ export const groupProfileSchema = z.object({
   endDate: z.string().optional(),
   status: z.enum(["forming", "active", "completed", "cancelled", "archived"]),
   price: z.coerce.number().min(0, "Price must be a positive number"),
+  // Capped at 28 so the day exists in every month (backend enforces too).
+  billingDay: z.coerce.number().int().min(1).max(28),
 });
 
 export type GroupProfileFormValues = z.infer<typeof groupProfileSchema>;

@@ -126,6 +126,9 @@ export function InvoiceDetailPanel({ invoice, onBack, onDelete }: InvoiceDetailP
             <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("amountLabel")} value={formatCurrency(Number(invoice.total_amount))} />
             <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("paidLabel")} value={formatCurrency(Number(invoice.paid_amount))} />
             <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("balanceLabel")} value={formatCurrency(balance)} />
+            {invoice.billing_period && (
+              <InfoRow icon={<Calendar className="h-4 w-4" />} label={t("billingPeriodLabel")} value={formatLocalizedDate(new Date(invoice.billing_period + "T00:00:00"), locale, { month: "long", year: "numeric" })} />
+            )}
             <InfoRow icon={<Calendar className="h-4 w-4" />} label={t("dueDateLabel")} value={formatLocalizedDate(new Date(invoice.due_date + "T00:00:00"), locale, { month: "short", day: "numeric", year: "numeric" })} />
           </div>
         </div>

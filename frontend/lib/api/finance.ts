@@ -19,6 +19,8 @@ export interface Invoice {
   currency: string;
   issued_date: string;
   due_date: string;
+  /** First day of the month a group's monthly fee covers; null for a one-off invoice. */
+  billing_period: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string | null;

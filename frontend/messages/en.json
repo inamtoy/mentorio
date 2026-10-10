@@ -1200,7 +1200,9 @@
     "priceNotSet": "Not set",
     "createFirstInvoiceLabel": "Issue the first month's invoice ({amount})",
     "noPriceNoInvoiceHint": "This group has no price, so no invoice will be issued on enrollment",
-    "studentEnrolledWithInvoiceToast": "Student enrolled, invoice for {amount} issued"
+    "studentEnrolledWithInvoiceToast": "Student enrolled, invoice for {amount} issued",
+    "fieldBillingDay": "Payment day",
+    "billingDayOption": "Every month on day {day}"
   },
   "AdminSchedule": {
     "pageTitle": "Schedule",
@@ -1496,7 +1498,8 @@
     "expenseMarkedPaidToast": "Expense marked as paid",
     "payrollApprovedToast": "Payroll approved",
     "payrollCancelledToast": "Payroll cancelled",
-    "payrollMarkedPaidToast": "Payroll marked as paid"
+    "payrollMarkedPaidToast": "Payroll marked as paid",
+    "billingPeriodLabel": "Billing month"
   },
   "AdminReports": {
     "pageTitle": "Reports",

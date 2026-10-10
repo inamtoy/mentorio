@@ -1200,7 +1200,9 @@
     "priceNotSet": "Не указана",
     "createFirstInvoiceLabel": "Выставить счёт за первый месяц ({amount})",
     "noPriceNoInvoiceHint": "У группы не указана цена, поэтому при зачислении счёт не выставляется",
-    "studentEnrolledWithInvoiceToast": "Студент зачислен, выставлен счёт на {amount}"
+    "studentEnrolledWithInvoiceToast": "Студент зачислен, выставлен счёт на {amount}",
+    "fieldBillingDay": "День оплаты",
+    "billingDayOption": "{day}-го числа каждого месяца"
   },
   "AdminSchedule": {
     "pageTitle": "Расписание",
@@ -1496,7 +1498,8 @@
     "expenseMarkedPaidToast": "Расход отмечен как оплаченный",
     "payrollApprovedToast": "Зарплата одобрена",
     "payrollCancelledToast": "Зарплата отменена",
-    "payrollMarkedPaidToast": "Зарплата отмечена как выплаченная"
+    "payrollMarkedPaidToast": "Зарплата отмечена как выплаченная",
+    "billingPeriodLabel": "Месяц оплаты"
   },
   "AdminReports": {
     "pageTitle": "Отчёты",

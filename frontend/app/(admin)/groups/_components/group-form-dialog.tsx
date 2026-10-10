@@ -24,6 +24,8 @@ import type { Group, DayOfWeek } from "@/lib/api/groups";
 
 const DAYS: DayOfWeek[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+const BILLING_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
+
 const EMPTY_VALUES: GroupProfileFormValues = {
   name: "",
   course: "",
@@ -37,6 +39,7 @@ const EMPTY_VALUES: GroupProfileFormValues = {
   endDate: "",
   status: "forming",
   price: 0,
+  billingDay: 1,
 };
 
 interface GroupFormDialogProps {
@@ -106,6 +109,7 @@ function GroupFormFields({
           endDate: group.end_date ?? "",
           status: group.status,
           price: Number(group.price ?? 0),
+          billingDay: group.billing_day,
         }
       : EMPTY_VALUES
   );
@@ -158,6 +162,7 @@ function GroupFormFields({
           const field = key === "max_students" ? "maxStudents" : key === "days_of_week" ? "daysOfWeek"
             : key === "start_date" ? "startDate" : key === "end_date" ? "endDate"
             : key === "start_time" ? "startTime" : key === "end_time" ? "endTime"
+            : key === "billing_day" ? "billingDay"
             : (key as keyof GroupProfileFormValues);
           mapped[field] = messages[0];
         }
@@ -244,6 +249,13 @@ function GroupFormFields({
             value={values.price}
             onChange={(e) => setField("price", Number(e.target.value))}
             error={errors.price}
+          />
+          <Select
+            placeholder={t("fieldBillingDay")}
+            options={BILLING_DAYS.map((day) => ({ value: String(day), label: t("billingDayOption", { day }) }))}
+            value={String(values.billingDay)}
+            onChange={(e) => setField("billingDay", Number(e.target.value))}
+            className="col-span-2"
           />
           <Input
             type="date"

@@ -253,7 +253,7 @@ function StudentFormFields({
           />
 
           {mode === "edit" && student && (
-            <Input value={student.user_login_id} disabled placeholder={t("fieldLoginId")} className="col-span-2" />
+            <Input value={student.user_login_id} disabled placeholder={t("fieldLoginId")} wrapperClassName="col-span-2" />
           )}
 
           {mode === "create" && (

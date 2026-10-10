@@ -259,7 +259,7 @@ function TeacherFormFields({
           />
 
           {mode === "edit" && teacher && (
-            <Input value={teacher.user_login_id} disabled placeholder={t("fieldLoginId")} className="col-span-2" />
+            <Input value={teacher.user_login_id} disabled placeholder={t("fieldLoginId")} wrapperClassName="col-span-2" />
           )}
 
           {mode === "create" && (
@@ -269,7 +269,7 @@ function TeacherFormFields({
                 value={values.specialization}
                 onChange={(e) => setField("specialization", e.target.value)}
                 error={errors.specialization}
-                className="col-span-2"
+                wrapperClassName="col-span-2"
               />
               <Input
                 type="number"
@@ -277,7 +277,7 @@ function TeacherFormFields({
                 value={values.salary}
                 onChange={(e) => setField("salary", Number(e.target.value))}
                 error={errors.salary}
-                className="col-span-2"
+                wrapperClassName="col-span-2"
               />
               <Input
                 type="password"

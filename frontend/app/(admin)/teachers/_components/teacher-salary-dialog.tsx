@@ -152,14 +152,14 @@ function TeacherSalaryFields({
               value={values.percentageValue ?? ""}
               onChange={(e) => setField("percentageValue", Number(e.target.value))}
               error={errors.percentageValue}
-              className="col-span-2"
+              wrapperClassName="col-span-2"
             />
           )}
           <Input
             placeholder={t("fieldSalaryNotes")}
             value={values.notes}
             onChange={(e) => setField("notes", e.target.value)}
-            className="col-span-2"
+            wrapperClassName="col-span-2"
           />
         </div>
       </DialogBody>

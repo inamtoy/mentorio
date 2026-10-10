@@ -180,7 +180,7 @@ function GroupFormFields({
             value={values.name}
             onChange={(e) => setField("name", e.target.value)}
             error={errors.name}
-            className="col-span-2"
+            wrapperClassName="col-span-2"
           />
           <Select
             placeholder={t("selectCoursePlaceholder")}
@@ -259,7 +259,7 @@ function GroupFormFields({
           />
 
           {mode === "edit" && group && (
-            <Input value={group.code} disabled placeholder={t("fieldGroupCode")} className="col-span-2" />
+            <Input value={group.code} disabled placeholder={t("fieldGroupCode")} wrapperClassName="col-span-2" />
           )}
         </div>
       </DialogBody>

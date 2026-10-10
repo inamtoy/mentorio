@@ -5,10 +5,14 @@ grades/tests/test_grades.py: a real login is needed since HasModulePermission
 reads from request.user, and role/permission grants only exist once
 foundation.signals's post_save provisioning has actually run.
 
-Invoice.issued_date/Payment.payment_date are both `auto_now_add`, so tests
-can't backdate them — every invoice/payment created here lands "today",
-which is why the views' default period (1st-of-month through today) is
-left unset on every request rather than passed explicitly.
+Invoice.issued_date/Payment.payment_date are both server-set
+(`default=timezone.localdate, editable=False`), so every invoice/payment
+created here lands "today", which is why the views' default period
+(1st-of-month through today) is left unset on every request rather than
+passed explicitly. "Today" here must be the same `timezone.localdate()` the
+views use — these tests used to fail between 00:00 and 05:00 Tashkent time
+on Windows dev machines, when those fields were stamped by
+`datetime.date.today()` (the OS clock) instead.
 """
 
 import uuid
@@ -23,7 +27,7 @@ from attendance.models import Attendance
 from common.context import apply_org_context
 from course.models import Course
 from exams.models import Exam, ExamResult
-from finance.models import Invoice, Payment
+from finance.models import Expense, Invoice, Payment, Payroll
 from foundation.models import Organization, Role, User, UserRole
 from groups.models import Group, GroupMember
 from homework.models import Assignment, Submission
@@ -286,3 +290,100 @@ def test_finance_summary_computes_outstanding_and_overdue():
     assert data["total_outstanding"] == 225000.0  # (200000-50000) + 75000
     assert data["total_overdue"] == 75000.0
     assert data["new_enrollments"] == 1
+    # No expense/payroll rows at all -> zeros, and net profit is just revenue.
+    assert data["total_expenses"] == 0.0
+    assert data["payroll_total"] == 0.0
+    assert data["net_profit"] == 150000.0
+
+
+def _make_expense(org, title, amount, **kwargs):
+    return Expense.objects.using(BYPASS_ALIAS).create(
+        organization=org, category="rent", title=title, amount=amount, **kwargs
+    )
+
+
+def _make_payroll(org, teacher, period_start, period_end, **kwargs):
+    return Payroll.objects.using(BYPASS_ALIAS).create(
+        organization=org, teacher_profile=teacher, period_start=period_start, period_end=period_end, **kwargs
+    )
+
+
+def test_finance_summary_counts_only_paid_expenses_and_payroll_in_period():
+    """Cash-basis (see FinanceSummaryReportView's docstring): only
+    `status="paid"` rows whose `paid_at` falls inside the period count —
+    not pending/approved/rejected expenses, not draft/approved/cancelled
+    payroll, not soft-deleted rows, not rows paid before the period.
+    """
+    org = _make_org()
+    _student_user, student = _make_student_login(org, "+998920000015")
+    _teacher_user, teacher = _make_teacher_login(org, "+998920000016")
+    now = timezone.now()
+    before_period = now - timedelta(days=timezone.localdate().day)  # last day of the previous month
+
+    invoice = Invoice.objects.using(BYPASS_ALIAS).create(
+        organization=org, student_profile=student, invoice_number="INV-E1", total_amount="1000000.00",
+        due_date=timezone.localdate() + timedelta(days=10),
+    )
+    Payment.objects.using(BYPASS_ALIAS).create(
+        organization=org, invoice=invoice, student_profile=student, amount="1000000.00"
+    )
+
+    # Expenses: only the first one counts.
+    _make_expense(org, "Counted", "300000.00", status="paid", paid_at=now)
+    _make_expense(org, "Pending", "1.00", status="pending")
+    _make_expense(org, "Approved", "2.00", status="approved")
+    _make_expense(org, "Rejected", "4.00", status="rejected")
+    _make_expense(org, "Deleted", "8.00", status="paid", paid_at=now, deleted_at=now)
+    _make_expense(org, "Last month", "16.00", status="paid", paid_at=before_period)
+
+    # Payroll: only the first one counts, at its NET amount
+    # (200000 + 50000 bonus - 10000 deductions - 40000 tax = 200000).
+    _make_payroll(
+        org, teacher, "2026-01-01", "2026-01-31", base_salary="200000.00", bonus="50000.00",
+        deductions="10000.00", tax_amount="40000.00", status="paid", paid_at=now,
+    )
+    _make_payroll(org, teacher, "2026-02-01", "2026-02-28", base_salary="1.00", status="draft")
+    _make_payroll(org, teacher, "2026-03-01", "2026-03-31", base_salary="2.00", status="approved")
+    _make_payroll(org, teacher, "2026-04-01", "2026-04-30", base_salary="4.00", status="cancelled")
+    _make_payroll(
+        org, teacher, "2026-05-01", "2026-05-31", base_salary="8.00", status="paid", paid_at=now, deleted_at=now
+    )
+    _make_payroll(org, teacher, "2026-06-01", "2026-06-30", base_salary="16.00", status="paid", paid_at=before_period)
+
+    admin_user = _make_admin_login(org, "+998920000017")
+    client = _login(admin_user.login_id)
+    data = client.get(FINANCE_URL).json()["data"]
+
+    assert data["total_collected"] == 1000000.0
+    assert data["total_expenses"] == 300000.0
+    assert data["payroll_total"] == 200000.0
+    assert data["net_profit"] == 500000.0  # 1000000 - 300000 - 200000
+
+    # The row paid last month shows up once the window includes that date.
+    day = timezone.localdate(before_period).isoformat()
+    data = client.get(FINANCE_URL, {"start": day, "end": day}).json()["data"]
+    assert data["total_expenses"] == 16.0
+    assert data["payroll_total"] == 16.0
+    assert data["net_profit"] == -32.0
+
+
+def test_finance_summary_expenses_and_payroll_are_org_isolated():
+    """Another org's paid expenses/payroll never leak into this org's
+    report — scoped by RLS like every other query in this module."""
+    org = _make_org()
+    other_org = _make_org()
+    _other_teacher_user, other_teacher = _make_teacher_login(other_org, "+998920000018")
+    now = timezone.now()
+    _make_expense(other_org, "Other org rent", "500000.00", status="paid", paid_at=now)
+    _make_payroll(
+        other_org, other_teacher, "2026-01-01", "2026-01-31", base_salary="700000.00", status="paid", paid_at=now
+    )
+    _make_expense(org, "Own rent", "100000.00", status="paid", paid_at=now)
+
+    admin_user = _make_admin_login(org, "+998920000019")
+    client = _login(admin_user.login_id)
+    data = client.get(FINANCE_URL).json()["data"]
+
+    assert data["total_expenses"] == 100000.0
+    assert data["payroll_total"] == 0.0
+    assert data["net_profit"] == -100000.0

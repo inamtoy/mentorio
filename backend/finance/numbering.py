@@ -11,7 +11,7 @@ from django.utils import timezone
 
 
 def generate_invoice_number(model_cls, organization) -> str:
-    year = timezone.now().year
+    year = timezone.localdate().year
     prefix = f"INV-{year}-"
     manager = model_cls.all_objects if hasattr(model_cls, "all_objects") else model_cls.objects
 

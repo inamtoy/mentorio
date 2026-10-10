@@ -1,6 +1,5 @@
-from datetime import date
-
 from django.db import models
+from django.utils import timezone
 
 from common.db import schema_table
 from common.models import OrganizationScopedMixin, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
@@ -36,7 +35,7 @@ class TeacherProfile(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Org
     teacher_code = models.CharField(max_length=50)
     status = models.CharField(max_length=20, choices=TEACHER_STATUS_CHOICES, default="pending")
     employment_type = models.CharField(max_length=20, choices=EMPLOYMENT_TYPE_CHOICES, default="full_time")
-    hire_date = models.DateField(default=date.today)
+    hire_date = models.DateField(default=timezone.localdate)
     termination_date = models.DateField(null=True, blank=True)
     bio = models.TextField(blank=True, null=True)
     experience_years = models.SmallIntegerField(default=0)

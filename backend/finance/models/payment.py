@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 from common.db import schema_table
 from common.models import OrganizationScopedMixin, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
@@ -36,7 +37,13 @@ class Payment(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Organizati
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=3, default="UZS")
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default="cash")
-    payment_date = models.DateField(auto_now_add=True)
+    # default=timezone.localdate + editable=False, not auto_now_add=True:
+    # Django's DateField auto_now_add stamps datetime.date.today() (the host
+    # OS clock), which disagrees with settings.TIME_ZONE wherever Django
+    # can't time.tzset() (Windows) — every date window in this app
+    # (reports, filters) is computed with timezone.localdate(). editable=False
+    # keeps it server-set/read-only exactly like auto_now_add did.
+    payment_date = models.DateField(default=timezone.localdate, editable=False)
     notes = models.TextField(blank=True, null=True)
     created_by = models.UUIDField(null=True, blank=True)
 

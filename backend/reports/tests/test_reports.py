@@ -5,10 +5,14 @@ grades/tests/test_grades.py: a real login is needed since HasModulePermission
 reads from request.user, and role/permission grants only exist once
 foundation.signals's post_save provisioning has actually run.
 
-Invoice.issued_date/Payment.payment_date are both `auto_now_add`, so tests
-can't backdate them — every invoice/payment created here lands "today",
-which is why the views' default period (1st-of-month through today) is
-left unset on every request rather than passed explicitly.
+Invoice.issued_date/Payment.payment_date are both server-set
+(`default=timezone.localdate, editable=False`), so every invoice/payment
+created here lands "today", which is why the views' default period
+(1st-of-month through today) is left unset on every request rather than
+passed explicitly. "Today" here must be the same `timezone.localdate()` the
+views use — these tests used to fail between 00:00 and 05:00 Tashkent time
+on Windows dev machines, when those fields were stamped by
+`datetime.date.today()` (the OS clock) instead.
 """
 
 import uuid

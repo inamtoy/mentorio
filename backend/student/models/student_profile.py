@@ -1,6 +1,5 @@
-from datetime import date
-
 from django.db import models
+from django.utils import timezone
 
 from common.db import schema_table
 from common.models import OrganizationScopedMixin, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
@@ -30,7 +29,7 @@ class StudentProfile(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Org
     )
     student_code = models.CharField(max_length=50)
     status = models.CharField(max_length=20, choices=STUDENT_STATUS_CHOICES, default="pending")
-    enrollment_date = models.DateField(default=date.today)
+    enrollment_date = models.DateField(default=timezone.localdate)
     graduation_date = models.DateField(null=True, blank=True)
     education_level = models.CharField(max_length=100, blank=True, null=True)
     school_name = models.CharField(max_length=255, blank=True, null=True)

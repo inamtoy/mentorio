@@ -1,6 +1,5 @@
-from datetime import date
-
 from django.db import models
+from django.utils import timezone
 
 from common.db import schema_table
 from common.models import CreatedAtMixin, OrganizationScopedMixin, UUIDPrimaryKeyMixin
@@ -23,7 +22,7 @@ class StudentStatusHistory(UUIDPrimaryKeyMixin, CreatedAtMixin, OrganizationScop
     previous_status = models.CharField(max_length=20, choices=STUDENT_STATUS_CHOICES, blank=True, null=True)
     new_status = models.CharField(max_length=20, choices=STUDENT_STATUS_CHOICES)
     reason = models.TextField(blank=True, null=True)
-    effective_date = models.DateField(default=date.today)
+    effective_date = models.DateField(default=timezone.localdate)
     changed_by = models.ForeignKey(
         "foundation.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )

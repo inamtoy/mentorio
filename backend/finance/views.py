@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -11,9 +9,8 @@ from common.audit import audit_log, audited
 from common.permissions import HasModulePermission, user_has_permission
 from finance.filters import ExpenseFilter, InvoiceFilter, PayrollFilter, PaymentFilter
 from finance.models import Expense, Invoice, Payment, Payroll
-from finance.numbering import generate_invoice_number
 from finance.serializers import ExpenseSerializer, InvoiceSerializer, PayrollSerializer, PaymentSerializer
-from finance.services import recompute_invoice_status
+from finance.services import get_or_create_group_invoice, recompute_invoice_status
 from foundation.views import SoftDeleteDestroyMixin
 from groups.models import Group, GroupMember
 from notifications.services import events as notification_events
@@ -102,32 +99,13 @@ class InvoiceViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
         if not GroupMember.objects.filter(group=group, student_profile=student_profile, status="active").exists():
             raise PermissionDenied("You are not enrolled in this group.")
 
-        price = group.price if group.price is not None else group.course.price
-        if not price:
-            # Rejects both "no price set" (None) and a zero/free price — a
-            # zero-total Invoice could never be paid off through the
-            # gateway flow (build_checkout_url refuses a <= 0 balance) or
-            # via a direct Payment (amount > 0 DB constraint), so it would
-            # sit at status="pending" forever with no way to resolve it.
+        result = get_or_create_group_invoice(group, student_profile, created_by=request.user.id)
+        if result is None:
             raise ValidationError({"group": "This group has no price set. Contact your center."})
+        invoice, created = result
+        if not created:
+            return Response(InvoiceSerializer(invoice).data)
 
-        existing = (
-            Invoice.objects.filter(student_profile=student_profile, group=group).exclude(status="cancelled").first()
-        )
-        if existing is not None:
-            return Response(InvoiceSerializer(existing).data)
-
-        invoice = Invoice.objects.create(
-            organization=group.organization,
-            student_profile=student_profile,
-            group=group,
-            invoice_number=generate_invoice_number(Invoice, group.organization),
-            total_amount=price,
-            currency=group.currency,
-            due_date=timezone.now().date() + timedelta(days=7),
-            created_by=request.user.id,
-        )
-        notification_events.invoice_issued(invoice)
         audit_log(
             request, action="create", entity_type="invoice", entity_id=str(invoice.id),
             metadata={"self_created": True, "group": str(group.id)},

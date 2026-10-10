@@ -360,7 +360,7 @@ def test_finance_summary_counts_only_paid_expenses_and_payroll_in_period():
     assert data["net_profit"] == 500000.0  # 1000000 - 300000 - 200000
 
     # The row paid last month shows up once the window includes that date.
-    day = before_period.date().isoformat()
+    day = timezone.localdate(before_period).isoformat()
     data = client.get(FINANCE_URL, {"start": day, "end": day}).json()["data"]
     assert data["total_expenses"] == 16.0
     assert data["payroll_total"] == 16.0

@@ -142,7 +142,12 @@ PASSWORD_HASHERS = [
 ]
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
+# Every center is in Uzbekistan for now: "today" for reports, attendance,
+# due dates and invoice numbering must be the Tashkent calendar day, not
+# UTC's (which lags 5 hours, so 00:00–05:00 local was "yesterday").
+# Datetimes are still stored in UTC (USE_TZ). Organization.timezone exists
+# for when centers outside UTC+5 arrive — per-org "today" would build on it.
+TIME_ZONE = "Asia/Tashkent"
 USE_I18N = True
 USE_TZ = True
 

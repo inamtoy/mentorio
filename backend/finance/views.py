@@ -119,7 +119,7 @@ class InvoiceViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
             invoice_number=generate_invoice_number(Invoice, group.organization),
             total_amount=price,
             currency=group.currency,
-            due_date=timezone.now().date() + timedelta(days=7),
+            due_date=timezone.localdate() + timedelta(days=7),
             created_by=request.user.id,
         )
         audit_log(

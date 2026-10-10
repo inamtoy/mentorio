@@ -108,6 +108,14 @@ export interface FinanceSummaryReport {
   total_outstanding: number;
   /** The subset of total_outstanding whose due_date is before `period_end`. */
   total_overdue: number;
+  /** Sum of expenses marked paid within the period (by paid date). Cash
+   * basis — pending/approved/rejected expenses are not counted. */
+  total_expenses: number;
+  /** Sum of net pay of payroll runs marked paid within the period (by paid
+   * date). Draft/approved/cancelled runs are not counted. */
+  payroll_total: number;
+  /** total_collected − total_expenses − payroll_total. */
+  net_profit: number;
   new_enrollments: number;
   currency: string;
 }

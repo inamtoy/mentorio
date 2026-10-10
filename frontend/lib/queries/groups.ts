@@ -10,6 +10,7 @@ import {
   listGroupsPage,
   removeGroupMember,
   updateGroup,
+  type AddGroupMemberInput,
   type GroupInput,
   type ListGroupsPageParams,
   type ListGroupsParams,
@@ -111,10 +112,11 @@ export function useDeleteGroupMutation() {
 export function useAddGroupMemberMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ organizationId, groupId, studentProfileId }: { organizationId: string; groupId: string; studentProfileId: string }) =>
-      addGroupMember(organizationId, groupId, studentProfileId),
+    mutationFn: (input: AddGroupMemberInput) => addGroupMember(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["group-members"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices-page"] });
       queryClient.invalidateQueries({ queryKey: ["groups"] });
       queryClient.invalidateQueries({ queryKey: ["groups-page"] });
     },

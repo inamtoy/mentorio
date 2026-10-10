@@ -1188,14 +1188,19 @@
     "fieldRoom": "Кабинет",
     "daysLabel": "Дни",
     "fieldCapacity": "Вместимость",
-    "fieldPrice": "Цена",
+    "fieldPrice": "Цена в месяц",
     "fieldGroupCode": "Код группы",
     "createButton": "Создать",
     "noOrganizationError": "У этого аккаунта нет организации.",
     "createdToast": "Группа создана",
     "updatedToast": "Группа обновлена",
     "fixHighlightedFields": "Пожалуйста, исправьте выделенные поля.",
-    "genericError": "Что-то пошло не так. Попробуйте снова."
+    "genericError": "Что-то пошло не так. Попробуйте снова.",
+    "monthlyPriceLabel": "Цена в месяц",
+    "priceNotSet": "Не указана",
+    "createFirstInvoiceLabel": "Выставить счёт за первый месяц ({amount})",
+    "noPriceNoInvoiceHint": "У группы не указана цена, поэтому при зачислении счёт не выставляется",
+    "studentEnrolledWithInvoiceToast": "Студент зачислен, выставлен счёт на {amount}"
   },
   "AdminSchedule": {
     "pageTitle": "Расписание",

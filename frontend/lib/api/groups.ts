@@ -1,5 +1,6 @@
 import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
 import type { CourseLevel } from "@/lib/api/courses";
+import type { Invoice } from "@/lib/api/finance";
 
 export type GroupStatus = "forming" | "active" | "completed" | "cancelled" | "archived";
 export type MemberStatus = "active" | "completed" | "dropped" | "transferred" | "suspended";
@@ -27,6 +28,9 @@ export interface Group {
   start_time: string | null;
   end_time: string | null;
   price: string | null;
+  /** What enrolling a student bills per month: the group's own price, or
+   * its course's when unset. null when neither is set. */
+  effective_price: string | null;
   currency: string;
   notes: string | null;
   created_at: string;
@@ -167,10 +171,27 @@ export async function deleteGroup(groupId: string): Promise<void> {
   await apiFetch(`/api/v1/groups/${groupId}/`, { method: "DELETE" });
 }
 
-export async function addGroupMember(organizationId: string, groupId: string, studentProfileId: string): Promise<GroupMember> {
-  return apiFetch<GroupMember>("/api/v1/groups/members/", {
+export interface AddGroupMemberInput {
+  organizationId: string;
+  groupId: string;
+  studentProfileId: string;
+  /** Bill the first month at the group's monthly price (backend default). */
+  createInvoice?: boolean;
+}
+
+/** `invoice` is the first-month invoice raised with the enrollment, or null
+ * (group has no price, createInvoice was false, or one already existed). */
+export type AddGroupMemberResult = GroupMember & { invoice: Invoice | null };
+
+export async function addGroupMember(input: AddGroupMemberInput): Promise<AddGroupMemberResult> {
+  return apiFetch<AddGroupMemberResult>("/api/v1/groups/members/", {
     method: "POST",
-    body: JSON.stringify({ organization: organizationId, group: groupId, student_profile: studentProfileId }),
+    body: JSON.stringify({
+      organization: input.organizationId,
+      group: input.groupId,
+      student_profile: input.studentProfileId,
+      create_invoice: input.createInvoice ?? true,
+    }),
   });
 }
 

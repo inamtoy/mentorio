@@ -122,7 +122,13 @@ function InvoiceFormFields({ onOpenChange }: { onOpenChange: (open: boolean) => 
             placeholder={t("selectGroupOptionalPlaceholder")}
             options={(groups ?? []).map((g) => ({ value: g.id, label: g.name }))}
             value={values.group ?? ""}
-            onChange={(e) => setField("group", e.target.value)}
+            onChange={(e) => {
+              setField("group", e.target.value);
+              // Prefill the group's monthly price so admins don't retype it
+              // for every student — still editable for a one-off amount.
+              const price = groups?.find((g) => g.id === e.target.value)?.effective_price;
+              if (price) setField("totalAmount", Number(price));
+            }}
             className="col-span-2"
           />
           <Input

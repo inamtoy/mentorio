@@ -1188,14 +1188,19 @@
     "fieldRoom": "Xona",
     "daysLabel": "Kunlar",
     "fieldCapacity": "Sig'im",
-    "fieldPrice": "Narx",
+    "fieldPrice": "Oylik narx",
     "fieldGroupCode": "Guruh kodi",
     "createButton": "Yaratish",
     "noOrganizationError": "Ushbu hisobda tashkilot yo'q.",
     "createdToast": "Guruh yaratildi",
     "updatedToast": "Guruh yangilandi",
     "fixHighlightedFields": "Iltimos, belgilangan maydonlarni to'g'irlang.",
-    "genericError": "Nimadir xato ketdi. Qaytadan urinib ko'ring."
+    "genericError": "Nimadir xato ketdi. Qaytadan urinib ko'ring.",
+    "monthlyPriceLabel": "Oylik narx",
+    "priceNotSet": "Belgilanmagan",
+    "createFirstInvoiceLabel": "Birinchi oy uchun hisob-faktura yaratish ({amount})",
+    "noPriceNoInvoiceHint": "Guruhga narx belgilanmagan, shuning uchun qo'shishda hisob-faktura yaratilmaydi",
+    "studentEnrolledWithInvoiceToast": "O'quvchi yozildi, {amount} hisob-faktura yaratildi"
   },
   "AdminSchedule": {
     "pageTitle": "Dars jadvali",

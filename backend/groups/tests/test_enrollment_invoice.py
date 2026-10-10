@@ -6,9 +6,11 @@ same fixture style as finance/tests/test_finance_authorization.py.
 import uuid
 
 import pytest
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from finance.models import Invoice
+from finance.services import billing_period_of
 from finance.tests.test_finance_authorization import (
     BYPASS_ALIAS,
     _make_admin_login,
@@ -103,7 +105,7 @@ def test_existing_invoice_for_the_group_is_not_duplicated():
     admin = APIClient()
     _make_admin_login(admin, org, _phone())
     _user, profile = _make_student_login(APIClient(), org, _phone())
-    _make_invoice(org, profile, group=group, total_amount="500000.00")
+    _make_invoice(org, profile, group=group, total_amount="500000.00", billing_period=billing_period_of(timezone.localdate()))
 
     response = _enroll(admin, org, group, profile)
 
@@ -125,3 +127,29 @@ def test_group_exposes_its_effective_monthly_price():
     assert response.status_code == 200
     assert response.json()["data"]["price"] is None
     assert response.json()["data"]["effective_price"] == "300000.00"
+
+
+def test_enrollment_invoice_covers_this_month():
+    org = _make_org()
+    group = _make_group(org, price="500000.00")
+    admin = APIClient()
+    _make_admin_login(admin, org, _phone())
+    _user, profile = _make_student_login(APIClient(), org, _phone())
+
+    response = _enroll(admin, org, group, profile)
+
+    assert response.json()["data"]["invoice"]["billing_period"] == billing_period_of(timezone.localdate()).isoformat()
+
+
+def test_billing_day_must_exist_in_every_month():
+    org = _make_org()
+    group = _make_group(org)
+    admin = APIClient()
+    _make_admin_login(admin, org, _phone())
+
+    too_late = admin.patch(f"/api/v1/groups/{group.id}/", {"billing_day": 29}, format="json")
+    ok = admin.patch(f"/api/v1/groups/{group.id}/", {"billing_day": 5}, format="json")
+
+    assert too_late.status_code == 400
+    assert ok.status_code == 200
+    assert ok.json()["data"]["billing_day"] == 5

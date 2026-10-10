@@ -123,6 +123,7 @@ request: a separate worker drains the outbox, with retries.
 | Bot updates | `manage.py run_telegram_bot` (polling) | webhook: `manage.py set_telegram_webhook https://<domain>/api/v1/auth/telegram/webhook/` once |
 | Sending | `manage.py send_notifications --loop` | same, as a long-running service (several instances are safe) |
 | Payment reminders | `manage.py send_payment_reminders` by hand | daily cron, e.g. `0 9 * * *` |
+| Monthly invoices | `manage.py issue_monthly_invoices` by hand | daily cron, e.g. `0 8 * * *` (before reminders) |
 
 Polling and the webhook can't run at the same time on one bot: use a
 separate bot for local development.

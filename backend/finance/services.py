@@ -1,6 +1,7 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
+from django.db import DEFAULT_DB_ALIAS, IntegrityError, transaction
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 from django.utils import timezone
 
@@ -68,33 +69,73 @@ def group_monthly_price(group) -> Decimal | None:
     return group.price or group.course.price or None
 
 
-def get_or_create_group_invoice(group, student_profile, *, created_by=None) -> tuple[Invoice, bool] | None:
-    """The one place an Invoice is raised for a student's Group membership —
-    shared by an admin enrolling the student (groups.views.GroupMemberViewSet)
-    and the student generating it themselves (InvoiceViewSet.self_create).
+def billing_period_of(day) -> date:
+    """The billing period (first of the month) a calendar day falls in."""
+    return day.replace(day=1)
 
-    Returns (invoice, created), or None when the Group has no billable price.
-    Idempotent: any non-cancelled invoice already raised for this student and
-    Group is returned instead of a duplicate. Call inside the request's
-    transaction — the invoice_issued notification commits with it.
+
+def billing_due_date(group, period: date) -> date:
+    """When `period`'s monthly fee is due: the Group's billing day that month."""
+    return period.replace(day=group.billing_day)
+
+
+def first_month_due_date(group, today: date) -> date:
+    """Due date for the month a student joins in. This month's billing day
+    if it's still ahead — joined on the 3rd, pays by the 5th like everyone
+    else — otherwise a GROUP_INVOICE_DUE_DAYS grace period, so a student
+    joining on the 20th isn't instantly overdue.
+    """
+    due = billing_due_date(group, billing_period_of(today))
+    return due if due >= today else today + timedelta(days=GROUP_INVOICE_DUE_DAYS)
+
+
+def get_or_create_group_invoice(
+    group, student_profile, *, period: date | None = None, due_date: date | None = None, created_by=None,
+    using: str = DEFAULT_DB_ALIAS,
+) -> tuple[Invoice, bool] | None:
+    """The one place a Group's monthly fee is invoiced — shared by an admin
+    enrolling a student (groups.views.GroupMemberViewSet), the student
+    generating it themselves (InvoiceViewSet.self_create), and the monthly
+    run (finance/management/commands/issue_monthly_invoices.py).
+
+    `period` defaults to the current month and `due_date` to
+    first_month_due_date — the enrollment case. Returns (invoice, created),
+    or None when the Group has no billable price. Idempotent per student,
+    Group and month: the live invoice already raised for that month is
+    returned instead of a duplicate (uq_invoices_student_group_period backs
+    this up against a concurrent run). Call inside a transaction — the
+    invoice_issued notification commits with the invoice.
     """
     price = group_monthly_price(group)
     if price is None:
         return None
 
-    existing = Invoice.objects.filter(student_profile=student_profile, group=group).exclude(status="cancelled").first()
+    today = timezone.localdate()
+    period = period or billing_period_of(today)
+    live = Invoice.objects.using(using).filter(student_profile=student_profile, group=group, billing_period=period)
+    existing = live.exclude(status="cancelled").first()
     if existing is not None:
         return existing, False
 
-    invoice = Invoice.objects.create(
-        organization=group.organization,
-        student_profile=student_profile,
-        group=group,
-        invoice_number=generate_invoice_number(Invoice, group.organization),
-        total_amount=price,
-        currency=group.currency,
-        due_date=timezone.localdate() + timedelta(days=GROUP_INVOICE_DUE_DAYS),
-        created_by=created_by,
-    )
-    notification_events.invoice_issued(invoice)
+    try:
+        with transaction.atomic(using=using):
+            invoice = Invoice.objects.using(using).create(
+                organization_id=group.organization_id,
+                student_profile=student_profile,
+                group=group,
+                invoice_number=generate_invoice_number(Invoice, group.organization_id, using=using),
+                total_amount=price,
+                currency=group.currency,
+                billing_period=period,
+                due_date=due_date or first_month_due_date(group, today),
+                created_by=created_by,
+            )
+    except IntegrityError:
+        # Lost a race with a concurrent request/run for the same month —
+        # anything else (e.g. an invoice-number clash) is a real error.
+        existing = live.exclude(status="cancelled").first()
+        if existing is None:
+            raise
+        return existing, False
+    notification_events.invoice_issued(invoice, using=using)
     return invoice, True

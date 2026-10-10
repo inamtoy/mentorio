@@ -21,7 +21,7 @@ class GroupSerializer(serializers.ModelSerializer):
             "id", "organization", "branch", "branch_name", "course", "course_name", "course_level",
             "teacher", "teacher_name", "name", "code", "status", "max_students", "enrolled_count",
             "start_date", "end_date", "room", "days_of_week", "start_time", "end_time", "price",
-            "effective_price", "currency", "notes", "created_at", "updated_at",
+            "effective_price", "currency", "billing_day", "notes", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "code", "created_at", "updated_at"]
 

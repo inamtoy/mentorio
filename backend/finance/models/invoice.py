@@ -44,6 +44,10 @@ class Invoice(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Organizati
     # keeps it server-set/read-only exactly like auto_now_add did.
     issued_date = models.DateField(default=timezone.localdate, editable=False)
     due_date = models.DateField()
+    # First day of the month a Group's monthly fee covers (2026-10-01 =
+    # October). Null for one-off invoices an admin raised by hand. One live
+    # invoice per student, Group and month — see the constraint below.
+    billing_period = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True, null=True)
     created_by = models.UUIDField(null=True, blank=True)
 
@@ -52,6 +56,14 @@ class Invoice(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Organizati
         constraints = [
             models.UniqueConstraint(fields=["organization", "invoice_number"], name="uq_invoices_org_number"),
             models.CheckConstraint(condition=models.Q(total_amount__gte=0), name="chk_invoices_total"),
+            # Makes monthly billing safe to re-run (and race-safe): a second
+            # invoice for the same month fails here instead of double-billing.
+            # A cancelled or soft-deleted one doesn't block re-issuing.
+            models.UniqueConstraint(
+                fields=["student_profile", "group", "billing_period"],
+                name="uq_invoices_student_group_period",
+                condition=models.Q(billing_period__isnull=False, deleted_at__isnull=True) & ~models.Q(status="cancelled"),
+            ),
         ]
         indexes = [
             models.Index(fields=["organization"], name="idx_invoices_org", condition=models.Q(deleted_at__isnull=True)),

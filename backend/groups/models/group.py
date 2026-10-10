@@ -1,3 +1,4 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -48,6 +49,10 @@ class Group(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Organization
     end_time = models.TimeField(null=True, blank=True)
     price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     currency = models.CharField(max_length=3, default="UZS")
+    # Day of the month each student's monthly invoice falls due (e.g. 5 =
+    # "pay by the 5th"). Capped at 28 so it exists in every month, February
+    # included — no "31st in a 30-day month" rule to invent.
+    billing_day = models.SmallIntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(28)])
     notes = models.TextField(blank=True, null=True)
     metadata = models.JSONField(default=dict, blank=True)
     created_by = models.UUIDField(null=True, blank=True)
@@ -58,6 +63,9 @@ class Group(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Organization
         constraints = [
             models.UniqueConstraint(fields=["organization", "code"], name="uq_groups_org_code"),
             models.CheckConstraint(condition=models.Q(max_students__gt=0), name="chk_groups_max_students"),
+            models.CheckConstraint(
+                condition=models.Q(billing_day__gte=1, billing_day__lte=28), name="chk_groups_billing_day"
+            ),
             models.CheckConstraint(
                 condition=models.Q(end_date__isnull=True) | models.Q(end_date__gte=models.F("start_date")),
                 name="chk_groups_dates",

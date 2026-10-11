@@ -14,7 +14,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { useStudentsQuery } from "@/lib/queries/students";
 import { useAddGroupMemberMutation, useGroupMembersQuery, useRemoveGroupMemberMutation } from "@/lib/queries/groups";
 import { ApiError } from "@/lib/api/client";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatCurrency } from "@/i18n/format-currency";
 import type { Group } from "@/lib/api/groups";
 
 interface GroupDetailPanelProps {
@@ -26,6 +26,7 @@ interface GroupDetailPanelProps {
 
 export function GroupDetailPanel({ group, onBack, onEdit, onDelete }: GroupDetailPanelProps) {
   const t = useTranslations("AdminGroups");
+  const formatMoney = useFormatCurrency();
   const DAY_LABELS: Record<string, string> = {
     Mon: t("dayMon"), Tue: t("dayTue"), Wed: t("dayWed"), Thu: t("dayThu"),
     Fri: t("dayFri"), Sat: t("daySat"), Sun: t("daySun"),
@@ -38,7 +39,7 @@ export function GroupDetailPanel({ group, onBack, onEdit, onDelete }: GroupDetai
   const removeMemberMutation = useRemoveGroupMemberMutation();
   const [pickedStudent, setPickedStudent] = useState("");
   const [createInvoice, setCreateInvoice] = useState(true);
-  const monthlyPrice = group.effective_price ? formatCurrency(Number(group.effective_price), group.currency) : null;
+  const monthlyPrice = group.effective_price ? formatMoney(Number(group.effective_price), group.currency) : null;
 
   const activeMembers = (members ?? []).filter((m) => m.status !== "dropped" && m.status !== "transferred");
   const enrolledIds = new Set((members ?? []).map((m) => m.student_profile));
@@ -56,7 +57,7 @@ export function GroupDetailPanel({ group, onBack, onEdit, onDelete }: GroupDetai
       toast.success(
         result.invoice
           ? t("studentEnrolledWithInvoiceToast", {
-              amount: formatCurrency(Number(result.invoice.total_amount), result.invoice.currency),
+              amount: formatMoney(Number(result.invoice.total_amount), result.invoice.currency),
             })
           : t("studentEnrolledToast"),
       );

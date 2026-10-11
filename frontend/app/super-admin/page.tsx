@@ -53,7 +53,7 @@ import { useAdministratorsQuery } from '@/lib/queries/administrators';
 import { usePlatformPaymentsQuery } from '@/lib/queries/billing';
 import { useAuditLogsQuery } from '@/lib/queries/audit-logs';
 import type { AuditAction } from '@/lib/api/audit-logs';
-import { formatCurrency, daysFromTodayIso } from '@/lib/utils';
+import { formatCurrency, PLATFORM_CURRENCY, daysFromTodayIso } from '@/lib/utils';
 import { monthKey, lastNMonthKeys, monthLabel, MONTH_WINDOW, EMPTY_ARRAY } from '@/lib/growth-metrics';
 import { isLocale, DEFAULT_LOCALE } from '@/i18n/locales';
 
@@ -258,7 +258,7 @@ export default function SuperAdminDashboardPage() {
     { label: t('kpiTotalStudents'), value: students.length, icon: <Users className="h-5 w-5 text-blue-600" />, iconBg: 'bg-blue-50' },
     { label: t('kpiTotalTeachers'), value: teachers.length, icon: <GraduationCap className="h-5 w-5 text-emerald-600" />, iconBg: 'bg-emerald-50' },
     { label: t('kpiActiveAdmins'), value: activeAdmins, icon: <ShieldCheck className="h-5 w-5 text-amber-600" />, iconBg: 'bg-amber-50' },
-    { label: t('kpiMonthlyRevenue'), value: formatCurrency(monthlyRevenue), icon: <DollarSign className="h-5 w-5 text-green-600" />, iconBg: 'bg-green-50' },
+    { label: t('kpiMonthlyRevenue'), value: formatCurrency(monthlyRevenue, PLATFORM_CURRENCY), icon: <DollarSign className="h-5 w-5 text-green-600" />, iconBg: 'bg-green-50' },
     { label: t('kpiActiveSubscriptions'), value: activeSubscriptions, icon: <CreditCard className="h-5 w-5 text-purple-600" />, iconBg: 'bg-purple-50' },
     { label: t('kpiNewRegistrations'), value: newRegistrations, icon: <UserPlus className="h-5 w-5 text-pink-600" />, iconBg: 'bg-pink-50' },
   ];
@@ -279,7 +279,7 @@ export default function SuperAdminDashboardPage() {
               🏢 {t('centersBadge', { count: orgs.length })}
             </div>
             <div className="bg-white/20 rounded-full px-4 py-1.5 text-sm font-medium backdrop-blur-sm">
-              💰 {t('revenueBadge', { amount: formatCurrency(monthlyRevenue) })}
+              💰 {t('revenueBadge', { amount: formatCurrency(monthlyRevenue, PLATFORM_CURRENCY) })}
             </div>
             <div className="bg-white/20 rounded-full px-4 py-1.5 text-sm font-medium backdrop-blur-sm">
               📋 {t('activeSubsBadge', { count: activeSubscriptions })}

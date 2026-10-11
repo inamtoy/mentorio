@@ -12,10 +12,11 @@ import {
   useRejectExpenseMutation,
 } from "@/lib/queries/finance";
 import { ApiError } from "@/lib/api/client";
-import { formatCurrency } from "@/lib/utils";
+
 import type { Expense } from "@/lib/api/finance";
 import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
+import { useFormatCurrency } from "@/i18n/format-currency";
 
 interface ExpenseDetailPanelProps {
   expense: Expense;
@@ -25,6 +26,7 @@ interface ExpenseDetailPanelProps {
 
 export function ExpenseDetailPanel({ expense, onBack, onDelete }: ExpenseDetailPanelProps) {
   const t = useTranslations("AdminFinance");
+  const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
 
@@ -115,7 +117,7 @@ export function ExpenseDetailPanel({ expense, onBack, onDelete }: ExpenseDetailP
         <div className="space-y-4">
           <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{t("expenseDetailsTitle")}</h4>
           <div className="space-y-3">
-            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("amountLabel")} value={formatCurrency(Number(expense.amount))} />
+            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("amountLabel")} value={formatMoney(Number(expense.amount))} />
             <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("categoryLabel")} value={CATEGORY_LABELS[expense.category] ?? expense.category} />
             <InfoRow icon={<Calendar className="h-4 w-4" />} label={t("expenseDateLabel")} value={formatLocalizedDate(new Date(expense.expense_date + "T00:00:00"), locale, { month: "short", day: "numeric", year: "numeric" })} />
             {expense.branch_name && <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("branchLabel")} value={expense.branch_name} />}

@@ -30,7 +30,7 @@ import {
 } from '@/lib/queries/billing';
 import type { SubscriptionPlan } from '@/lib/api/billing';
 import { toast } from '@/lib/store/toast-store';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, PLATFORM_CURRENCY } from '@/lib/utils';
 import { ApiError } from '@/lib/api/client';
 
 // ── Create Plan form default state ────────────────────────────────────────────
@@ -383,7 +383,7 @@ function PlanCard({ plan, color, onEdit, onDelete }: {
                 {/* "Custom" (contact sales) is a per-plan choice, not just
                     "whatever's priced at 0" — a genuinely free tier at $0
                     should say so, not look unpriced. */}
-                {plan.slug === 'custom' ? t('customPriceLabel') : Number(plan.price) === 0 ? t('freePriceLabel') : formatCurrency(Number(plan.price))}
+                {plan.slug === 'custom' ? t('customPriceLabel') : Number(plan.price) === 0 ? t('freePriceLabel') : formatCurrency(Number(plan.price), PLATFORM_CURRENCY)}
               </span>
               {Number(plan.price) > 0 && (
                 <Badge label={plan.billing_cycle === 'monthly' ? t('perMonth') : t('perYear')} variant="secondary" />

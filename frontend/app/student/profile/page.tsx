@@ -29,9 +29,10 @@ import { useStudentGradeSummaryQuery } from '@/lib/queries/grades';
 import { useInvoicesQuery } from '@/lib/queries/finance';
 import { toast } from '@/lib/store/toast-store';
 import { ApiError } from '@/lib/api/client';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { formatLocalizedDate } from '@/i18n/date-locale';
 import { isLocale, DEFAULT_LOCALE } from '@/i18n/locales';
+import { useFormatCurrency } from '@/i18n/format-currency';
 
 function StatMiniCard({ label, value, unit }: { label: string; value: string | number; unit?: string }) {
   return (
@@ -114,6 +115,7 @@ interface ProfileFormValues {
 
 export default function StudentProfilePage() {
   const t = useTranslations('StudentProfile');
+  const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
 
@@ -283,7 +285,7 @@ export default function StudentProfilePage() {
           <Card title={t('coursePaymentTitle')} subtitle={t('coursePaymentSubtitle')}>
             <div className="flex items-center justify-between py-2">
               <div>
-                <p className="text-2xl font-bold text-slate-900">{formatCurrency(outstandingBalance)}</p>
+                <p className="text-2xl font-bold text-slate-900">{formatMoney(outstandingBalance)}</p>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {outstandingBalance > 0 ? t('outstandingBalanceLabel') : t('noOutstandingBalance')}
                 </p>

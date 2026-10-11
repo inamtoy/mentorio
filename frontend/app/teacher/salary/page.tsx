@@ -7,9 +7,10 @@ import { Card } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { useMyTeacherProfileQuery, useTeacherSalariesQuery } from '@/lib/queries/teachers';
-import { formatCurrency } from '@/lib/utils';
+
 import { formatLocalizedDate } from '@/i18n/date-locale';
 import { isLocale, DEFAULT_LOCALE } from '@/i18n/locales';
+import { useFormatCurrency } from '@/i18n/format-currency';
 
 // Read-only by design — a teacher may only ever view their own salary, never
 // create/update/delete. See foundation/permissions_catalog.py's
@@ -18,6 +19,7 @@ import { isLocale, DEFAULT_LOCALE } from '@/i18n/locales';
 // or doesn't render.
 export default function TeacherSalaryPage() {
   const t = useTranslations('TeacherSalary');
+  const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
 
@@ -64,7 +66,7 @@ export default function TeacherSalaryPage() {
               value={
                 activeSalary.salary_type === 'percentage'
                   ? `${activeSalary.percentage_value ?? 0}%`
-                  : formatCurrency(Number(activeSalary.amount))
+                  : formatMoney(Number(activeSalary.amount))
               }
               icon={<DollarSign className="h-5 w-5 text-indigo-600" />}
               iconBg="bg-indigo-50"
@@ -108,7 +110,7 @@ export default function TeacherSalaryPage() {
                         <p className="text-sm font-medium text-slate-700">
                           {s.salary_type === 'percentage'
                             ? `${s.percentage_value ?? 0}%`
-                            : formatCurrency(Number(s.amount))}{' '}
+                            : formatMoney(Number(s.amount))}{' '}
                           <span className="text-slate-400 font-normal">
                             / {SALARY_TYPE_LABELS[s.salary_type] ?? s.salary_type}
                           </span>

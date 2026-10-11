@@ -9,12 +9,13 @@ import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useGroupsQuery } from "@/lib/queries/groups";
-import { formatCurrency } from "@/lib/utils";
+
 import { useTeacherSalariesQuery, useTeacherSpecializationsQuery } from "@/lib/queries/teachers";
 import type { TeacherProfile } from "@/lib/api/teachers";
 import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
 import { TeacherSalaryDialog } from "./teacher-salary-dialog";
+import { useFormatCurrency } from "@/i18n/format-currency";
 
 interface TeacherDetailPanelProps {
   teacher: TeacherProfile;
@@ -25,6 +26,7 @@ interface TeacherDetailPanelProps {
 
 export function TeacherDetailPanel({ teacher, onBack, onEdit, onDelete }: TeacherDetailPanelProps) {
   const t = useTranslations("AdminTeachers");
+  const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
 
@@ -94,7 +96,7 @@ export function TeacherDetailPanel({ teacher, onBack, onEdit, onDelete }: Teache
                   <span className="text-xs text-slate-400 block">{t("salaryLabel")}</span>
                   <span className="text-sm text-slate-700 font-medium">
                     {activeSalary
-                      ? `${formatCurrency(Number(activeSalary.amount))} / ${activeSalary.salary_type.replace("_", " ")}`
+                      ? `${formatMoney(Number(activeSalary.amount))} / ${activeSalary.salary_type.replace("_", " ")}`
                       : t("noSalarySet")}
                   </span>
                 </div>

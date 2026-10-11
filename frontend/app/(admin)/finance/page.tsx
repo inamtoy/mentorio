@@ -26,7 +26,7 @@ import {
   useDeletePayrollMutation,
 } from "@/lib/queries/finance";
 import { toast } from "@/lib/store/toast-store";
-import { formatCurrency } from "@/lib/utils";
+
 import { ApiError } from "@/lib/api/client";
 import type { Invoice, Expense, Payroll } from "@/lib/api/finance";
 import { FinanceRevenueChart } from "@/components/charts/finance-chart";
@@ -40,6 +40,7 @@ import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
 import { daysFromTodayIso } from "@/lib/utils";
 import { monthKey, lastNMonthKeys, monthLabel, EMPTY_ARRAY } from "@/lib/growth-metrics";
+import { useFormatCurrency } from "@/i18n/format-currency";
 
 // The chart shows the same 12-month window this page's own subtitle
 // promises ("last12MonthsNote") — not lib/growth-metrics.ts's MONTH_WINDOW
@@ -116,6 +117,7 @@ export default function FinancePage() {
 
 function InvoicesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onFormOpenChange: (open: boolean) => void }) {
   const t = useTranslations("AdminFinance");
+  const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
 
@@ -211,19 +213,19 @@ function InvoicesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onForm
     {
       key: "total_amount",
       label: t("columnAmount"),
-      render: (val) => <span className="font-medium text-slate-900">{formatCurrency(Number(val))}</span>,
+      render: (val) => <span className="font-medium text-slate-900">{formatMoney(Number(val))}</span>,
     },
     {
       key: "paid_amount",
       label: t("columnPaid"),
-      render: (val) => <span className="text-emerald-600 font-medium">{formatCurrency(Number(val))}</span>,
+      render: (val) => <span className="text-emerald-600 font-medium">{formatMoney(Number(val))}</span>,
     },
     {
       key: "balance",
       label: t("columnBalance"),
       render: (val) => (
         <span className={Number(val) > 0 ? "text-red-500 font-medium" : "text-slate-400"}>
-          {Number(val) > 0 ? formatCurrency(Number(val)) : "—"}
+          {Number(val) > 0 ? formatMoney(Number(val)) : "—"}
         </span>
       ),
     },
@@ -242,9 +244,9 @@ function InvoicesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onForm
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label={t("statTotalCollected")} value={formatCurrency(totalRevenue)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
-        <StatCard label={t("statPending")} value={formatCurrency(totalPending)} icon={<TrendingUp className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
-        <StatCard label={t("statOverdue")} value={formatCurrency(totalOverdue)} icon={<AlertCircle className="h-5 w-5 text-red-500" />} iconBg="bg-red-50" />
+        <StatCard label={t("statTotalCollected")} value={formatMoney(totalRevenue)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
+        <StatCard label={t("statPending")} value={formatMoney(totalPending)} icon={<TrendingUp className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
+        <StatCard label={t("statOverdue")} value={formatMoney(totalOverdue)} icon={<AlertCircle className="h-5 w-5 text-red-500" />} iconBg="bg-red-50" />
         <StatCard label={t("statPaidInvoices")} value={`${paidCount}/${invoices.length}`} icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
       </div>
 
@@ -266,7 +268,7 @@ function InvoicesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onForm
                     <p className="text-xs text-slate-400">{PAYMENT_METHOD_LABELS[tx.payment_method] ?? tx.payment_method}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-semibold text-emerald-600">+{formatCurrency(Number(tx.amount))}</p>
+                    <p className="text-sm font-semibold text-emerald-600">+{formatMoney(Number(tx.amount))}</p>
                     <p className="text-xs text-slate-400">{formatLocalizedDate(new Date(tx.payment_date + "T00:00:00"), locale, { month: "short", day: "numeric", year: "numeric" })}</p>
                   </div>
                 </div>
@@ -336,6 +338,7 @@ function InvoicesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onForm
 
 function ExpensesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onFormOpenChange: (open: boolean) => void }) {
   const t = useTranslations("AdminFinance");
+  const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
 
@@ -416,7 +419,7 @@ function ExpensesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onForm
     {
       key: "amount",
       label: t("columnAmount"),
-      render: (val) => <span className="font-medium text-slate-900">{formatCurrency(Number(val))}</span>,
+      render: (val) => <span className="font-medium text-slate-900">{formatMoney(Number(val))}</span>,
     },
     {
       key: "expense_date",
@@ -433,9 +436,9 @@ function ExpensesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onForm
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label={t("statPendingApproval")} value={formatCurrency(totalPending)} icon={<Clock className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
-        <StatCard label={t("statAwaitingPayment")} value={formatCurrency(totalApproved)} icon={<TrendingUp className="h-5 w-5 text-blue-600" />} iconBg="bg-blue-50" />
-        <StatCard label={t("statTotalPaidOut")} value={formatCurrency(totalPaid)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
+        <StatCard label={t("statPendingApproval")} value={formatMoney(totalPending)} icon={<Clock className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
+        <StatCard label={t("statAwaitingPayment")} value={formatMoney(totalApproved)} icon={<TrendingUp className="h-5 w-5 text-blue-600" />} iconBg="bg-blue-50" />
+        <StatCard label={t("statTotalPaidOut")} value={formatMoney(totalPaid)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
         <StatCard label={t("statPaidExpenses")} value={`${paidCount}/${expenses.length}`} icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
       </div>
 
@@ -499,6 +502,7 @@ function ExpensesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onForm
 
 function PayrollTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onFormOpenChange: (open: boolean) => void }) {
   const t = useTranslations("AdminFinance");
+  const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
 
@@ -562,7 +566,7 @@ function PayrollTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onFormO
     {
       key: "net_amount",
       label: t("columnNetAmount"),
-      render: (val) => <span className="font-medium text-slate-900">{formatCurrency(Number(val))}</span>,
+      render: (val) => <span className="font-medium text-slate-900">{formatMoney(Number(val))}</span>,
     },
     {
       key: "status",
@@ -574,9 +578,9 @@ function PayrollTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onFormO
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label={t("statDraftPayroll")} value={formatCurrency(totalDraft)} icon={<Clock className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
-        <StatCard label={t("statAwaitingPayment")} value={formatCurrency(totalApproved)} icon={<TrendingUp className="h-5 w-5 text-blue-600" />} iconBg="bg-blue-50" />
-        <StatCard label={t("statTotalPaidOut")} value={formatCurrency(totalPaid)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
+        <StatCard label={t("statDraftPayroll")} value={formatMoney(totalDraft)} icon={<Clock className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
+        <StatCard label={t("statAwaitingPayment")} value={formatMoney(totalApproved)} icon={<TrendingUp className="h-5 w-5 text-blue-600" />} iconBg="bg-blue-50" />
+        <StatCard label={t("statTotalPaidOut")} value={formatMoney(totalPaid)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
         <StatCard label={t("statPaidPayroll")} value={`${paidCount}/${payroll.length}`} icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
       </div>
 

@@ -16,12 +16,14 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { useCoursesPageQuery, useCoursesQuery, useDeleteCourseMutation } from "@/lib/queries/courses";
 import type { CourseProfile, CourseLevel, CourseStatus } from "@/lib/api/courses";
 import { ApiError } from "@/lib/api/client";
-import { formatCurrency } from "@/lib/utils";
+
 import { CourseFormDialog } from "./_components/course-form-dialog";
 import { CourseDetailPanel } from "./_components/course-detail-panel";
+import { useFormatCurrency } from "@/i18n/format-currency";
 
 export default function CoursesPage() {
   const t = useTranslations("AdminCourses");
+  const formatMoney = useFormatCurrency();
 
   const LEVEL_OPTIONS = [
     { value: "", label: t("levelAll") },
@@ -126,7 +128,7 @@ export default function CoursesPage() {
     {
       key: "price",
       label: t("columnPrice"),
-      render: (val) => formatCurrency(Number(val ?? 0)),
+      render: (val) => formatMoney(Number(val ?? 0)),
     },
     {
       key: "status",
@@ -178,7 +180,7 @@ export default function CoursesPage() {
         <StatCard label={t("statTotalCourses")} value={stats.total} icon={<BookOpen className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
         <StatCard label={t("statTotalStudents")} value={stats.students} icon={<Users className="h-5 w-5 text-blue-600" />} iconBg="bg-blue-50" />
         <StatCard label={t("statTotalLessons")} value={stats.lessons} icon={<Clock className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
-        <StatCard label={t("statRevenuePotential")} value={formatCurrency(stats.revenuePotential)} icon={<DollarSign className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
+        <StatCard label={t("statRevenuePotential")} value={formatMoney(stats.revenuePotential)} icon={<DollarSign className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
       </div>
 
       <Card

@@ -1,15 +1,26 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Centers bill in so'm, so UZS is the default ("UZS 2,500,000"). Pass the
- * record's own currency when it has one. The Super-Admin platform billing
- * (subscriptions, platform invoices/payments) is in USD and passes
- * PLATFORM_CURRENCY explicitly. */
-export function formatCurrency(amount: number, currency = "UZS") {
+const UZS_SUFFIX: Record<Locale, string> = { uz: "so'm", ru: "сум", en: "UZS" };
+
+/** Centers bill in so'm, so UZS is the default, written the way each UI
+ * language does: "2 500 000 so'm" / "2 500 000 сум" / "2,500,000 UZS".
+ * In components use `useFormatCurrency()` (i18n/format-currency.ts), which
+ * supplies the current locale. Digits are grouped by hand with a fixed
+ * no-break space rather than Intl's locale data, so the server render and
+ * the browser always produce the same string (no hydration mismatch from
+ * differing ICU versions). Other currencies (the Super-Admin platform
+ * billing passes PLATFORM_CURRENCY, USD) use the standard "$1,234" form. */
+export function formatCurrency(amount: number, currency = "UZS", locale: Locale = DEFAULT_LOCALE) {
+  if (currency === "UZS") {
+    const digits = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(amount);
+    return `${locale === "en" ? digits : digits.replace(/,/g, " ")} ${UZS_SUFFIX[locale]}`;
+  }
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,

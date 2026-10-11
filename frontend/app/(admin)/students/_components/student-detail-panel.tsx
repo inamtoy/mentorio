@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
-import { formatCurrency } from "@/lib/utils";
+
 import { useStudentParentsQuery } from "@/lib/queries/students";
 import { useStudentGroupMembershipsQuery } from "@/lib/queries/groups";
 import { useAttendanceQuery } from "@/lib/queries/attendance";
@@ -15,6 +15,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import type { StudentProfile } from "@/lib/api/students";
 import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
+import { useFormatCurrency } from "@/i18n/format-currency";
 
 const ATTENDANCE_COLORS: Record<string, string> = {
   present: "bg-emerald-100 text-emerald-700",
@@ -32,6 +33,7 @@ interface StudentDetailPanelProps {
 
 export function StudentDetailPanel({ student, onBack, onEdit, onDelete }: StudentDetailPanelProps) {
   const t = useTranslations("AdminStudents");
+  const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
 
@@ -106,7 +108,7 @@ export function StudentDetailPanel({ student, onBack, onEdit, onDelete }: Studen
                 )}
               </>
             )}
-            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("balanceLabel")} value={balance > 0 ? formatCurrency(balance) : t("paidLabel")} />
+            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("balanceLabel")} value={balance > 0 ? formatMoney(balance) : t("paidLabel")} />
           </div>
         </div>
 
@@ -158,7 +160,7 @@ export function StudentDetailPanel({ student, onBack, onEdit, onDelete }: Studen
                   <div key={inv.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
                     <span className="text-xs text-slate-700">{inv.group_name ?? inv.invoice_number}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500">{formatCurrency(Number(inv.total_amount))}</span>
+                      <span className="text-xs text-slate-500">{formatMoney(Number(inv.total_amount))}</span>
                       <StatusBadge status={inv.status} />
                     </div>
                   </div>

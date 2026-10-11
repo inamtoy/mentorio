@@ -32,7 +32,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
-import { formatCompactAmount, formatCurrency, daysFromTodayIso } from "@/lib/utils";
+import { formatCompactAmount, daysFromTodayIso } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useLessonsQuery } from "@/lib/queries/schedule";
 import { useStudentsQuery } from "@/lib/queries/students";
@@ -44,6 +44,7 @@ import { useAttendanceQuery } from "@/lib/queries/attendance";
 import { monthKey, lastNMonthKeys, monthLabel, MONTH_WINDOW, EMPTY_ARRAY } from "@/lib/growth-metrics";
 import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
+import { useFormatCurrency } from "@/i18n/format-currency";
 
 // Same 1-year bound app/(admin)/finance/page.tsx applies to its own
 // unscoped invoice/payment queries — an org-wide call with no bound risks
@@ -82,6 +83,7 @@ function formatPaymentMethod(method: string): string {
 
 export default function DashboardPage() {
   const t = useTranslations("AdminDashboard");
+  const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
   const organizationId = useAuthStore((s) => s.user?.organizationId) ?? "";
@@ -215,7 +217,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label={t("statMonthlyRevenue")}
-          value={formatCurrency(monthlyRevenue)}
+          value={formatMoney(monthlyRevenue)}
           icon={<DollarSign className="h-5 w-5 text-violet-600" />}
           iconBg="bg-violet-50"
         />
@@ -276,7 +278,7 @@ export default function DashboardPage() {
                 tickLine={false}
                 tickFormatter={(v) => formatCompactAmount(Number(v))}
               />
-              <Tooltip {...tooltipStyle} formatter={(v) => [formatCurrency(Number(v)), undefined]} />
+              <Tooltip {...tooltipStyle} formatter={(v) => [formatMoney(Number(v)), undefined]} />
               <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} fill="url(#revGrad)" name="Revenue" />
             </AreaChart>
           </ResponsiveContainer>
@@ -371,7 +373,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-slate-400">{payment.invoice_number}</p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-semibold text-slate-900">{formatCurrency(Number(payment.amount))}</p>
+                <p className="text-sm font-semibold text-slate-900">{formatMoney(Number(payment.amount))}</p>
                 <p className="text-xs text-slate-400 capitalize">{formatPaymentMethod(payment.payment_method)}</p>
               </div>
             </div>

@@ -32,7 +32,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
-import { formatCurrency, daysFromTodayIso } from "@/lib/utils";
+import { formatCompactAmount, formatCurrency, daysFromTodayIso } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useLessonsQuery } from "@/lib/queries/schedule";
 import { useStudentsQuery } from "@/lib/queries/students";
@@ -274,7 +274,7 @@ export default function DashboardPage() {
                 tick={{ fontSize: 12, fill: "#94a3b8" }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => `$${v / 1000}k`}
+                tickFormatter={(v) => formatCompactAmount(Number(v))}
               />
               <Tooltip {...tooltipStyle} formatter={(v) => [formatCurrency(Number(v)), undefined]} />
               <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} fill="url(#revGrad)" name="Revenue" />

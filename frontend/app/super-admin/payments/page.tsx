@@ -42,7 +42,7 @@ import {
   useCreatePlatformPaymentMutation,
 } from '@/lib/queries/billing';
 import { toast } from '@/lib/store/toast-store';
-import { formatCurrency, daysFromTodayIso } from '@/lib/utils';
+import { formatCurrency, PLATFORM_CURRENCY, daysFromTodayIso } from '@/lib/utils';
 import { ApiError } from '@/lib/api/client';
 import type { PlatformInvoice, PlatformInvoiceStatus, PlatformPaymentMethod } from '@/lib/api/billing';
 import { formatLocalizedDate } from '@/i18n/date-locale';
@@ -321,14 +321,14 @@ export default function PaymentsPage() {
     {
       key: 'amount',
       label: t('columnAmount'),
-      render: (_, row) => <span className="font-semibold text-slate-900">{formatCurrency(Number(row.amount))}</span>,
+      render: (_, row) => <span className="font-semibold text-slate-900">{formatCurrency(Number(row.amount), PLATFORM_CURRENCY)}</span>,
     },
     {
       key: 'balance',
       label: t('columnBalance'),
       render: (_, row) => (
         <span className={Number(row.balance) > 0 ? 'text-red-500 font-medium' : 'text-slate-400'}>
-          {Number(row.balance) > 0 ? formatCurrency(Number(row.balance)) : '—'}
+          {Number(row.balance) > 0 ? formatCurrency(Number(row.balance), PLATFORM_CURRENCY) : '—'}
         </span>
       ),
     },
@@ -384,7 +384,7 @@ export default function PaymentsPage() {
 
       {/* ── Stats Row ────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label={t('statTotalRevenue')} value={formatCurrency(totalRevenue)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
+        <StatCard label={t('statTotalRevenue')} value={formatCurrency(totalRevenue, PLATFORM_CURRENCY)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
         <StatCard label={t('statPaidInvoices')} value={paidCount} icon={<CreditCard className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
         <StatCard label={t('statPending')} value={pendingCount} icon={<Clock className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
         <StatCard label={t('statOverdue')} value={overdueCount} icon={<AlertCircle className="h-5 w-5 text-red-500" />} iconBg="bg-red-50" />
@@ -461,7 +461,7 @@ export default function PaymentsPage() {
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-semibold text-emerald-600">+{formatCurrency(Number(p.amount))}</p>
+                  <p className="text-sm font-semibold text-emerald-600">+{formatCurrency(Number(p.amount), PLATFORM_CURRENCY)}</p>
                   <p className="text-xs text-slate-400">{formatDate(p.payment_date)}</p>
                 </div>
               </div>
@@ -567,7 +567,7 @@ export default function PaymentsPage() {
               {payingInvoice && (
                 <>
                   <p className="text-sm text-slate-500">
-                    {t('balanceLabel')} <span className="font-semibold text-slate-900">{formatCurrency(Number(payingInvoice.balance))}</span>
+                    {t('balanceLabel')} <span className="font-semibold text-slate-900">{formatCurrency(Number(payingInvoice.balance), PLATFORM_CURRENCY)}</span>
                   </p>
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-slate-600">{t('fieldAmount')}</label>

@@ -13,7 +13,7 @@ import { useBranchesQuery } from '@/lib/queries/branches';
 import { useStudentsQuery } from '@/lib/queries/students';
 import { usePlatformPaymentsQuery } from '@/lib/queries/billing';
 import { monthKey, lastNMonthKeys, monthLabel, MONTH_WINDOW, EMPTY_ARRAY } from '@/lib/growth-metrics';
-import { formatCurrency, daysFromTodayIso } from '@/lib/utils';
+import { formatCurrency, PLATFORM_CURRENCY, daysFromTodayIso } from '@/lib/utils';
 import { isLocale, DEFAULT_LOCALE } from '@/i18n/locales';
 import { toast } from '@/lib/store/toast-store';
 import {
@@ -169,7 +169,7 @@ export default function ReportsPage() {
 
       {/* Top stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label={t('statTotalRevenue')} value={formatCurrency(totalRevenue)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
+        <StatCard label={t('statTotalRevenue')} value={formatCurrency(totalRevenue, PLATFORM_CURRENCY)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
         <StatCard label={t('statTotalStudents')} value={students.length} icon={<Users className="h-5 w-5 text-violet-600" />} iconBg="bg-violet-50" />
         <StatCard label={t('statNewRegistrations')} value={newRegistrations} icon={<UserPlus className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
         <StatCard label={t('statTotalCenters')} value={organizations.length} icon={<Building2 className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
@@ -208,7 +208,7 @@ export default function ReportsPage() {
               <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
               <Tooltip
                 contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 13 }}
-                formatter={(v) => [formatCurrency(Number(v ?? 0)), t('tooltipRevenue')]}
+                formatter={(v) => [formatCurrency(Number(v ?? 0), PLATFORM_CURRENCY), t('tooltipRevenue')]}
               />
               <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2.5} fill="url(#revenueGradient)" />
             </AreaChart>
@@ -268,7 +268,7 @@ export default function ReportsPage() {
                       <Badge label={center.subscription_plan_detail?.name ?? t('noPlanLabel')} variant="info" />
                     </td>
                     <td className="px-6 py-3 text-right text-sm font-medium text-slate-700">
-                      {formatCurrency(revenueByOrg.get(center.id) ?? 0)}
+                      {formatCurrency(revenueByOrg.get(center.id) ?? 0, PLATFORM_CURRENCY)}
                     </td>
                   </tr>
                 ))}
@@ -289,7 +289,7 @@ export default function ReportsPage() {
                   <span className="text-sm font-medium text-slate-700">{plan.name}</span>
                   <span className="text-xs text-slate-400">{t('centersCountLabel', { count: plan.activeCount })}</span>
                 </div>
-                <span className="text-sm font-semibold text-slate-900">{formatCurrency(plan.revenue)}</span>
+                <span className="text-sm font-semibold text-slate-900">{formatCurrency(plan.revenue, PLATFORM_CURRENCY)}</span>
               </div>
               <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-500" style={{ width: `${plan.pct}%`, backgroundColor: plan.color }} />

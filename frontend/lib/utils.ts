@@ -5,13 +5,25 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number, currency = "USD") {
+/** Centers bill in so'm, so UZS is the default ("UZS 2,500,000"). Pass the
+ * record's own currency when it has one. The Super-Admin platform billing
+ * (subscriptions, platform invoices/payments) is in USD and passes
+ * PLATFORM_CURRENCY explicitly. */
+export function formatCurrency(amount: number, currency = "UZS") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+/** Currency of Mentorio's own platform billing (backend billing models). */
+export const PLATFORM_CURRENCY = "USD";
+
+/** Short chart-axis label with no currency sign: 2500000 -> "2.5M". */
+export function formatCompactAmount(amount: number) {
+  return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(amount);
 }
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;

@@ -23,10 +23,8 @@ import { useGatewayAccountsQuery, useInitiateCheckoutMutation } from "@/lib/quer
 import { useGroupsQuery, useMyGroupMembershipsQuery } from "@/lib/queries/groups";
 import { useMyRegionSettingsQuery } from "@/lib/queries/settings";
 import { toast } from "@/lib/store/toast-store";
-// formatCurrency is shared across every portal and still formats as fixed
-// en-US (see lib/utils.ts) — localizing it is a follow-up beyond this
-// Student-portal-only i18n pass, since it's called from dozens of
-// non-i18n-aware pages too. formatDate, unlike formatCurrency, now honors
+// Money is formatted per UI language via useFormatCurrency (so'm / сум /
+// UZS). formatDate honors
 // the viewer's Settings > Region > dateFormat preference when passed one
 // (see lib/utils.ts's own docstring on why) — the payments/invoices table
 // below is exactly the kind of numeric date where MM/DD vs DD/MM ambiguity

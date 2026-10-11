@@ -19,8 +19,7 @@ import { useGroupsQuery } from "@/lib/queries/groups";
 import { useCreateLessonMutation } from "@/lib/queries/schedule";
 // lessonSchema's own validation messages are shared with the still-
 // untranslated Admin portal's identical "New Lesson" dialog, so they stay
-// hardcoded English for now — same documented trade-off as lib/utils.ts's
-// formatDate/formatCurrency (see app/student/payments/page.tsx's comment).
+// hardcoded English for now.
 import { lessonSchema, type LessonFormValues } from "@/lib/schemas/lesson-schema";
 import { ApiError } from "@/lib/api/client";
 

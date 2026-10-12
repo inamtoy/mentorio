@@ -2,6 +2,7 @@
 
     python manage.py issue_monthly_invoices
     python manage.py issue_monthly_invoices --period 2026-11   # a specific month
+    python manage.py issue_monthly_invoices --organization <uuid>   # one center only
 
 Bills the current month for every active member of every active Group,
 due on the Group's billing day. Daily rather than only on the 1st, so a day
@@ -14,6 +15,7 @@ already billed their first month (or the admin chose not to), see
 groups.views.GroupMemberViewSet.perform_create.
 """
 
+import uuid
 from datetime import date, datetime, time
 
 from django.core.management.base import BaseCommand, CommandError
@@ -35,8 +37,16 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--period", help="Month to bill, YYYY-MM (default: the current month).")
+        parser.add_argument("--organization", help="Bill only this organization (UUID). Default: all of them.")
 
     def handle(self, *args, **options):
+        organization = options["organization"]
+        if organization:
+            try:
+                uuid.UUID(organization)
+            except ValueError as exc:
+                raise CommandError("--organization must be an organization UUID.") from exc
+
         if options["period"]:
             try:
                 period = datetime.strptime(options["period"], "%Y-%m").date()
@@ -60,6 +70,9 @@ class Command(BaseCommand):
             .select_related("group__course", "student_profile__user")
             .order_by("group_id", "created_at")
         )
+
+        if organization:
+            members = members.filter(organization_id=organization)
 
         issued = skipped_no_price = 0
         for member in members.iterator(chunk_size=500):

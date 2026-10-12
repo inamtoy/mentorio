@@ -31,9 +31,12 @@ def _next_period() -> date:
     return (today.replace(day=1) + timedelta(days=32)).replace(day=1)
 
 
-def _run(period: date) -> str:
+def _run(period: date, org) -> str:
+    """Scoped to the test's own organization: the transactional test flush
+    doesn't truncate tables outside the public schema, so other tests' groups
+    and members are still in the database and would change the counts."""
     out = io.StringIO()
-    call_command("issue_monthly_invoices", period=f"{period:%Y-%m}", stdout=out)
+    call_command("issue_monthly_invoices", period=f"{period:%Y-%m}", organization=str(org.id), stdout=out)
     return out.getvalue()
 
 
@@ -68,7 +71,7 @@ def test_bills_every_active_member_due_on_the_billing_day():
     _make_group_member(org, group, b)
     period = _next_period()
 
-    output = _run(period)
+    output = _run(period, org)
 
     invoices = Invoice.objects.using(BYPASS_ALIAS).filter(group=group, billing_period=period)
     assert invoices.count() == 2
@@ -89,8 +92,8 @@ def test_rerunning_the_same_month_does_not_double_bill():
     _make_group_member(org, group, _student(org, 3))
     period = _next_period()
 
-    _run(period)
-    second = _run(period)
+    _run(period, org)
+    second = _run(period, org)
 
     assert Invoice.objects.using(BYPASS_ALIAS).filter(group=group, billing_period=period).count() == 1
     assert "issued 0 invoices" in second
@@ -104,10 +107,10 @@ def test_cancelled_invoice_can_be_reissued():
     group.save(using=BYPASS_ALIAS, update_fields=["status"])
     _make_group_member(org, group, _student(org, 4))
     period = _next_period()
-    _run(period)
+    _run(period, org)
     Invoice.objects.using(BYPASS_ALIAS).filter(group=group).update(status="cancelled")
 
-    _run(period)
+    _run(period, org)
 
     assert Invoice.objects.using(BYPASS_ALIAS).filter(group=group, billing_period=period).count() == 2
 
@@ -135,7 +138,7 @@ def test_skips_who_should_not_be_billed():
         created_at=timezone.make_aware(datetime(period.year, period.month, 10))
     )
 
-    output = _run(period)
+    output = _run(period, org)
 
     assert not Invoice.objects.using(BYPASS_ALIAS).filter(organization=org).exists()
     assert "1 members in groups with no price" in output
@@ -147,3 +150,29 @@ def test_rejects_a_malformed_period():
 
     with pytest.raises(CommandError):
         call_command("issue_monthly_invoices", period="November")
+
+
+def test_rejects_a_malformed_organization():
+    from django.core.management.base import CommandError
+
+    with pytest.raises(CommandError):
+        call_command("issue_monthly_invoices", organization="not-a-uuid")
+
+
+@db
+def test_organization_option_bills_only_that_organization():
+    org, other_org = _make_org(), _make_org()
+    period = _next_period()
+    groups = []
+    for o, n in ((org, 9), (other_org, 10)):
+        group = _make_group(o, price="400000.00")
+        group.status = "active"
+        group.save(using=BYPASS_ALIAS, update_fields=["status"])
+        _make_group_member(o, group, _student(o, n))
+        groups.append(group)
+
+    output = _run(period, org)
+
+    assert Invoice.objects.using(BYPASS_ALIAS).filter(group=groups[0], billing_period=period).count() == 1
+    assert not Invoice.objects.using(BYPASS_ALIAS).filter(group=groups[1]).exists()
+    assert "issued 1 invoices" in output

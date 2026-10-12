@@ -2517,5 +2517,10 @@
     "loadFailed": "Couldn't load your Telegram status. Refresh the page to try again.",
     "saveFailed": "Couldn't save. Please try again.",
     "whatYouGet": "You'll be notified when a new invoice is issued, 3 days before a payment is due, and when a student is marked absent. Parents can get these too: they open the same bot and share the phone number saved in the student's profile."
+  },
+  "LessonConflict": {
+    "room": "{room} is already taken {start}–{end} by group {group}. Choose another room or time.",
+    "group": "Group {group} already has a lesson {start}–{end}. Choose another time.",
+    "teacher": "{teacher} already teaches group {group} {start}–{end}. Choose another time."
   }
 }

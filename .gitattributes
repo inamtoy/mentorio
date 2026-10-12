@@ -1,0 +1,6 @@
+# Files executed on the Linux server or inside containers must keep LF even
+# when checked out on Windows (core.autocrlf), or sh/cron/psql choke on \r.
+*.sh            text eol=lf
+*.sql           text eol=lf
+Dockerfile      text eol=lf
+deploy/**       text eol=lf

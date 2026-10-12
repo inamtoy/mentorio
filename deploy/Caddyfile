@@ -1,0 +1,23 @@
+# Single public origin: the API under /api/, everything else the Next.js
+# app. Same origin matters: the backend's httpOnly auth cookies must be
+# visible to the frontend's proxy.ts. Caddy gets and renews the TLS
+# certificate for {$DOMAIN} by itself (ports 80 and 443 must be open).
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

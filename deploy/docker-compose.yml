@@ -1,0 +1,140 @@
+# Mentorio production stack. Run from this directory:
+#   docker compose up -d --build
+# See README.md for the first-time setup.
+
+# Each service gets only the variables it needs (no env_file), so e.g. the
+# API never sees the Postgres superuser or owner passwords. Values come from
+# deploy/.env, which docker compose reads for ${...} interpolation.
+x-backend-env: &backend-env
+  DB_HOST: db
+  DB_PORT: "5432"
+  DB_NAME: ${DB_NAME}
+  DB_USER: ${DB_USER}
+  DB_PASSWORD: ${DB_PASSWORD}
+  DB_AUTH_BYPASS_USER: ${DB_AUTH_BYPASS_USER}
+  DB_AUTH_BYPASS_PASSWORD: ${DB_AUTH_BYPASS_PASSWORD}
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+  DJANGO_ALLOWED_HOSTS: ${DOMAIN}
+  CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
+  PAYMENT_GATEWAY_ENCRYPTION_KEY: ${PAYMENT_GATEWAY_ENCRYPTION_KEY}
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+  TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+  GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
+  DB_BACKUP_KEEP_DAYS: ${DB_BACKUP_KEEP_DAYS:-14}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  TZ: Asia/Tashkent
+
+x-backend: &backend
+  build:
+    context: ../backend
+  image: mentorio-backend
+  restart: unless-stopped
+  environment: *backend-env
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      # Read only by postgres/init.sh on the very first start.
+      DB_NAME: ${DB_NAME}
+      DB_OWNER_USER: ${DB_OWNER_USER}
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_AUTH_BYPASS_USER: ${DB_AUTH_BYPASS_USER}
+      DB_AUTH_BYPASS_PASSWORD: ${DB_AUTH_BYPASS_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./postgres/init.sh:/docker-entrypoint-initdb.d/10-mentorio-roles.sh:ro
+      - ./postgres/roles.sql:/mentorio/roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Applies migrations as the owner role, then exits. Every other backend
+  # service waits for it, so a deploy never serves new code on an old schema.
+  migrate:
+    <<: *backend
+    restart: "no"
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    environment:
+      <<: *backend-env
+      DB_USER: ${DB_OWNER_USER}
+      DB_PASSWORD: ${DB_OWNER_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    <<: *backend
+    volumes:
+      - app_backups:/data/backups
+
+  # Drains the notification outbox to Telegram. Safe to scale out.
+  worker:
+    <<: *backend
+    command: ["python", "manage.py", "send_notifications", "--loop"]
+
+  cron:
+    <<: *backend
+    command: ["supercronic", "/app/deploy-scripts/crontab"]
+    volumes:
+      - ./cron:/app/deploy-scripts:ro
+      - db_backups:/data/db-backups
+
+  # One-off admin commands that must run without a tenant context, e.g.
+  #   docker compose run --rm tools python manage.py create_super_admin ...
+  # Connects as the BYPASSRLS role. Never started by `up`.
+  tools:
+    <<: *backend
+    restart: "no"
+    profiles: ["tools"]
+    command: ["python", "manage.py", "help"]
+    environment:
+      <<: *backend-env
+      DB_USER: ${DB_AUTH_BYPASS_USER}
+      DB_PASSWORD: ${DB_AUTH_BYPASS_PASSWORD}
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        NEXT_PUBLIC_API_URL: https://${DOMAIN}
+    image: mentorio-frontend
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Tashkent
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  pgdata:
+  app_backups:
+  db_backups:
+  caddy_data:
+  caddy_config:

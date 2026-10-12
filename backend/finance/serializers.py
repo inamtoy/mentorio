@@ -19,9 +19,14 @@ class InvoiceSerializer(serializers.ModelSerializer):
         fields = [
             "id", "organization", "student_profile", "student_name", "student_login_id", "group", "group_name",
             "invoice_number", "status", "total_amount", "paid_amount", "balance", "currency", "issued_date",
-            "due_date", "notes", "created_at", "updated_at",
+            "due_date", "billing_period", "notes", "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "invoice_number", "status", "issued_date", "created_at", "updated_at"]
+        # billing_period is only ever set by the Group billing flow
+        # (finance.services.get_or_create_group_invoice); a hand-made invoice
+        # is a one-off and stays null.
+        read_only_fields = [
+            "id", "invoice_number", "status", "issued_date", "billing_period", "created_at", "updated_at",
+        ]
 
     def get_paid_amount(self, obj) -> Decimal:
         return invoice_paid_amount(obj)

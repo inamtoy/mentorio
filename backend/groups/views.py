@@ -1,7 +1,9 @@
 from rest_framework import viewsets
 
-from common.audit import audited
-from common.permissions import HasModulePermission
+from common.audit import audit_log, audited
+from common.permissions import HasModulePermission, user_has_permission
+from finance.serializers import InvoiceSerializer
+from finance.services import get_or_create_group_invoice
 from foundation.views import SoftDeleteDestroyMixin
 from groups.filters import GroupFilter, GroupMemberFilter
 from groups.models import Group, GroupMember
@@ -63,3 +65,42 @@ class GroupMemberViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
         if student_profile is not None:
             return qs.filter(student_profile=student_profile)
         return qs
+
+    def create(self, request, *args, **kwargs):
+        self.issued_invoice = None
+        response = super().create(request, *args, **kwargs)
+        # The invoice raised alongside the enrollment (or null: no price, the
+        # caller opted out, or lacks finance:create) — lets the admin UI say
+        # "enrolled, invoice for 500 000 UZS issued" without a second request.
+        response.data["invoice"] = InvoiceSerializer(self.issued_invoice).data if self.issued_invoice else None
+        return response
+
+    def perform_create(self, serializer):
+        """Enrolling a student bills their first month at the Group's monthly
+        price, in the same transaction — admins otherwise had to remember to
+        create a matching Invoice by hand and type the amount every time.
+        Skipped silently (enrollment still succeeds) when the Group has no
+        price, the caller sent create_invoice=false, or the caller can't
+        create invoices: `groups:create` alone must not become a way to
+        raise finance documents.
+        """
+        create_invoice = serializer.validated_data.pop("create_invoice", True)
+        member = serializer.save()
+        if not create_invoice or member.status != "active":
+            return
+        if not user_has_permission(self.request.user, "finance", "create"):
+            return
+        result = get_or_create_group_invoice(member.group, member.student_profile, created_by=self.request.user.id)
+        if result is None:
+            return
+        invoice, created = result
+        if created:
+            self.issued_invoice = invoice
+            audit_log(
+                self.request, action="create", entity_type="invoice", entity_id=str(invoice.id),
+                metadata={"enrollment": str(member.id), "group": str(member.group_id)},
+            )
+
+    def perform_update(self, serializer):
+        serializer.validated_data.pop("create_invoice", None)
+        serializer.save()

@@ -20,10 +20,11 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { usePaymentsQuery, useCreatePaymentMutation } from "@/lib/queries/finance";
 import { recordPaymentSchema, type RecordPaymentFormValues } from "@/lib/schemas/invoice-profile-schema";
 import { ApiError } from "@/lib/api/client";
-import { formatCurrency } from "@/lib/utils";
+
 import type { Invoice } from "@/lib/api/finance";
 import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
+import { useFormatCurrency } from "@/i18n/format-currency";
 
 interface InvoiceDetailPanelProps {
   invoice: Invoice;
@@ -35,6 +36,7 @@ const EMPTY_PAYMENT: RecordPaymentFormValues = { amount: 0, paymentMethod: "cash
 
 export function InvoiceDetailPanel({ invoice, onBack, onDelete }: InvoiceDetailPanelProps) {
   const t = useTranslations("AdminFinance");
+  const formatMoney = useFormatCurrency();
   const tc = useTranslations("Common");
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
@@ -123,9 +125,12 @@ export function InvoiceDetailPanel({ invoice, onBack, onDelete }: InvoiceDetailP
           <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{t("invoiceDetailsTitle")}</h4>
           <div className="space-y-3">
             <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("invoiceNumberLabel")} value={invoice.invoice_number} />
-            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("amountLabel")} value={formatCurrency(Number(invoice.total_amount))} />
-            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("paidLabel")} value={formatCurrency(Number(invoice.paid_amount))} />
-            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("balanceLabel")} value={formatCurrency(balance)} />
+            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("amountLabel")} value={formatMoney(Number(invoice.total_amount))} />
+            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("paidLabel")} value={formatMoney(Number(invoice.paid_amount))} />
+            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("balanceLabel")} value={formatMoney(balance)} />
+            {invoice.billing_period && (
+              <InfoRow icon={<Calendar className="h-4 w-4" />} label={t("billingPeriodLabel")} value={formatLocalizedDate(new Date(invoice.billing_period + "T00:00:00"), locale, { month: "long", year: "numeric" })} />
+            )}
             <InfoRow icon={<Calendar className="h-4 w-4" />} label={t("dueDateLabel")} value={formatLocalizedDate(new Date(invoice.due_date + "T00:00:00"), locale, { month: "short", day: "numeric", year: "numeric" })} />
           </div>
         </div>
@@ -141,7 +146,7 @@ export function InvoiceDetailPanel({ invoice, onBack, onDelete }: InvoiceDetailP
                   <span className="text-xs text-slate-700">{PAYMENT_METHOD_LABELS[p.payment_method] ?? p.payment_method}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-500">{formatLocalizedDate(new Date(p.payment_date + "T00:00:00"), locale, { month: "short", day: "numeric", year: "numeric" })}</span>
-                    <span className="text-xs font-semibold text-emerald-600">+{formatCurrency(Number(p.amount))}</span>
+                    <span className="text-xs font-semibold text-emerald-600">+{formatMoney(Number(p.amount))}</span>
                   </div>
                 </div>
               ))}

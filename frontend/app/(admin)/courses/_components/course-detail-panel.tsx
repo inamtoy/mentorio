@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/badge";
 import { useGroupsQuery } from "@/lib/queries/groups";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { formatCurrency } from "@/lib/utils";
+
 import type { CourseProfile } from "@/lib/api/courses";
+import { useFormatCurrency } from "@/i18n/format-currency";
 
 interface CourseDetailPanelProps {
   course: CourseProfile;
@@ -19,6 +20,7 @@ interface CourseDetailPanelProps {
 
 export function CourseDetailPanel({ course, onBack, onEdit, onDelete }: CourseDetailPanelProps) {
   const t = useTranslations("AdminCourses");
+  const formatMoney = useFormatCurrency();
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   const { data: groups } = useGroupsQuery({ organizationId: organizationId ?? "", course: course.id });
 
@@ -59,7 +61,7 @@ export function CourseDetailPanel({ course, onBack, onEdit, onDelete }: CourseDe
           <p className="text-sm text-slate-600">{course.description}</p>
           <div className="space-y-3">
             <InfoRow icon={<Clock className="h-4 w-4" />} label={t("durationLabel")} value={course.duration_weeks ? t("durationWeeksValue", { count: course.duration_weeks }) : "—"} />
-            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("priceLabel")} value={formatCurrency(Number(course.price ?? 0))} />
+            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("priceLabel")} value={formatMoney(Number(course.price ?? 0))} />
             <InfoRow icon={<BookOpen className="h-4 w-4" />} label={t("lessonsLabel")} value={course.total_lessons ? `${course.total_lessons}` : "—"} />
             <InfoRow icon={<BookOpen className="h-4 w-4" />} label={t("codeLabel")} value={course.code} />
           </div>

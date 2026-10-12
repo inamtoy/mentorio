@@ -1,17 +1,40 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number, currency = "USD") {
+const UZS_SUFFIX: Record<Locale, string> = { uz: "so'm", ru: "сум", en: "UZS" };
+
+/** Centers bill in so'm, so UZS is the default, written the way each UI
+ * language does: "2 500 000 so'm" / "2 500 000 сум" / "2,500,000 UZS".
+ * In components use `useFormatCurrency()` (i18n/format-currency.ts), which
+ * supplies the current locale. Digits are grouped by hand with a fixed
+ * no-break space rather than Intl's locale data, so the server render and
+ * the browser always produce the same string (no hydration mismatch from
+ * differing ICU versions). Other currencies (the Super-Admin platform
+ * billing passes PLATFORM_CURRENCY, USD) use the standard "$1,234" form. */
+export function formatCurrency(amount: number, currency = "UZS", locale: Locale = DEFAULT_LOCALE) {
+  if (currency === "UZS") {
+    const digits = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(amount);
+    return `${locale === "en" ? digits : digits.replace(/,/g, " ")} ${UZS_SUFFIX[locale]}`;
+  }
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+/** Currency of Mentorio's own platform billing (backend billing models). */
+export const PLATFORM_CURRENCY = "USD";
+
+/** Short chart-axis label with no currency sign: 2500000 -> "2.5M". */
+export function formatCompactAmount(amount: number) {
+  return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(amount);
 }
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;

@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, Users, Clock, MapPin, Pencil, Trash2, UserPlus, X } from "lucide-react";
+import { ChevronLeft, Users, Clock, MapPin, Pencil, Trash2, UserPlus, X, DollarSign, CalendarDays } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
 import { Select } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/lib/store/toast-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useStudentsQuery } from "@/lib/queries/students";
 import { useAddGroupMemberMutation, useGroupMembersQuery, useRemoveGroupMemberMutation } from "@/lib/queries/groups";
 import { ApiError } from "@/lib/api/client";
+import { useFormatCurrency } from "@/i18n/format-currency";
 import type { Group } from "@/lib/api/groups";
 
 interface GroupDetailPanelProps {
@@ -24,6 +26,7 @@ interface GroupDetailPanelProps {
 
 export function GroupDetailPanel({ group, onBack, onEdit, onDelete }: GroupDetailPanelProps) {
   const t = useTranslations("AdminGroups");
+  const formatMoney = useFormatCurrency();
   const DAY_LABELS: Record<string, string> = {
     Mon: t("dayMon"), Tue: t("dayTue"), Wed: t("dayWed"), Thu: t("dayThu"),
     Fri: t("dayFri"), Sat: t("daySat"), Sun: t("daySun"),
@@ -35,6 +38,8 @@ export function GroupDetailPanel({ group, onBack, onEdit, onDelete }: GroupDetai
   const addMemberMutation = useAddGroupMemberMutation();
   const removeMemberMutation = useRemoveGroupMemberMutation();
   const [pickedStudent, setPickedStudent] = useState("");
+  const [createInvoice, setCreateInvoice] = useState(true);
+  const monthlyPrice = group.effective_price ? formatMoney(Number(group.effective_price), group.currency) : null;
 
   const activeMembers = (members ?? []).filter((m) => m.status !== "dropped" && m.status !== "transferred");
   const enrolledIds = new Set((members ?? []).map((m) => m.student_profile));
@@ -43,8 +48,19 @@ export function GroupDetailPanel({ group, onBack, onEdit, onDelete }: GroupDetai
   async function handleAdd() {
     if (!pickedStudent || !organizationId) return;
     try {
-      await addMemberMutation.mutateAsync({ organizationId, groupId: group.id, studentProfileId: pickedStudent });
-      toast.success(t("studentEnrolledToast"));
+      const result = await addMemberMutation.mutateAsync({
+        organizationId,
+        groupId: group.id,
+        studentProfileId: pickedStudent,
+        createInvoice: monthlyPrice !== null && createInvoice,
+      });
+      toast.success(
+        result.invoice
+          ? t("studentEnrolledWithInvoiceToast", {
+              amount: formatMoney(Number(result.invoice.total_amount), result.invoice.currency),
+            })
+          : t("studentEnrolledToast"),
+      );
       setPickedStudent("");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : t("enrollErrorFallback"));
@@ -100,6 +116,8 @@ export function GroupDetailPanel({ group, onBack, onEdit, onDelete }: GroupDetai
               }
             />
             <InfoRow icon={<Users className="h-4 w-4" />} label={t("enrollmentLabel")} value={`${group.enrolled_count}/${group.max_students}`} />
+            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("monthlyPriceLabel")} value={monthlyPrice ?? t("priceNotSet")} />
+            <InfoRow icon={<CalendarDays className="h-4 w-4" />} label={t("fieldBillingDay")} value={t("billingDayOption", { day: group.billing_day })} />
           </div>
         </div>
 
@@ -119,6 +137,15 @@ export function GroupDetailPanel({ group, onBack, onEdit, onDelete }: GroupDetai
               {t("addButton")}
             </Button>
           </div>
+          {monthlyPrice ? (
+            <Checkbox
+              checked={createInvoice}
+              onCheckedChange={setCreateInvoice}
+              label={t("createFirstInvoiceLabel", { amount: monthlyPrice })}
+            />
+          ) : (
+            <p className="text-xs text-slate-400">{t("noPriceNoInvoiceHint")}</p>
+          )}
 
           {activeMembers.length === 0 ? (
             <p className="text-sm text-slate-400">{t("noStudentsEnrolled")}</p>

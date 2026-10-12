@@ -12,10 +12,11 @@ import {
   useMarkPayrollPaidMutation,
 } from "@/lib/queries/finance";
 import { ApiError } from "@/lib/api/client";
-import { formatCurrency } from "@/lib/utils";
+
 import type { Payroll } from "@/lib/api/finance";
 import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
+import { useFormatCurrency } from "@/i18n/format-currency";
 
 interface PayrollDetailPanelProps {
   payroll: Payroll;
@@ -25,6 +26,7 @@ interface PayrollDetailPanelProps {
 
 export function PayrollDetailPanel({ payroll, onBack, onDelete }: PayrollDetailPanelProps) {
   const t = useTranslations("AdminFinance");
+  const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
 
@@ -112,11 +114,11 @@ export function PayrollDetailPanel({ payroll, onBack, onDelete }: PayrollDetailP
         <div className="space-y-4">
           <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{t("payrollDetailsTitle")}</h4>
           <div className="space-y-3">
-            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("baseSalaryLabel")} value={formatCurrency(Number(payroll.base_salary))} />
-            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("bonusLabel")} value={formatCurrency(Number(payroll.bonus))} />
-            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("deductionsLabel")} value={formatCurrency(Number(payroll.deductions))} />
-            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("taxAmountLabel")} value={formatCurrency(Number(payroll.tax_amount))} />
-            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("netAmountLabel")} value={formatCurrency(payroll.net_amount)} />
+            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("baseSalaryLabel")} value={formatMoney(Number(payroll.base_salary))} />
+            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("bonusLabel")} value={formatMoney(Number(payroll.bonus))} />
+            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("deductionsLabel")} value={formatMoney(Number(payroll.deductions))} />
+            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("taxAmountLabel")} value={formatMoney(Number(payroll.tax_amount))} />
+            <InfoRow icon={<DollarSign className="h-4 w-4" />} label={t("netAmountLabel")} value={formatMoney(payroll.net_amount)} />
             {payroll.paid_at && (
               <InfoRow icon={<Calendar className="h-4 w-4" />} label={t("paidAtLabel")} value={formatLocalizedDate(new Date(payroll.paid_at), locale, { month: "short", day: "numeric", year: "numeric" })} />
             )}

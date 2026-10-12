@@ -29,8 +29,9 @@ import {
   useTeachersSummaryReportQuery,
 } from "@/lib/queries/reports";
 import type { StudentReportRow, TeacherReportRow } from "@/lib/api/reports";
-import { formatCurrency, daysFromTodayIso, toLocalIsoDate } from "@/lib/utils";
+import { daysFromTodayIso, toLocalIsoDate } from "@/lib/utils";
 import { toast } from "@/lib/store/toast-store";
+import { useFormatCurrency } from "@/i18n/format-currency";
 
 /** 1st of the current month, in the local calendar — reuses lib/utils.ts's
  * shared toLocalIsoDate() encoder (see its own comment on why a bare
@@ -52,6 +53,7 @@ function RatePill({ value }: { value: number | null }) {
 
 export default function ReportsPage() {
   const t = useTranslations("AdminReports");
+  const formatMoney = useFormatCurrency();
 
   // Real, always-applied date range — unlike the Super-Admin Reports page's
   // removed period selector (commit ca97963), every change here re-fires
@@ -204,15 +206,15 @@ export default function ReportsPage() {
           what students owe, row 2 is cash in vs. cash out for the period,
           row 3 is the result plus the non-financial figures. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard label={t("statTotalInvoiced")} value={formatCurrency(finance?.total_invoiced ?? 0)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
-        <StatCard label={t("statOutstanding")} value={formatCurrency(finance?.total_outstanding ?? 0)} icon={<AlertCircle className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
-        <StatCard label={t("statOverdue")} value={formatCurrency(finance?.total_overdue ?? 0)} icon={<AlertTriangle className="h-5 w-5 text-red-500" />} iconBg="bg-red-50" />
-        <StatCard label={t("statTotalCollected")} value={formatCurrency(finance?.total_collected ?? 0)} icon={<Wallet className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
-        <StatCard label={t("statExpensesPaid")} value={formatCurrency(finance?.total_expenses ?? 0)} icon={<Receipt className="h-5 w-5 text-orange-600" />} iconBg="bg-orange-50" />
-        <StatCard label={t("statPayrollPaid")} value={formatCurrency(finance?.payroll_total ?? 0)} icon={<Banknote className="h-5 w-5 text-slate-600" />} iconBg="bg-slate-100" />
+        <StatCard label={t("statTotalInvoiced")} value={formatMoney(finance?.total_invoiced ?? 0)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
+        <StatCard label={t("statOutstanding")} value={formatMoney(finance?.total_outstanding ?? 0)} icon={<AlertCircle className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
+        <StatCard label={t("statOverdue")} value={formatMoney(finance?.total_overdue ?? 0)} icon={<AlertTriangle className="h-5 w-5 text-red-500" />} iconBg="bg-red-50" />
+        <StatCard label={t("statTotalCollected")} value={formatMoney(finance?.total_collected ?? 0)} icon={<Wallet className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
+        <StatCard label={t("statExpensesPaid")} value={formatMoney(finance?.total_expenses ?? 0)} icon={<Receipt className="h-5 w-5 text-orange-600" />} iconBg="bg-orange-50" />
+        <StatCard label={t("statPayrollPaid")} value={formatMoney(finance?.payroll_total ?? 0)} icon={<Banknote className="h-5 w-5 text-slate-600" />} iconBg="bg-slate-100" />
         <StatCard
           label={t("statNetProfit")}
-          value={formatCurrency(netProfit)}
+          value={formatMoney(netProfit)}
           icon={
             netProfit < 0 ? (
               <TrendingDown className="h-5 w-5 text-red-500" />

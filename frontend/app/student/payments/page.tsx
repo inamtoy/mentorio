@@ -23,21 +23,21 @@ import { useGatewayAccountsQuery, useInitiateCheckoutMutation } from "@/lib/quer
 import { useGroupsQuery, useMyGroupMembershipsQuery } from "@/lib/queries/groups";
 import { useMyRegionSettingsQuery } from "@/lib/queries/settings";
 import { toast } from "@/lib/store/toast-store";
-// formatCurrency is shared across every portal and still formats as fixed
-// en-US (see lib/utils.ts) — localizing it is a follow-up beyond this
-// Student-portal-only i18n pass, since it's called from dozens of
-// non-i18n-aware pages too. formatDate, unlike formatCurrency, now honors
+// Money is formatted per UI language via useFormatCurrency (so'm / сум /
+// UZS). formatDate honors
 // the viewer's Settings > Region > dateFormat preference when passed one
 // (see lib/utils.ts's own docstring on why) — the payments/invoices table
 // below is exactly the kind of numeric date where MM/DD vs DD/MM ambiguity
 // matters most, so this page passes it.
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
 import type { Invoice } from "@/lib/api/finance";
 import type { Provider } from "@/lib/api/payment-gateways";
+import { useFormatCurrency } from "@/i18n/format-currency";
 
 export default function StudentPaymentsPage() {
   const t = useTranslations("StudentPayments");
+  const formatMoney = useFormatCurrency();
   const tc = useTranslations("Common");
   const { data: region } = useMyRegionSettingsQuery();
 
@@ -143,14 +143,14 @@ export default function StudentPaymentsPage() {
     {
       key: "total_amount",
       label: t("colAmount"),
-      render: (val) => <span className="font-medium text-slate-900">{formatCurrency(Number(val))}</span>,
+      render: (val) => <span className="font-medium text-slate-900">{formatMoney(Number(val))}</span>,
     },
     {
       key: "balance",
       label: t("colBalance"),
       render: (val) => (
         <span className={Number(val) > 0 ? "text-red-500 font-medium" : "text-slate-400"}>
-          {Number(val) > 0 ? formatCurrency(Number(val)) : "—"}
+          {Number(val) > 0 ? formatMoney(Number(val)) : "—"}
         </span>
       ),
     },
@@ -187,8 +187,8 @@ export default function StudentPaymentsPage() {
       <PageHeader title={t("pageTitle")} subtitle={t("pageSubtitle")} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label={t("statTotalDue")} value={formatCurrency(totalDue)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
-        <StatCard label={t("statOverdue")} value={formatCurrency(totalOverdue)} icon={<AlertCircle className="h-5 w-5 text-red-500" />} iconBg="bg-red-50" />
+        <StatCard label={t("statTotalDue")} value={formatMoney(totalDue)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
+        <StatCard label={t("statOverdue")} value={formatMoney(totalOverdue)} icon={<AlertCircle className="h-5 w-5 text-red-500" />} iconBg="bg-red-50" />
         <StatCard label={t("statPaidInvoices")} value={`${paidCount}/${invoices.length}`} icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
       </div>
 
@@ -207,7 +207,7 @@ export default function StudentPaymentsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-sm font-semibold text-slate-900">{formatCurrency(Number(group.price))}</span>
+                  <span className="text-sm font-semibold text-slate-900">{formatMoney(Number(group.price))}</span>
                   <Button
                     size="sm"
                     onClick={() => handleGenerateInvoice(group.id)}
@@ -245,7 +245,7 @@ export default function StudentPaymentsPage() {
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-semibold text-emerald-600">+{formatCurrency(Number(tx.amount))}</p>
+                  <p className="text-sm font-semibold text-emerald-600">+{formatMoney(Number(tx.amount))}</p>
                   <p className="text-xs text-slate-400">{formatDate(tx.payment_date, region?.dateFormat)}</p>
                 </div>
               </div>
@@ -263,7 +263,7 @@ export default function StudentPaymentsPage() {
             {payingInvoice && (
               <div className="space-y-4">
                 <p className="text-sm text-slate-500">
-                  {t("balanceLabel")} <span className="font-semibold text-slate-900">{formatCurrency(Number(payingInvoice.balance))}</span>
+                  {t("balanceLabel")} <span className="font-semibold text-slate-900">{formatMoney(Number(payingInvoice.balance))}</span>
                 </p>
                 {availableProviders.length === 0 ? (
                   <p className="text-sm text-amber-600 bg-amber-50 rounded-lg px-3 py-2">

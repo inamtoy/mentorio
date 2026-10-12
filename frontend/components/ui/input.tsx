@@ -229,9 +229,13 @@ export function Select({ options, value, onChange, placeholder, className, disab
         <SelectPrimitive.Content
           position="popper"
           sideOffset={4}
-          className="z-50 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-lg py-1"
+          // Capped to the space Radix measured between the trigger and the
+          // viewport edge, so a long list (e.g. 28 billing days) scrolls
+          // inside the dropdown instead of running off-screen, where its
+          // first options were unreachable.
+          className="z-50 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-lg py-1 max-h-[var(--radix-select-content-available-height)] min-w-[var(--radix-select-trigger-width)]"
         >
-          <SelectPrimitive.Viewport>
+          <SelectPrimitive.Viewport className="max-h-[inherit]">
             {options.map((opt) => (
               <SelectPrimitive.Item
                 key={opt.value}

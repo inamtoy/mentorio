@@ -193,16 +193,12 @@ function PayrollFormFields({ onOpenChange }: { onOpenChange: (open: boolean) => 
             onChange={(e) => setField("taxAmount", Number(e.target.value))}
             error={errors.taxAmount}
           />
-          {/* col-span-2 wraps the Input — see expense-form-dialog.tsx's
-              comment: Input's text branch doesn't merge className onto its
-              grid-item wrapper. */}
-          <div className="col-span-2">
-            <Input
-              placeholder={t("notesOptionalPlaceholder")}
-              value={values.notes ?? ""}
-              onChange={(e) => setField("notes", e.target.value)}
-            />
-          </div>
+          <Input
+            placeholder={t("notesOptionalPlaceholder")}
+            value={values.notes ?? ""}
+            onChange={(e) => setField("notes", e.target.value)}
+            wrapperClassName="col-span-2"
+          />
         </div>
       </DialogBody>
       <DialogFooter>

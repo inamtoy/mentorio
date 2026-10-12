@@ -138,7 +138,7 @@ function LessonFormFields({ onOpenChange }: { onOpenChange: (open: boolean) => v
             value={values.date}
             onChange={(e) => setField("date", e.target.value)}
             error={errors.date}
-            className="col-span-2"
+            wrapperClassName="col-span-2"
           />
           <Input
             type="time"

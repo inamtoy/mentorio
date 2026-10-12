@@ -38,7 +38,13 @@ class Lesson(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Organizatio
     class Meta:
         db_table = schema_table("schedule", "lessons")
         constraints = [
-            models.UniqueConstraint(fields=["group", "date", "start_time"], name="uq_lessons_group_date_start"),
+            # Live, non-cancelled rows only: a deleted or cancelled lesson must
+            # not stop the same slot being booked again (it used to 500).
+            models.UniqueConstraint(
+                fields=["group", "date", "start_time"],
+                name="uq_lessons_group_date_start",
+                condition=models.Q(deleted_at__isnull=True) & ~models.Q(status="cancelled"),
+            ),
             models.CheckConstraint(condition=models.Q(end_time__gt=models.F("start_time")), name="chk_lessons_times"),
         ]
         indexes = [

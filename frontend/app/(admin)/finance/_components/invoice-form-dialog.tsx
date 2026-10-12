@@ -142,7 +142,7 @@ function InvoiceFormFields({ onOpenChange }: { onOpenChange: (open: boolean) => 
             placeholder={t("notesOptionalPlaceholder")}
             value={values.notes}
             onChange={(e) => setField("notes", e.target.value)}
-            className="col-span-2"
+            wrapperClassName="col-span-2"
           />
         </div>
       </DialogBody>

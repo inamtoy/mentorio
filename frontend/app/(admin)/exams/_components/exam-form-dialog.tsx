@@ -158,7 +158,7 @@ function ExamFormFields({
             value={values.title}
             onChange={(e) => setField("title", e.target.value)}
             error={errors.title}
-            className="col-span-2"
+            wrapperClassName="col-span-2"
           />
           <Select
             placeholder={t("selectGroupPlaceholder")}

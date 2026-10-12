@@ -154,7 +154,7 @@ function CourseFormFields({
             value={values.name}
             onChange={(e) => setField("name", e.target.value)}
             error={errors.name}
-            className="col-span-2"
+            wrapperClassName="col-span-2"
           />
           <Input
             placeholder={t("fieldCategory")}
@@ -204,7 +204,7 @@ function CourseFormFields({
           </div>
 
           {mode === "edit" && course && (
-            <Input value={course.code} disabled placeholder={t("fieldCourseCode")} className="col-span-2" />
+            <Input value={course.code} disabled placeholder={t("fieldCourseCode")} wrapperClassName="col-span-2" />
           )}
         </div>
       </DialogBody>

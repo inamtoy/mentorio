@@ -132,18 +132,13 @@ function ExpenseFormFields({ onOpenChange }: { onOpenChange: (open: boolean) => 
             onChange={(e) => setField("category", e.target.value as ExpenseFormValues["category"])}
             className="col-span-2"
           />
-          {/* col-span-2 wraps the Input itself rather than being passed as
-              its className — Input's default (text) branch doesn't merge
-              className onto its actual grid-item wrapper, only onto the
-              nested <input>, where a grid-column utility has no effect. */}
-          <div className="col-span-2">
-            <Input
-              placeholder={t("titlePlaceholder")}
-              value={values.title}
-              onChange={(e) => setField("title", e.target.value)}
-              error={errors.title}
-            />
-          </div>
+          <Input
+            placeholder={t("titlePlaceholder")}
+            value={values.title}
+            onChange={(e) => setField("title", e.target.value)}
+            error={errors.title}
+            wrapperClassName="col-span-2"
+          />
           <Input
             type="number"
             placeholder={t("amountFieldPlaceholder")}
@@ -164,20 +159,18 @@ function ExpenseFormFields({ onOpenChange }: { onOpenChange: (open: boolean) => 
             onChange={(e) => setField("branch", e.target.value)}
             className="col-span-2"
           />
-          <div className="col-span-2">
-            <Input
-              placeholder={t("vendorNameOptionalPlaceholder")}
-              value={values.vendorName ?? ""}
-              onChange={(e) => setField("vendorName", e.target.value)}
-            />
-          </div>
-          <div className="col-span-2">
-            <Input
-              placeholder={t("notesOptionalPlaceholder")}
-              value={values.notes ?? ""}
-              onChange={(e) => setField("notes", e.target.value)}
-            />
-          </div>
+          <Input
+            placeholder={t("vendorNameOptionalPlaceholder")}
+            value={values.vendorName ?? ""}
+            onChange={(e) => setField("vendorName", e.target.value)}
+            wrapperClassName="col-span-2"
+          />
+          <Input
+            placeholder={t("notesOptionalPlaceholder")}
+            value={values.notes ?? ""}
+            onChange={(e) => setField("notes", e.target.value)}
+            wrapperClassName="col-span-2"
+          />
         </div>
       </DialogBody>
       <DialogFooter>

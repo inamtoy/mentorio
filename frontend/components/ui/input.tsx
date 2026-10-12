@@ -11,6 +11,14 @@ import { Calendar } from "./calendar";
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon?: React.ReactNode;
   error?: string;
+  /** Classes for the outer wrapper `<div>` — the element that actually sits
+   * in the parent's layout. Put layout/placement utilities here (col-span-*,
+   * row-span-*, grid placement, flex-*, margins). `className` keeps styling
+   * the field control itself (the `<input>`, or the date trigger button),
+   * matching how `<Select className>` styles its trigger. Passing e.g.
+   * `col-span-2` via `className` has no effect, since the control is not
+   * the grid/flex item. */
+  wrapperClassName?: string;
 }
 
 /** Keeps digits and at most one decimal point — everything else (a second
@@ -23,7 +31,7 @@ function sanitizeNumeric(raw: string): string {
   return digitsAndDots.slice(0, firstDot + 1) + digitsAndDots.slice(firstDot + 1).replace(/\./g, "");
 }
 
-export function Input({ icon, error, className, type, onChange, onFocus, ...props }: InputProps) {
+export function Input({ icon, error, className, wrapperClassName, type, onChange, onFocus, ...props }: InputProps) {
   // type="number" renders as a real <input type="number"> here — this has
   // two bad, hard-to-notice-in-review side effects: (1) browser spinner
   // arrows that don't match this design system anywhere else, and (2) a
@@ -55,12 +63,13 @@ export function Input({ icon, error, className, type, onChange, onFocus, ...prop
         disabled={props.disabled}
         error={error}
         className={className}
+        wrapperClassName={wrapperClassName}
       />
     );
   }
 
   return (
-    <div className="relative">
+    <div className={cn("relative", wrapperClassName)}>
       {icon && (
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
           {icon}
@@ -102,9 +111,10 @@ interface DateFieldProps {
   disabled?: boolean;
   error?: string;
   className?: string;
+  wrapperClassName?: string;
 }
 
-function DateField({ value, onChange, placeholder, disabled, error, className }: DateFieldProps) {
+function DateField({ value, onChange, placeholder, disabled, error, className, wrapperClassName }: DateFieldProps) {
   const [open, setOpen] = useState(false);
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
@@ -113,7 +123,7 @@ function DateField({ value, onChange, placeholder, disabled, error, className }:
     : "";
 
   return (
-    <div className="relative">
+    <div className={cn("relative", wrapperClassName)}>
       <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
         <PopoverPrimitive.Trigger asChild>
           <button
@@ -154,7 +164,7 @@ function DateField({ value, onChange, placeholder, disabled, error, className }:
 export function SearchInput({
   className,
   ...props
-}: React.InputHTMLAttributes<HTMLInputElement>) {
+}: Omit<InputProps, "icon">) {
   return (
     <Input
       icon={<Search className="h-4 w-4" />}

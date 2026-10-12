@@ -6,6 +6,7 @@ finance/tests/test_finance.py's module docstring.
 """
 
 import uuid
+from decimal import Decimal
 
 import pytest
 from django.db import transaction as db_transaction
@@ -13,6 +14,7 @@ from rest_framework.test import APIClient
 
 from common.context import apply_org_context
 from finance.models import Payroll
+from finance.services import payroll_net_amount, payroll_net_amount_expression
 from foundation.models import Organization, Role, User, UserRole
 from teacher.models import TeacherProfile
 
@@ -173,3 +175,21 @@ def test_payroll_is_isolated_per_organization():
     rows = response.json()["data"]["results"]
     assert len(rows) == 1
     assert rows[0]["teacher_profile"] == str(teacher_a.id)
+
+
+def test_payroll_net_amount_expression_matches_python_helper():
+    """finance.services keeps the net-amount formula twice (per-instance
+    for the serializer, SQL for reports' aggregation) — they must agree."""
+    org = _make_org()
+    teacher = _make_teacher(org, "+998900700014")
+    payroll = _make_payroll(
+        org, teacher, base_salary="8000000.00", bonus="500000.00", deductions="250000.00", tax_amount="960000.00"
+    )
+
+    annotated = (
+        Payroll.objects.using(BYPASS_ALIAS)
+        .annotate(net=payroll_net_amount_expression())
+        .values_list("net", flat=True)
+        .get(pk=payroll.pk)
+    )
+    assert annotated == payroll_net_amount(payroll) == Decimal("7290000.00")

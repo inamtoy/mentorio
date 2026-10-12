@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.db.models import Sum
+from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 
 from finance.models import Invoice, Payroll
 
@@ -32,3 +32,16 @@ def recompute_invoice_status(invoice: Invoice) -> None:
 
 def payroll_net_amount(payroll: Payroll) -> Decimal:
     return payroll.base_salary + payroll.bonus - payroll.deductions - payroll.tax_amount
+
+
+def payroll_net_amount_expression() -> ExpressionWrapper:
+    """The same net-amount formula as `payroll_net_amount` above, as a DB
+    expression — for aggregating many Payroll rows in SQL (e.g.
+    reports.views.FinanceSummaryReportView) instead of a Python loop. Kept
+    right next to its per-instance twin so the two can't drift apart;
+    finance/tests/test_payroll.py asserts they agree.
+    """
+    return ExpressionWrapper(
+        F("base_salary") + F("bonus") - F("deductions") - F("tax_amount"),
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+    )

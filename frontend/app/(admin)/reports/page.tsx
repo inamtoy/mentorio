@@ -1,7 +1,19 @@
 "use client";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Download, DollarSign, Wallet, AlertCircle, AlertTriangle, UserPlus, ClipboardCheck } from "lucide-react";
+import {
+  Download,
+  DollarSign,
+  Wallet,
+  AlertCircle,
+  AlertTriangle,
+  UserPlus,
+  ClipboardCheck,
+  Receipt,
+  Banknote,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +68,7 @@ export default function ReportsPage() {
   const teachers = teachersData ?? [];
   const { data: attendance } = useAttendanceSummaryReportQuery(period);
   const { data: finance } = useFinanceSummaryReportQuery(period);
+  const netProfit = finance?.net_profit ?? 0;
 
   const attendanceBreakdown = attendance
     ? [
@@ -185,14 +198,30 @@ export default function ReportsPage() {
         }
       />
 
-      {/* 3-per-row (not 6) — 6 stat cards on one row left "Total Invoiced"/
+      {/* 3-per-row (not 6+) — 6 stat cards on one row left "Total Invoiced"/
           "New Enrollments" truncated at typical widths (StatCard's label
-          is `truncate`); 2 rows of 3 gives each card enough width. */}
+          is `truncate`); rows of 3 give each card enough width. Row 1 is
+          what students owe, row 2 is cash in vs. cash out for the period,
+          row 3 is the result plus the non-financial figures. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard label={t("statTotalInvoiced")} value={formatCurrency(finance?.total_invoiced ?? 0)} icon={<DollarSign className="h-5 w-5 text-indigo-600" />} iconBg="bg-indigo-50" />
-        <StatCard label={t("statTotalCollected")} value={formatCurrency(finance?.total_collected ?? 0)} icon={<Wallet className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
         <StatCard label={t("statOutstanding")} value={formatCurrency(finance?.total_outstanding ?? 0)} icon={<AlertCircle className="h-5 w-5 text-amber-600" />} iconBg="bg-amber-50" />
         <StatCard label={t("statOverdue")} value={formatCurrency(finance?.total_overdue ?? 0)} icon={<AlertTriangle className="h-5 w-5 text-red-500" />} iconBg="bg-red-50" />
+        <StatCard label={t("statTotalCollected")} value={formatCurrency(finance?.total_collected ?? 0)} icon={<Wallet className="h-5 w-5 text-emerald-600" />} iconBg="bg-emerald-50" />
+        <StatCard label={t("statExpensesPaid")} value={formatCurrency(finance?.total_expenses ?? 0)} icon={<Receipt className="h-5 w-5 text-orange-600" />} iconBg="bg-orange-50" />
+        <StatCard label={t("statPayrollPaid")} value={formatCurrency(finance?.payroll_total ?? 0)} icon={<Banknote className="h-5 w-5 text-slate-600" />} iconBg="bg-slate-100" />
+        <StatCard
+          label={t("statNetProfit")}
+          value={formatCurrency(netProfit)}
+          icon={
+            netProfit < 0 ? (
+              <TrendingDown className="h-5 w-5 text-red-500" />
+            ) : (
+              <TrendingUp className="h-5 w-5 text-emerald-600" />
+            )
+          }
+          iconBg={netProfit < 0 ? "bg-red-50" : "bg-emerald-50"}
+        />
         <StatCard label={t("statNewEnrollments")} value={finance?.new_enrollments ?? 0} icon={<UserPlus className="h-5 w-5 text-violet-600" />} iconBg="bg-violet-50" />
         <StatCard
           label={t("statAvgAttendance")}

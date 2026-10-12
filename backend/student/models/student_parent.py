@@ -1,6 +1,6 @@
 from django.db import models
 
-from common.db import schema_table
+from common.db import PhoneKey, schema_table
 from common.models import OrganizationScopedMixin, SoftDeleteMixin, TimestampedMixin, UUIDPrimaryKeyMixin
 
 PARENT_RELATION_CHOICES = [
@@ -48,6 +48,10 @@ class StudentParent(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Orga
                 fields=["student_profile"], name="idx_student_parents_student", condition=models.Q(deleted_at__isnull=True)
             ),
             models.Index(fields=["organization"], name="idx_student_parents_org", condition=models.Q(deleted_at__isnull=True)),
+            # See foundation.User's idx_users_phone_key — same lookup, for parents.
+            models.Index(
+                PhoneKey("phone"), name="idx_student_parents_phone_key", condition=models.Q(deleted_at__isnull=True)
+            ),
         ]
 
     def __str__(self) -> str:

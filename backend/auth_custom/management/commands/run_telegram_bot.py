@@ -12,7 +12,7 @@ import time
 
 from django.core.management.base import BaseCommand, CommandError
 
-from auth_custom.services import password_reset_service, telegram_client
+from auth_custom.services import telegram_bot, telegram_client
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,6 @@ class Command(BaseCommand):
             for update in updates:
                 offset = update["update_id"] + 1
                 try:
-                    password_reset_service.handle_update(update)
+                    telegram_bot.handle_update(update)
                 except Exception:  # noqa: BLE001 — one bad update must not stop the bot
                     logger.exception("Telegram update %s failed", update.get("update_id"))

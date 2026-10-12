@@ -166,18 +166,24 @@ export default function TeacherDashboardPage() {
     d.setDate(d.getDate() - ((d.getDay() - idx + 7) % 7));
     return formatLocalizedDate(d, locale, { weekday: 'short' });
   };
-  const weeklyData = DAY_ABBR.map((day) => ({ day, name: weekdayShortFor(day), present: 0, absent: 0, late: 0 }));
+  // Tallied first, objects built once: the React Compiler freezes values it
+  // memoizes, so incrementing a field on an already-built bucket throws.
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  attendance
-    .filter((r) => new Date(r.date) >= sevenDaysAgo)
-    .forEach((r) => {
-      const dayIdx = new Date(r.date + 'T00:00:00').getDay();
-      const bucket = weeklyData.find((w) => w.day === DAY_ABBR[dayIdx]);
-      if (bucket && (r.status === 'present' || r.status === 'absent' || r.status === 'late')) {
-        bucket[r.status] += 1;
-      }
-    });
+  const tally = new Map<string, number>();
+  for (const r of attendance) {
+    if (new Date(r.date) < sevenDaysAgo) continue;
+    if (r.status !== 'present' && r.status !== 'absent' && r.status !== 'late') continue;
+    const key = `${DAY_ABBR[new Date(r.date + 'T00:00:00').getDay()]}:${r.status}`;
+    tally.set(key, (tally.get(key) ?? 0) + 1);
+  }
+  const weeklyData = DAY_ABBR.map((day) => ({
+    day,
+    name: weekdayShortFor(day),
+    present: tally.get(`${day}:present`) ?? 0,
+    absent: tally.get(`${day}:absent`) ?? 0,
+    late: tally.get(`${day}:late`) ?? 0,
+  }));
 
   const { data: region } = useMyRegionSettingsQuery();
   const todayLabel = formatLocalizedDate(new Date(), locale, {

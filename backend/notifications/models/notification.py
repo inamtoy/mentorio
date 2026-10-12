@@ -43,9 +43,20 @@ class Notification(UUIDPrimaryKeyMixin, TimestampedMixin, SoftDeleteMixin, Organ
     category = models.CharField(max_length=30, blank=True, default="")
     read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)
+    # Set only on system-generated notifications ("absent:<attendance id>",
+    # see notifications.services.events): one event notifies a recipient
+    # once, however often the triggering write is repeated.
+    event_key = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
         db_table = schema_table("notification", "notifications")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["recipient", "event_key"],
+                name="uq_notif_recipient_event",
+                condition=models.Q(event_key__isnull=False),
+            ),
+        ]
         indexes = [
             models.Index(
                 fields=["recipient", "read"], name="idx_notif_recipient_read", condition=models.Q(deleted_at__isnull=True)

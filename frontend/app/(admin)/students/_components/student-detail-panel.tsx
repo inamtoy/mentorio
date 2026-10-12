@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, KeyRound, Phone, Users, DollarSign, Pencil, Trash2 } from "lucide-react";
+import { ChevronLeft, KeyRound, Phone, Send, Users, DollarSign, Pencil, Trash2 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { useStudentParentsQuery } from "@/lib/queries/students";
 import { useStudentGroupMembershipsQuery } from "@/lib/queries/groups";
 import { useAttendanceQuery } from "@/lib/queries/attendance";
 import { useInvoicesQuery } from "@/lib/queries/finance";
+import { useMyTelegramQuery } from "@/lib/queries/notifications";
 import { useAuthStore } from "@/lib/store/auth-store";
 import type { StudentProfile } from "@/lib/api/students";
 import { formatLocalizedDate } from "@/i18n/date-locale";
@@ -46,6 +47,10 @@ export function StudentDetailPanel({ student, onBack, onEdit, onDelete }: Studen
 
   const { data: parents } = useStudentParentsQuery(student.id);
   const primaryParent = parents?.find((p) => p.is_primary_contact) ?? parents?.[0];
+  // The bot's address, to hand to a parent who hasn't connected yet — the
+  // same bot every user connects through, so the admin's own link works.
+  const { data: telegram } = useMyTelegramQuery();
+  const botLink = telegram?.bot_url?.split("?")[0] ?? null;
 
   const { data: memberships } = useStudentGroupMembershipsQuery(student.id);
   const activeMemberships = (memberships ?? []).filter((m) => m.status === "active");
@@ -103,6 +108,16 @@ export function StudentDetailPanel({ student, onBack, onEdit, onDelete }: Studen
                 />
                 {primaryParent.phone && (
                   <InfoRow icon={<Phone className="h-4 w-4" />} label={t("parentPhoneLabel")} value={primaryParent.phone} />
+                )}
+                <InfoRow
+                  icon={<Send className="h-4 w-4" />}
+                  label={t("parentTelegramLabel")}
+                  value={primaryParent.telegram_connected ? t("parentTelegramConnected") : t("parentTelegramNotConnected")}
+                />
+                {!primaryParent.telegram_connected && botLink && (
+                  <p className="pl-6 text-xs leading-relaxed text-slate-400">
+                    {t("parentTelegramHint")} <span className="select-all font-medium text-slate-600">{botLink}</span>
+                  </p>
                 )}
               </>
             )}

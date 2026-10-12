@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
+import { ToggleSwitch } from '@/components/ui/toggle-switch';
+import { TelegramNotificationsCard } from '@/components/settings/telegram-notifications-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
@@ -34,29 +36,6 @@ import { cn, getInitials } from '@/lib/utils';
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 type TabId = 'account' | 'security' | 'notifications' | 'appearance' | 'language';
-
-// ─── Toggle Switch ─────────────────────────────────────────────────────────────
-
-function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={enabled}
-      onClick={onChange}
-      className={cn(
-        'relative inline-flex h-6 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1',
-        enabled ? 'bg-indigo-600' : 'bg-slate-200'
-      )}
-    >
-      <span
-        className={cn(
-          'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-          enabled ? 'translate-x-4' : 'translate-x-0'
-        )}
-      />
-    </button>
-  );
-}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -168,15 +147,6 @@ export default function StudentSettingsPage() {
   });
   const [twoFAEnabled, setTwoFAEnabled] = useState(false);
 
-  const [notifToggles, setNotifToggles] = useState({
-    emailNotifications: true,
-    smsAlerts: false,
-    homeworkReminders: true,
-    examReminders: true,
-    messageAlerts: true,
-    adminAnnouncements: true,
-  });
-
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light');
   const [accent, setAccent] = useState('#6366f1');
 
@@ -210,10 +180,6 @@ export default function StudentSettingsPage() {
     { id: 'dark', label: t('themeDark'), Icon: Moon },
     { id: 'system', label: t('themeSystem'), Icon: Monitor },
   ];
-
-  function toggleNotif(key: keyof typeof notifToggles) {
-    setNotifToggles((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
 
   return (
     <div className="space-y-6">
@@ -314,30 +280,7 @@ export default function StudentSettingsPage() {
           )}
 
           {/* Notifications */}
-          {activeTab === 'notifications' && (
-            <Card title={t('notificationsTitle')} subtitle={t('notificationsSubtitle')}>
-              <div className="divide-y divide-slate-50">
-                {(
-                  [
-                    { key: 'emailNotifications', label: t('emailNotifications'), description: t('emailNotificationsHint') },
-                    { key: 'smsAlerts', label: t('smsAlerts'), description: t('smsAlertsHint') },
-                    { key: 'homeworkReminders', label: t('homeworkReminders'), description: t('homeworkRemindersHint') },
-                    { key: 'examReminders', label: t('examReminders'), description: t('examRemindersHint') },
-                    { key: 'messageAlerts', label: t('messageAlerts'), description: t('messageAlertsHint') },
-                    { key: 'adminAnnouncements', label: t('adminAnnouncements'), description: t('adminAnnouncementsHint') },
-                  ] as { key: keyof typeof notifToggles; label: string; description: string }[]
-                ).map(({ key, label, description }) => (
-                  <div key={key} className="flex items-center justify-between py-4">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{label}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{description}</p>
-                    </div>
-                    <ToggleSwitch enabled={notifToggles[key]} onChange={() => toggleNotif(key)} />
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
+          {activeTab === 'notifications' && <TelegramNotificationsCard />}
 
           {/* Appearance */}
           {activeTab === 'appearance' && (

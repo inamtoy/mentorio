@@ -61,7 +61,7 @@ class StudentProfileViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
 
 
 class StudentParentViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
-    queryset = StudentParent.objects.all().select_related("student_profile").order_by("-created_at")
+    queryset = StudentParent.objects.all().select_related("student_profile", "telegram_link").order_by("-created_at")
     serializer_class = StudentParentSerializer
     permission_classes = [HasModulePermission]
     filterset_class = StudentParentFilter

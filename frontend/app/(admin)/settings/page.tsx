@@ -22,30 +22,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/lib/store/toast-store";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { PaymentGatewaysTab } from "./_components/payment-gateways-tab";
+import { TelegramNotificationsCard } from "@/components/settings/telegram-notifications-card";
 import { useMyRegionSettingsQuery, useUpdateMyRegionSettingsMutation } from "@/lib/queries/settings";
 import type { RegionSettings } from "@/lib/api/settings";
 import { ApiError } from "@/lib/api/client";
-
-export function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={enabled}
-      onClick={onChange}
-      className={cn(
-        "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1",
-        enabled ? "bg-indigo-600" : "bg-slate-200"
-      )}
-    >
-      <span
-        className={cn(
-          "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-          enabled ? "translate-x-5" : "translate-x-0"
-        )}
-      />
-    </button>
-  );
-}
 
 export default function SettingsPage() {
   const t = useTranslations("AdminSettings");
@@ -61,11 +41,6 @@ export default function SettingsPage() {
   ];
 
   const [activeTab, setActiveTab] = useState("profile");
-  const [emailNotifs, setEmailNotifs] = useState(true);
-  const [smsNotifs, setSmsNotifs] = useState(false);
-  const [pushNotifs, setPushNotifs] = useState(true);
-  const [paymentAlerts, setPaymentAlerts] = useState(true);
-  const [attendanceAlerts, setAttendanceAlerts] = useState(true);
 
   const [profile, setProfile] = useState({
     firstName: "Admin",
@@ -207,27 +182,7 @@ export default function SettingsPage() {
             </Card>
           )}
 
-          {activeTab === "notifications" && (
-            <Card title={t("notificationPreferencesTitle")} subtitle={t("notificationPreferencesSubtitle")}>
-              <div className="space-y-0 divide-y divide-slate-50">
-                {[
-                  { id: "email", label: t("emailNotificationsLabel"), description: t("emailNotificationsDescription"), value: emailNotifs, toggle: () => setEmailNotifs(!emailNotifs) },
-                  { id: "sms", label: t("smsNotificationsLabel"), description: t("smsNotificationsDescription"), value: smsNotifs, toggle: () => setSmsNotifs(!smsNotifs) },
-                  { id: "push", label: t("pushNotificationsLabel"), description: t("pushNotificationsDescription"), value: pushNotifs, toggle: () => setPushNotifs(!pushNotifs) },
-                  { id: "payment", label: t("paymentAlertsLabel"), description: t("paymentAlertsDescription"), value: paymentAlerts, toggle: () => setPaymentAlerts(!paymentAlerts) },
-                  { id: "attendance", label: t("attendanceAlertsLabel"), description: t("attendanceAlertsDescription"), value: attendanceAlerts, toggle: () => setAttendanceAlerts(!attendanceAlerts) },
-                ].map(({ id, label, description, value, toggle }) => (
-                  <div key={id} className="flex items-center justify-between py-4">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{label}</p>
-                      <p className="text-xs text-slate-400">{description}</p>
-                    </div>
-                    <ToggleSwitch enabled={value} onChange={toggle} />
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
+          {activeTab === "notifications" && <TelegramNotificationsCard />}
 
           {activeTab === "security" && (
             <Card title={t("securitySettingsTitle")} subtitle={t("securitySettingsSubtitle")}>

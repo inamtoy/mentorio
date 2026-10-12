@@ -18,7 +18,7 @@ from auth_custom.serializers import (
     PasswordResetStartSerializer,
     SessionSerializer,
 )
-from auth_custom.services import password_reset_service, telegram_client, token_service
+from auth_custom.services import password_reset_service, telegram_bot, telegram_client, token_service
 from auth_custom.services.session_service import BYPASS_ALIAS, revoke_session
 from common.audit import audit_log, get_client_ip
 from common.cookies import REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
@@ -317,7 +317,7 @@ class TelegramWebhookView(APIView):
 
         try:
             update = request.data if isinstance(request.data, dict) else json.loads(request.body)
-            password_reset_service.handle_update(update)
+            telegram_bot.handle_update(update)
         except Exception:  # noqa: BLE001 — see docstring: never make Telegram retry
             logger.exception("Telegram update handling failed")
         return Response({"success": True, "message": "", "data": None})

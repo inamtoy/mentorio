@@ -143,26 +143,27 @@ export default function DashboardPage() {
     [courses]
   );
 
+  // Counts are tallied in local Maps and each day object is built once,
+  // never mutated afterwards: the React Compiler freezes objects it
+  // memoizes, so `day.absent += 1` on a built object throws in dev.
   const weeklyAttendance = useMemo(() => {
-    const days: { key: string; name: string; present: number; absent: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      days.push({
-        key: toLocalIso(d),
-        name: formatLocalizedDate(d, locale, { weekday: "short" }),
-        present: 0,
-        absent: 0,
-      });
-    }
-    const byKey = new Map(days.map((d) => [d.key, d]));
+    const present = new Map<string, number>();
+    const absent = new Map<string, number>();
     for (const r of attendance) {
-      const day = byKey.get(r.date);
-      if (!day) continue;
-      if (r.status === "present") day.present += 1;
-      else if (r.status === "absent") day.absent += 1;
+      if (r.status === "present") present.set(r.date, (present.get(r.date) ?? 0) + 1);
+      else if (r.status === "absent") absent.set(r.date, (absent.get(r.date) ?? 0) + 1);
     }
-    return days;
+    return Array.from({ length: 7 }, (_, index) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - index));
+      const key = toLocalIso(d);
+      return {
+        key,
+        name: formatLocalizedDate(d, locale, { weekday: "short" }),
+        present: present.get(key) ?? 0,
+        absent: absent.get(key) ?? 0,
+      };
+    });
   }, [attendance, locale]);
 
   const recentStudents = useMemo(

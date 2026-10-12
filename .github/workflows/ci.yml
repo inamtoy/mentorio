@@ -117,6 +117,18 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
+      # The runner image ships an older pg_dump, which refuses to dump the
+      # Postgres 18 service ("server version mismatch") and fails
+      # test_platform_backup. Install the matching client from PGDG and put
+      # it first on PATH so foundation.services' shutil.which("pg_dump")
+      # finds it.
+      - name: Install pg_dump 18
+        run: |
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-18
+          echo /usr/lib/postgresql/18/bin >> "$GITHUB_PATH"
+
       - name: Create app roles + test database
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'

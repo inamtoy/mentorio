@@ -7,9 +7,11 @@ import uuid
 
 import pytest
 from django.db import transaction as db_transaction
+from rest_framework.response import Response
 from rest_framework.test import APIClient
 
 from common.context import apply_org_context
+from common.cookies import set_auth_cookies
 from foundation.models import Organization, Setting, User
 from foundation.services import DEFAULT_SECURITY_SETTINGS
 
@@ -187,3 +189,28 @@ def test_logout_revokes_current_session(user):
 
     response = client.get("/api/v1/auth/sessions/")
     assert response.status_code == 401
+
+
+def test_role_cookie_lives_as_long_as_refresh_cookie():
+    """proxy.ts treats a refresh cookie as "signed in" and needs the role
+    cookie to pick a portal — if the role cookie expired first, every stale
+    session used to fall through to the Admin portal at `/`.
+    """
+    response = Response()
+    set_auth_cookies(response, access="a", refresh="r", role="teacher")
+
+    assert response.cookies["user_role"]["max-age"] == response.cookies["refresh_token"]["max-age"]
+
+
+def test_failed_refresh_clears_auth_cookies(user):
+    client = APIClient()
+    client.cookies["refresh_token"] = "not-a-real-token"
+    client.cookies["user_role"] = "center_admin"
+
+    response = client.post("/api/v1/auth/refresh/")
+
+    assert response.status_code == 401
+    assert response.json()["success"] is False
+    for name in ("access_token", "refresh_token", "user_role"):
+        assert response.cookies[name].value == ""
+        assert response.cookies[name]["max-age"] == 0

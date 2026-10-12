@@ -82,7 +82,7 @@ function doFetch(path: string, init: RequestInit): Promise<Response> {
  * sessions). Rather than surface that as a hard error, refresh once and
  * retry the original request transparently; only if the refresh itself
  * fails (refresh token also expired/revoked) does the original 401 fall
- * through to the caller, same as before this existed.
+ * through to the caller — and the browser is sent to /login.
  */
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   return apiFetchWithRefresh<T>(path, init, false);
@@ -95,6 +95,12 @@ async function apiFetchWithRefresh<T>(path: string, init: RequestInit, isRetry: 
     const refreshed = await refreshAccessToken();
     if (refreshed) {
       return apiFetchWithRefresh<T>(path, init, true);
+    }
+    // Session is truly over (the backend already cleared the cookies on the
+    // failed refresh) — a hard navigation lets proxy.ts take over instead of
+    // leaving a portal shell rendered on top of failing queries.
+    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+      window.location.assign("/login");
     }
   }
 

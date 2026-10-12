@@ -23,6 +23,7 @@ const PORTAL_GUARDS: { prefix: string; roles: string[] }[] = [
   { prefix: "/student", roles: ["student"] },
 ];
 const ADMIN_ROLES = ["center_admin", "admin"];
+const AUTH_COOKIES = ["access_token", "refresh_token", "user_role"];
 
 // Slash-boundary-aware prefix match — plain `pathname.startsWith(prefix)`
 // would wrongly match "/students" (an Admin-portal page) against the
@@ -47,11 +48,12 @@ function isUnderPrefix(pathname: string, prefix: string): boolean {
  * from rendering another role's screens at all, rather than relying solely
  * on individual API calls 403ing underneath a half-rendered page.
  *
- * Fails open if `user_role` is missing on an otherwise-valid session (e.g.
- * a session started before this cookie existed) — the visitor is left on
- * whatever page they requested rather than being bounced, since we can't
- * tell where they *do* belong. They'll get a fresh role cookie next login
- * or token refresh.
+ * Fails CLOSED if `user_role` is missing: an auth cookie without a role is
+ * a stale/partial session (the role cookie lives exactly as long as the
+ * refresh token — see set_auth_cookies). Failing open here used to drop
+ * every such visitor into the Admin portal at `/`, since that portal is the
+ * "unclaimed path" fallback. The leftover cookies are cleared so the login
+ * page isn't immediately bypassed again.
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -61,25 +63,34 @@ export function proxy(request: NextRequest) {
   }
 
   const hasSession = request.cookies.has("access_token") || request.cookies.has("refresh_token");
-  if (!hasSession) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  const role = request.cookies.get("user_role")?.value;
+  const home = role ? ROLE_PORTAL_MAP[role] : undefined;
+
+  if (!hasSession || !role || !home) {
+    return redirectToLogin(request);
   }
 
-  const role = request.cookies.get("user_role")?.value;
-  if (role) {
-    // Not under any of the three named portals = it's the Admin portal
-    // (route group `(admin)` maps to `/`), which has no dedicated prefix
-    // of its own to match against.
-    const guard = PORTAL_GUARDS.find((g) => isUnderPrefix(pathname, g.prefix));
-    const allowed = guard ? guard.roles.includes(role) : ADMIN_ROLES.includes(role);
+  // Not under any of the three named portals = it's the Admin portal
+  // (route group `(admin)` maps to `/`), which has no dedicated prefix
+  // of its own to match against.
+  const guard = PORTAL_GUARDS.find((g) => isUnderPrefix(pathname, g.prefix));
+  const allowed = guard ? guard.roles.includes(role) : ADMIN_ROLES.includes(role);
 
-    if (!allowed) {
-      const home = ROLE_PORTAL_MAP[role];
-      return NextResponse.redirect(new URL(home ?? "/login", request.url));
-    }
+  if (!allowed) {
+    return NextResponse.redirect(new URL(home, request.url));
   }
 
   return NextResponse.next();
+}
+
+function redirectToLogin(request: NextRequest) {
+  const response = NextResponse.redirect(new URL("/login", request.url));
+  // Cookies are scoped per host, not per port, so the backend's httpOnly
+  // auth cookies on localhost are deletable from here too.
+  for (const name of AUTH_COOKIES) {
+    if (request.cookies.has(name)) response.cookies.delete(name);
+  }
+  return response;
 }
 
 export const config = {

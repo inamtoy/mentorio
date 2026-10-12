@@ -1,0 +1,7 @@
+# Times are Asia/Tashkent (TZ is set on the cron service).
+# Monthly invoices first, then reminders, so a fresh invoice that is due
+# soon gets its reminder the same morning.
+0 8 * * * python manage.py issue_monthly_invoices
+0 9 * * * python manage.py send_payment_reminders
+# Nightly database backup, kept for 14 days.
+30 2 * * * sh /app/deploy-scripts/backup-db.sh

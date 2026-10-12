@@ -101,6 +101,9 @@ uv run python manage.py create_super_admin --first-name Alex --last-name Rivera 
 uv run python manage.py runserver
 ```
 
+Production deployment (Docker Compose, HTTPS, cron, backups) is in
+[`deploy/README.md`](../deploy/README.md).
+
 `create_super_admin` prints the generated `login_id` (e.g. `EDU100001`) —
 that, plus the password you're prompted for, is what the frontend's existing
 "Login" field (not email — see below) authenticates with.

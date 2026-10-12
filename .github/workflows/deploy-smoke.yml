@@ -1,0 +1,79 @@
+name: Deploy smoke test
+
+# Boots the real production stack (deploy/docker-compose.yml) with
+# DOMAIN=localhost, so Caddy serves a locally-signed certificate, and checks
+# the paths a real deploy depends on: fresh-database roles + migrate, the
+# super-admin bootstrap, login through the proxy, and the nightly backup.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - deploy/**
+      - backend/**
+      - frontend/**
+      - .github/workflows/deploy-smoke.yml
+  workflow_dispatch:
+
+jobs:
+  stack:
+    name: Compose stack
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write .env
+        run: |
+          rnd() { openssl rand -hex 24; }
+          {
+            echo "DOMAIN=localhost"
+            echo "POSTGRES_PASSWORD=$(rnd)"
+            echo "DB_NAME=educore"
+            echo "DB_OWNER_USER=educore_owner"
+            echo "DB_OWNER_PASSWORD=$(rnd)"
+            echo "DB_USER=educore_app"
+            echo "DB_PASSWORD=$(rnd)"
+            echo "DB_AUTH_BYPASS_USER=educore_auth_bypass"
+            echo "DB_AUTH_BYPASS_PASSWORD=$(rnd)"
+            echo "DJANGO_SECRET_KEY=$(openssl rand -hex 40)"
+            echo "PAYMENT_GATEWAY_ENCRYPTION_KEY=$(python3 -c 'import base64,os;print(base64.urlsafe_b64encode(os.urandom(32)).decode())')"
+          } > .env
+
+      - name: Build and start
+        run: docker compose up -d --build
+
+      - name: Wait for the site
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -sk -o /dev/null -w '%{http_code}' https://localhost/login || true)
+            [ "$code" = 200 ] && exit 0
+            sleep 5
+          done
+          echo "frontend never answered 200 on /login (last: $code)"; exit 1
+
+      - name: Migrate exited cleanly
+        run: test "$(docker inspect -f '{{.State.ExitCode}}' "$(docker compose ps -aq migrate)")" = 0
+
+      - name: Bootstrap super admin and log in through the proxy
+        run: |
+          out=$(docker compose run --rm -T tools python manage.py create_super_admin \
+                  --first-name Smoke --last-name Test --phone +998900000001 --password 'Smoke-Test-12345')
+          echo "$out"
+          login_id=$(echo "$out" | grep -oE 'EDU[0-9]+' | head -1)
+          code=$(curl -sk -o /tmp/login.json -w '%{http_code}' -c /tmp/cookies \
+                   -H 'Content-Type: application/json' \
+                   -d "{\"login_id\":\"$login_id\",\"password\":\"Smoke-Test-12345\"}" \
+                   https://localhost/api/v1/auth/login/)
+          cat /tmp/login.json; echo
+          test "$code" = 200
+          test "$(curl -sk -o /dev/null -w '%{http_code}' -b /tmp/cookies https://localhost/api/v1/organizations/)" = 200
+
+      - name: Nightly backup script
+        run: docker compose exec -T cron sh /app/deploy-scripts/backup-db.sh
+
+      - name: Logs
+        if: always()
+        run: docker compose logs --no-color

@@ -22,6 +22,7 @@ import { useCreateLessonMutation } from "@/lib/queries/schedule";
 // hardcoded English for now.
 import { lessonSchema, type LessonFormValues } from "@/lib/schemas/lesson-schema";
 import { ApiError } from "@/lib/api/client";
+import { getLessonConflict } from "@/lib/api/schedule";
 
 const EMPTY_VALUES: LessonFormValues = { group: "", date: "", startTime: "", endTime: "", room: "", topic: "" };
 
@@ -46,6 +47,7 @@ export function LessonFormDialog({ open, onOpenChange }: LessonFormDialogProps) 
 
 function LessonFormFields({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
   const t = useTranslations("TeacherSchedule");
+  const tConflict = useTranslations("LessonConflict");
   const tc = useTranslations("Common");
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   const { data: myProfile } = useMyTeacherProfileQuery();
@@ -104,7 +106,18 @@ function LessonFormFields({ onOpenChange }: { onOpenChange: (open: boolean) => v
       toast.success(t("lessonScheduledToast"));
       onOpenChange(false);
     } catch (err) {
-      if (err instanceof ApiError && err.fieldErrors) {
+      const conflict = getLessonConflict(err);
+      if (conflict) {
+        const message = tConflict(conflict.type, {
+          room: conflict.room,
+          group: conflict.group_name,
+          teacher: conflict.teacher_name,
+          start: conflict.start_time,
+          end: conflict.end_time,
+        });
+        setErrors(conflict.type === "room" ? { room: message } : { startTime: message });
+        toast.error(message);
+      } else if (err instanceof ApiError && err.fieldErrors) {
         const mapped: Partial<Record<keyof LessonFormValues, string>> = {};
         for (const [key, messages] of Object.entries(err.fieldErrors)) {
           const field =
@@ -158,6 +171,7 @@ function LessonFormFields({ onOpenChange }: { onOpenChange: (open: boolean) => v
             placeholder={t("roomPlaceholder")}
             value={values.room}
             onChange={(e) => setField("room", e.target.value)}
+            error={errors.room}
           />
           <Input
             placeholder={t("topicPlaceholder")}

@@ -1,4 +1,4 @@
-import { apiFetch, fetchAllPages } from "@/lib/api/client";
+import { ApiError, apiFetch, fetchAllPages } from "@/lib/api/client";
 import { parseLocalDate, toLocalIsoDate } from "@/lib/utils";
 
 export type LessonStatus = "scheduled" | "completed" | "cancelled";
@@ -23,6 +23,26 @@ export interface Lesson {
   updated_by: string | null;
   created_at: string;
   updated_at: string | null;
+}
+
+/** The lesson a create/update would double-book — sent next to the field
+ * error by backend schedule/serializers.py::_conflict_error, so the form can
+ * say it in the user's language. */
+export interface LessonConflict {
+  type: "room" | "group" | "teacher";
+  lesson_id: string;
+  group_name: string;
+  teacher_name: string;
+  room: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+}
+
+export function getLessonConflict(err: unknown): LessonConflict | null {
+  if (!(err instanceof ApiError) || !err.fieldErrors) return null;
+  const conflict = (err.fieldErrors as unknown as { conflict?: LessonConflict }).conflict;
+  return conflict && typeof conflict === "object" ? conflict : null;
 }
 
 export interface ListLessonsParams {

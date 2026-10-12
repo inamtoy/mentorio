@@ -2517,5 +2517,10 @@
     "loadFailed": "Telegram holatini yuklab bo'lmadi. Sahifani yangilab, qayta urinib ko'ring.",
     "saveFailed": "Saqlab bo'lmadi. Qayta urinib ko'ring.",
     "whatYouGet": "Yangi to'lov chiqarilganda, to'lov muddatidan 3 kun oldin va o'quvchi darsga kelmaganda xabar olasiz. Ota-onalar ham olishi mumkin: ular shu botni ochib, o'quvchi profilida saqlangan telefon raqamini yuborishadi."
+  },
+  "LessonConflict": {
+    "room": "{room} soat {start}–{end} oralig'ida {group} guruhi uchun band. Boshqa xona yoki vaqtni tanlang.",
+    "group": "{group} guruhining soat {start}–{end} oralig'ida darsi bor. Boshqa vaqtni tanlang.",
+    "teacher": "{teacher} soat {start}–{end} oralig'ida {group} guruhida dars o'tadi. Boshqa vaqtni tanlang."
   }
 }

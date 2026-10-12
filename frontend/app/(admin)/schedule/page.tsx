@@ -15,6 +15,7 @@ import { LessonFormDialog } from "./_components/lesson-form-dialog";
 import { formatLocalizedDate, weekdayShort, formatWeekRange } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
 import { daysFromTodayIso, toLocalIsoDate } from "@/lib/utils";
+import { layoutDayLessons } from "@/lib/schedule-layout";
 
 const HOUR_START = 8;
 const HOURS = Array.from({ length: 11 }, (_, i) => `${String(HOUR_START + i).padStart(2, "0")}:00`);
@@ -34,16 +35,6 @@ function buildWeek(monday: Date): string[] {
     d.setDate(monday.getDate() + i);
     return toLocalIsoDate(d);
   });
-}
-
-function getLessonStyle(startTime: string, endTime: string) {
-  const [sh, sm] = startTime.split(":").map(Number);
-  const [eh, em] = endTime.split(":").map(Number);
-  const startMinutes = (sh - HOUR_START) * 60 + sm;
-  const durationMinutes = (eh - HOUR_START) * 60 + em - startMinutes;
-  const top = (startMinutes / 60) * 60;
-  const height = (durationMinutes / 60) * 60;
-  return { top: `${top}px`, height: `${Math.max(height, 40)}px` };
 }
 
 export default function SchedulePage() {
@@ -145,19 +136,20 @@ export default function SchedulePage() {
 
               {weekDates.map((date) => {
                 const dayLessons = lessons.filter((l) => l.date === date);
+                const layout = layoutDayLessons(dayLessons, HOUR_START);
                 return (
                   <div key={date} className="relative border-r border-slate-100 last:border-0">
                     {HOURS.map((h) => (
                       <div key={h} className="h-[60px] border-b border-slate-50" />
                     ))}
                     {dayLessons.map((lesson) => {
-                      const style = getLessonStyle(lesson.start_time, lesson.end_time);
+                      const style = layout.get(lesson.id);
                       const color = lesson.course_color || "#6366f1";
                       return (
                         <div
                           key={lesson.id}
                           onClick={() => setSelectedLesson(lesson)}
-                          className="absolute left-1 right-1 rounded-lg px-2 py-1 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                          className="absolute rounded-lg px-2 py-1 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
                           style={{ ...style, backgroundColor: `${color}20`, borderLeft: `3px solid ${color}` }}
                         >
                           <p className="text-xs font-semibold truncate" style={{ color }}>
@@ -167,6 +159,7 @@ export default function SchedulePage() {
                           <p className="text-[10px] text-slate-400">
                             {lesson.start_time.slice(0, 5)}–{lesson.end_time.slice(0, 5)}
                           </p>
+                          {lesson.room && <p className="text-[10px] text-slate-400 truncate">{lesson.room}</p>}
                         </div>
                       );
                     })}

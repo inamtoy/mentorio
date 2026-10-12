@@ -61,3 +61,34 @@ def revoke_session(session: Session, *, reason: str = "user_revoked") -> None:
     session.ended_at = timezone.now()
     session.end_reason = reason
     session.save(update_fields=["is_active", "ended_at", "end_reason"])
+
+
+def revoke_all_user_sessions(user, *, reason: str, using: str | None = None, keep_session_id=None) -> int:
+    """Ends every live session for `user` (and, unless a session is being
+    kept, every active refresh token) — used after any password change so a
+    stolen session can't outlive the credential.
+
+    `keep_session_id` spares the caller's own current session on a
+    self-service change. Refresh tokens are then left alone: they carry no
+    session FK (the session id only lives inside the JWT), and the ended
+    sessions alone already kill every other device, since rotate_tokens()
+    and SessionValidatingJWTAuthentication both reject an inactive session.
+
+    `using`: BYPASS_ALIAS from unauthenticated flows (no org context); leave
+    it None inside an authenticated request — see LogoutView's note on the
+    cross-connection self-deadlock this avoids.
+    """
+    from auth_custom.models import RefreshToken
+
+    now = timezone.now()
+    sessions = Session.objects.filter(user=user, is_active=True)
+    if using:
+        sessions = sessions.using(using)
+    if keep_session_id:
+        sessions = sessions.exclude(pk=keep_session_id)
+    else:
+        tokens = RefreshToken.objects.filter(user=user, status="active")
+        if using:
+            tokens = tokens.using(using)
+        tokens.update(status="revoked", revoked_at=now, revoked_reason=reason)
+    return sessions.update(is_active=False, ended_at=now, end_reason=reason)

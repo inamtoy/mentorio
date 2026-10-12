@@ -11,6 +11,9 @@ export interface AuthUser {
    * app/(auth)/login/page.tsx's use of this to seed the locale cookie on a
    * device that hasn't picked one yet. */
   language: string;
+  /** Set after an admin reset: the user must pick their own password before
+   * the backend serves anything else (see app/(auth)/change-password). */
+  mustChangePassword: boolean;
 }
 
 interface LoginResponseUser {
@@ -21,6 +24,7 @@ interface LoginResponseUser {
   status: string;
   role: string | null;
   language: string;
+  must_change_password: boolean;
 }
 
 function toAuthUser(u: LoginResponseUser): AuthUser {
@@ -32,6 +36,7 @@ function toAuthUser(u: LoginResponseUser): AuthUser {
     status: u.status,
     role: u.role,
     language: u.language,
+    mustChangePassword: u.must_change_password,
   };
 }
 
@@ -70,4 +75,28 @@ export async function getSessions(): Promise<Session[]> {
  * ("use logout instead") — see auth_custom/views.py::SessionRevokeView. */
 export async function revokeSession(sessionId: string): Promise<void> {
   await apiFetch<null>(`/api/v1/auth/sessions/${sessionId}/revoke/`, { method: "POST" });
+}
+
+export interface StartedPasswordReset {
+  /** Opaque handle for this reset — sent back with the Telegram code. */
+  token: string;
+  botUrl: string;
+  expiresInSeconds: number;
+}
+
+/** Always succeeds for any login ID (the backend never reveals whether it
+ * exists) — a wrong one simply never receives a code in Telegram. */
+export async function startPasswordReset(loginId: string): Promise<StartedPasswordReset> {
+  const data = await apiFetch<{ token: string; bot_url: string; expires_in_seconds: number }>(
+    "/api/v1/auth/password-reset/start/",
+    { method: "POST", body: JSON.stringify({ login_id: loginId }) },
+  );
+  return { token: data.token, botUrl: data.bot_url, expiresInSeconds: data.expires_in_seconds };
+}
+
+export async function confirmPasswordReset(token: string, code: string, newPassword: string): Promise<void> {
+  await apiFetch<null>("/api/v1/auth/password-reset/confirm/", {
+    method: "POST",
+    body: JSON.stringify({ token, code, new_password: newPassword }),
+  });
 }

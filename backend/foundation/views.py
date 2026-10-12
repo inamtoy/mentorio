@@ -8,10 +8,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from auth_custom.services.session_service import revoke_all_user_sessions
 from common.audit import audit_log, audited
 from common.permissions import HasModulePermission, is_platform_user, user_has_permission
 from foundation.filters import AuditLogFilter, BranchFilter, OrganizationFilter, UserFilter
 from foundation.models import ApiKey, AuditLog, Organization, Branch, Permission, PlatformBackup, Role, User
+from foundation.password_policy import generate_temporary_password
 from foundation.serializers import (
     ApiKeySerializer,
     AuditLogSerializer,
@@ -165,6 +167,7 @@ class UserViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
         "partial_update": ("administrators", "update"),
         "destroy": ("administrators", "delete"),
         "suspend": ("administrators", "update"),
+        "reset_password": ("administrators", "update"),
     }
 
     # Fields a user without administrators:update may change on their OWN
@@ -208,9 +211,24 @@ class UserViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
                 disallowed = set(serializer.validated_data) - self.SELF_EDITABLE_FIELDS
                 if disallowed:
                     raise PermissionDenied(f"You can only update: {', '.join(sorted(self.SELF_EDITABLE_FIELDS))}.")
-        serializer.save()
-        if is_self and new_password:
-            audit_log(self.request, action="update", entity_type="user", entity_id=str(serializer.instance.id), metadata={"field": "password"})
+        if not new_password:
+            serializer.save()
+            return
+
+        # A password someone else chose must be replaced by its owner on
+        # next sign-in; a self-chosen one clears that requirement. Either
+        # way every other device is signed out, so a leaked session can't
+        # outlive the credential it was opened with.
+        user = serializer.save(must_change_password=not is_self)
+        if is_self:
+            current_session_id = self.request.auth.get("session_id") if self.request.auth else None
+            revoke_all_user_sessions(user, reason="password_changed", keep_session_id=current_session_id)
+        else:
+            revoke_all_user_sessions(user, reason="password_reset_by_admin")
+        audit_log(
+            self.request, action="update", entity_type="user", entity_id=str(user.id),
+            metadata={"field": "password", "via": "self" if is_self else "admin"},
+        )
 
     @audited(action="create", entity_type="user")
     def create(self, request, *args, **kwargs):
@@ -219,6 +237,38 @@ class UserViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     @audited(action="delete", entity_type="user")
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=["post"], url_path="reset-password")
+    def reset_password(self, request, *args, **kwargs):
+        """Admin-side reset for users who can't use the Telegram flow: the
+        server picks a one-time temporary password (returned exactly once,
+        never stored in plain text), the user must replace it on next
+        sign-in, and all their current sessions end immediately.
+
+        Your own password goes through Settings (needs the current one),
+        never through here.
+        """
+        user = self.get_object()
+        if user.id == request.user.id:
+            raise PermissionDenied("Use Settings to change your own password.")
+
+        temporary_password = generate_temporary_password()
+        with transaction.atomic():
+            user.set_password(temporary_password)
+            user.must_change_password = True
+            user.save(update_fields=["password", "must_change_password"])
+            revoke_all_user_sessions(user, reason="password_reset_by_admin")
+            audit_log(
+                request, action="update", entity_type="user", entity_id=str(user.id),
+                metadata={"field": "password", "via": "admin_reset"},
+            )
+        return Response(
+            {
+                "success": True,
+                "message": "Temporary password created. Share it with the user — it is shown only once.",
+                "data": {"temporary_password": temporary_password},
+            }
+        )
 
     @action(detail=True, methods=["post"])
     @audited(action="update", entity_type="user")

@@ -87,7 +87,11 @@
     "timezoneEasternET": "Eastern Time (ET)",
     "loadingEllipsis": "Loading…",
     "genericError": "Something went wrong. Please try again.",
-    "languageRegionSavedToast": "Region settings saved."
+    "languageRegionSavedToast": "Region settings saved.",
+    "fillAllPasswordFieldsToast": "Please fill in all password fields",
+    "passwordMismatchToast": "New password and confirmation do not match",
+    "passwordUpdatedToast": "Password updated",
+    "passwordUpdateFailedToast": "Failed to update password."
   },
   "StudentNav": {
     "openMenuAriaLabel": "Open menu",
@@ -848,7 +852,8 @@
     "timezoneKarachiPKT": "Karachi (PKT)",
     "timezoneTokyoJST": "Tokyo (JST)",
     "loadingEllipsis": "Loading…",
-    "genericError": "Something went wrong. Please try again."
+    "genericError": "Something went wrong. Please try again.",
+    "passwordUpdateFailedToast": "Failed to update password."
   },
   "AdminNav": {
     "navGroupMain": "Main",
@@ -1682,7 +1687,8 @@
     "paymentGatewaysTitle": "Payment Gateways",
     "paymentGatewaysSubtitle": "Connect Payme and Click so students can pay online",
     "loadingLabel": "Loading…",
-    "loadingEllipsis": "Loading…"
+    "loadingEllipsis": "Loading…",
+    "passwordUpdateFailedToast": "Failed to update password."
   },
   "SuperAdminNav": {
     "openMenuAriaLabel": "Open menu",
@@ -2509,5 +2515,17 @@
     "avatarUpdateFailedToast": "Failed to update avatar.",
     "sessionRevokedToast": "Session revoked",
     "sessionRevokeFailedToast": "Failed to revoke session."
+  },
+  "ResetPassword": {
+    "title": "Reset password",
+    "description": "For users who forgot their password and can't use the Telegram reset. A temporary password is generated; they must replace it at their next sign-in.",
+    "resetButton": "Generate temporary password",
+    "confirmText": "The user will be signed out on all devices immediately. Continue?",
+    "confirmButton": "Reset password",
+    "cancelButton": "Cancel",
+    "doneHint": "Share this temporary password with the user. It is shown only once and must be changed at their next sign-in.",
+    "copyButton": "Copy",
+    "copied": "Copied",
+    "failedToast": "Failed to reset password."
   }
 }

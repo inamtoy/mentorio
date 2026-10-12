@@ -194,3 +194,19 @@ SIMPLE_JWT = {
 
 # Max simultaneously-active refresh tokens per user (DDL comment, enforced in token_service.py)
 AUTH_MAX_ACTIVE_REFRESH_TOKENS = 5
+
+# ─── Telegram bot ─────────────────────────────────────────────────────────────
+# One platform-wide bot (not per-center): password reset by verified phone
+# today, outbound notifications later. Empty token = feature off — the
+# reset endpoints then answer 503 instead of handing out dead bot links.
+TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN", default="")
+TELEGRAM_BOT_USERNAME = env("TELEGRAM_BOT_USERNAME", default="")
+# Telegram echoes this back in X-Telegram-Bot-Api-Secret-Token on every
+# webhook call (set via setWebhook) — the only proof a webhook POST really
+# came from Telegram. Unused in local polling mode.
+TELEGRAM_WEBHOOK_SECRET = env("TELEGRAM_WEBHOOK_SECRET", default="")
+
+PASSWORD_RESET_TOKEN_LIFETIME = timedelta(minutes=15)
+PASSWORD_RESET_MAX_CODE_ATTEMPTS = 5
+PASSWORD_RESET_MAX_CODES_PER_REQUEST = 3
+PASSWORD_RESET_MAX_REQUESTS_PER_HOUR = 5

@@ -106,7 +106,7 @@ def test_self_password_change_succeeds_with_correct_current_password_and_is_audi
 
     logs = AuditLog.objects.using(BYPASS_ALIAS).filter(entity_type="user", entity_id=teacher.id, action="update")
     assert logs.exists()
-    assert logs.first().metadata == {"field": "password"}
+    assert logs.first().metadata == {"field": "password", "via": "self"}
 
 
 def test_self_cannot_update_disallowed_field_without_permission():

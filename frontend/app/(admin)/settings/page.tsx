@@ -13,6 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useChangeOwnPassword } from "@/lib/hooks/use-change-own-password";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,12 @@ export default function SettingsPage() {
     role: "Administrator",
   });
 
-  const [passwords, setPasswords] = useState({ current: "", next: "", confirm: "" });
+  const { passwords, setPasswords, submit: handleUpdatePassword, isPending: passwordPending } = useChangeOwnPassword({
+    fillAll: t("fillAllPasswordFields"),
+    mismatch: t("passwordMismatch"),
+    success: t("passwordUpdatedToast"),
+    failed: t("passwordUpdateFailedToast"),
+  });
 
   // Real, backend-persisted (foundation.Setting, scope=user) — see
   // lib/api/settings.ts's RegionSettings. The interface language itself
@@ -110,18 +116,6 @@ export default function SettingsPage() {
     toast.success(t("profileUpdatedToast"));
   }
 
-  function handleUpdatePassword() {
-    if (!passwords.current || !passwords.next || !passwords.confirm) {
-      toast.error(t("fillAllPasswordFields"));
-      return;
-    }
-    if (passwords.next !== passwords.confirm) {
-      toast.error(t("passwordMismatch"));
-      return;
-    }
-    toast.success(t("passwordUpdatedToast"));
-    setPasswords({ current: "", next: "", confirm: "" });
-  }
 
   function handleSaveOrganization() {
     toast.success(t("organizationSavedToast"));
@@ -266,7 +260,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="flex justify-end">
-                  <Button onClick={handleUpdatePassword}>
+                  <Button onClick={handleUpdatePassword} loading={passwordPending}>
                     <Lock className="h-4 w-4" />
                     {t("updatePasswordButton")}
                   </Button>

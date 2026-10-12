@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { useLessonsQuery } from '@/lib/queries/schedule';
 import type { Lesson } from '@/lib/api/schedule';
+import { layoutDayLessons } from '@/lib/schedule-layout';
 import { LessonDetailDialog } from './_components/lesson-detail-dialog';
 import { LessonFormDialog } from './_components/lesson-form-dialog';
 import { formatLocalizedDate, weekdayShort, formatDayHeader, formatWeekRange, formatClockTime } from '@/i18n/date-locale';
@@ -54,18 +55,6 @@ function buildWeek(monday: Date): string[] {
     d.setDate(monday.getDate() + i);
     return toLocalIso(d);
   });
-}
-
-/** Top offset and height (px) for a lesson block, 60px per hour */
-function getLessonStyle(startTime: string, endTime: string): { top: string; height: string } {
-  const [sh, sm] = startTime.split(':').map(Number);
-  const [eh, em] = endTime.split(':').map(Number);
-  const startMin = (sh - HOUR_START) * 60 + sm;
-  const endMin = (eh - HOUR_START) * 60 + em;
-  return {
-    top: `${startMin}px`,
-    height: `${Math.max(endMin - startMin, 40)}px`,
-  };
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -230,6 +219,7 @@ export default function TeacherSchedulePage() {
             {/* Day columns */}
             {weekDates.map((date) => {
               const dayLessons = weekLessons.filter((l) => l.date === date);
+              const layout = layoutDayLessons(dayLessons, HOUR_START);
               const isToday = date === todayIso;
 
               return (
@@ -246,19 +236,18 @@ export default function TeacherSchedulePage() {
 
                   {/* Lesson blocks */}
                   {dayLessons.map((lesson) => {
-                    const style = getLessonStyle(lesson.start_time, lesson.end_time);
+                    const style = layout.get(lesson.id);
                     const isCancelled = lesson.status === 'cancelled';
                     const color = lesson.course_color || '#6366f1';
                     return (
                       <div
                         key={lesson.id}
                         onClick={() => setSelectedLesson(lesson)}
-                        className={`absolute left-1 right-1 rounded-lg px-2 py-1 overflow-hidden cursor-pointer transition-opacity ${
+                        className={`absolute rounded-lg px-2 py-1 overflow-hidden cursor-pointer transition-opacity ${
                           isCancelled ? 'opacity-50' : 'hover:opacity-90'
                         }`}
                         style={{
-                          top: style.top,
-                          height: style.height,
+                          ...style,
                           backgroundColor: `${color}18`,
                           borderLeft: `3px solid ${color}`,
                         }}
@@ -275,6 +264,9 @@ export default function TeacherSchedulePage() {
                         <p className="text-[10px] text-slate-400 leading-tight">
                           {lesson.start_time.slice(0, 5)}–{lesson.end_time.slice(0, 5)}
                         </p>
+                        {lesson.room && (
+                          <p className="text-[10px] text-slate-400 truncate leading-tight">{lesson.room}</p>
+                        )}
                       </div>
                     );
                   })}

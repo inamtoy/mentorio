@@ -171,6 +171,14 @@ contact info, unrelated to how an individual user logs in.
    grants*, on the test database too (see "Test database needs the exact
    same grants" above).
 
+   Every test module runs with `transaction=True`, and Django's own flush
+   misses our schema-qualified tables, so `conftest.py` resets the database
+   after each such test (`common/test_isolation.py`): app tables are
+   emptied and the rows migrations seeded are restored from a `test_seed`
+   schema that is snapshotted right after migrate. If a run refuses to start
+   with `PollutedTestDatabase`, the reused test database predates this —
+   rebuild it once with `pytest --create-db --reuse-db`.
+
 ## What's deliberately NOT here yet
 
 No `django.contrib.admin` (the schema has no `is_staff`/`is_superuser` —

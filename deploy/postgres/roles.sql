@@ -21,7 +21,7 @@ CREATE ROLE :"owner" LOGIN PASSWORD :'owner_pw';
 CREATE ROLE :"app" LOGIN PASSWORD :'app_pw';
 CREATE ROLE :"bypass" LOGIN PASSWORD :'bypass_pw' BYPASSRLS;
 
-CREATE DATABASE :"db" OWNER :"owner";
+CREATE DATABASE :"db" OWNER :"owner" ENCODING 'UTF8' TEMPLATE template0;
 \connect :"db"
 
 ALTER DEFAULT PRIVILEGES FOR ROLE :"owner" GRANT USAGE ON SCHEMAS TO :"app", :"bypass";

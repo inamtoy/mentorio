@@ -1,0 +1,19 @@
+# Drains the notification outbox to Telegram (send_notifications --loop).
+[Unit]
+Description=Mentorio notification worker
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/mentorion/backend
+Environment=DJANGO_SETTINGS_MODULE=config.settings.prod
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/deploy/mentorion/backend/.venv/bin/python manage.py send_notifications --loop
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

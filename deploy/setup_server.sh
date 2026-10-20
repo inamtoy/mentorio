@@ -60,6 +60,8 @@ phase_base() {
         curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash -
         apt-get install -y nodejs
     fi
+    # Ubuntu's own nodejs package ships without npm (NodeSource's includes it).
+    command -v npm >/dev/null || apt-get install -y npm
 
     log "Deploy user"
     if ! id "$APP_USER" >/dev/null 2>&1; then

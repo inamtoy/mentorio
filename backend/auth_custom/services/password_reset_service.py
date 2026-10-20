@@ -29,6 +29,8 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import F, Value
+from django.db.models.functions import Greatest
 from django.utils import timezone
 from rest_framework.exceptions import Throttled, ValidationError
 
@@ -99,10 +101,12 @@ def start_reset(*, login_id: str, ip_address: str | None) -> StartedReset:
     if user is not None:
         _enforce_request_limit(user, now)
         with transaction.atomic(using=BYPASS_ALIAS):
-            # Only the newest request stays valid.
+            # Only the newest request stays valid. Greatest(): a request made
+            # within the clock's resolution of the previous one would get
+            # expires_at == created_at and break chk_password_resets_expiry.
             PasswordReset.objects.using(BYPASS_ALIAS).filter(
                 user=user, used_at__isnull=True, expires_at__gt=now
-            ).update(expires_at=now)
+            ).update(expires_at=Greatest(Value(now), F("created_at") + timedelta(microseconds=1)))
             PasswordReset.objects.using(BYPASS_ALIAS).create(
                 user=user,
                 organization_id=user.organization_id,

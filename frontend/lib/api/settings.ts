@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { API_URL, apiFetch } from "@/lib/api/client";
 import type { DateFormat } from "@/lib/utils";
 
 /** Platform-wide General/Security/Theme/Languages/Email/SMS settings
@@ -155,8 +155,6 @@ export async function listPlatformBackups(): Promise<PlatformBackupRecord[]> {
 export async function runPlatformBackup(): Promise<PlatformBackupRecord> {
   return apiFetch<PlatformBackupRecord>("/api/v1/settings/backups/", { method: "POST" });
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 /** A plain URL, not an apiFetch() call — this is a file download meant for
  * `<a href>`/`window.open`, and the browser attaches the session cookie on

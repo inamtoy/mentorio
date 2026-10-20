@@ -9,7 +9,7 @@
 #   app          Mentorio itself (repo must already be at /home/deploy/mentorion):
 #                DB roles + database, backend/.env, systemd units, nginx site, cron.
 #   cert EMAIL   Let's Encrypt certificate for mentorio.uz + www, switches
-#                nginx and Django to HTTPS, rebuilds the frontend.
+#                nginx and Django to HTTPS.
 #   harden-ssh   PasswordAuthentication no. Run only after confirming
 #                `ssh deploy@HOST` works with a key.
 set -euo pipefail
@@ -162,13 +162,10 @@ EOF
     chown "$APP_USER:$APP_USER" "$env_file"
     chmod 600 "$env_file"
 
+    # Empty API origin: the browser calls /api/ on whatever host served the
+    # page, so the build needn't change between IP, domain, http and https.
     local fe_env=$APP_DIR/frontend/.env.production
-    if [[ ! -f $fe_env ]]; then
-        local scheme=http
-        [[ $(env_get DJANGO_HTTPS) == true ]] && scheme=https
-        echo "NEXT_PUBLIC_API_URL=$scheme://$DOMAIN" > "$fe_env"
-        chown "$APP_USER:$APP_USER" "$fe_env"
-    fi
+    install -m 644 -o "$APP_USER" -g "$APP_USER" "$APP_DIR/frontend/.env.example" "$fe_env"
 
     log "PostgreSQL roles + database"
     if ! sudo -u postgres psql -Atc "SELECT 1 FROM pg_roles WHERE rolname='$(env_get DB_OWNER_USER)'" | grep -q 1; then
@@ -236,11 +233,9 @@ phase_cert() {
 
     install_nginx_site
 
-    log "Django + frontend to HTTPS"
+    log "Django to HTTPS"
     sed -i 's/^DJANGO_HTTPS=.*/DJANGO_HTTPS=true/' "$APP_DIR/backend/.env"
-    echo "NEXT_PUBLIC_API_URL=https://$DOMAIN" > "$APP_DIR/frontend/.env.production"
-    chown "$APP_USER:$APP_USER" "$APP_DIR/frontend/.env.production"
-    sudo -u "$APP_USER" bash -lc "$APP_DIR/deploy/deploy.sh --no-pull"
+    systemctl restart $APP.service $APP-worker.service
 
     certbot renew --dry-run
     log "cert done"

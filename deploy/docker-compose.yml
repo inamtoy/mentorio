@@ -109,7 +109,8 @@ services:
     build:
       context: ../frontend
       args:
-        NEXT_PUBLIC_API_URL: https://${DOMAIN}
+        # Empty: same-origin /api/ requests (see frontend/.env.example).
+        NEXT_PUBLIC_API_URL: ""
     image: mentorio-frontend
     restart: unless-stopped
     environment:

@@ -73,7 +73,8 @@ sudo bash ~/mentorion/deploy/setup_server.sh cert you@example.com
 
 Let's Encrypt sertifikati (webroot; yangilashni `certbot.timer` qiladi va
 nginx'ni reload qiladi), HTTPS nginx konfiguratsiyasi, `DJANGO_HTTPS=true`
-(SSL redirect, HSTS, Secure cookie'lar), frontend qayta build.
+(SSL redirect, HSTS, Secure cookie'lar). Frontend qayta build qilinmaydi: u API'ni
+nisbiy `/api/` yo'li bilan chaqiradi (`NEXT_PUBLIC_API_URL` bo'sh, `frontend/.env.example`).
 
 > `DJANGO_HTTPS=false` faqat sertifikat olinguncha. HTTP'da login ishlashi
 > uchun kerak (brauzer Secure cookie'ni http'da saqlamaydi), lekin parol

@@ -8,8 +8,8 @@ ROLE_COOKIE = "user_role"
 def set_auth_cookies(response, *, access: str, refresh: str, role: str | None = None) -> None:
     """httpOnly cookies are the only place the raw JWTs live client-side —
     the frontend never reads or stores them; the browser just carries them
-    back automatically. `secure=not settings.DEBUG` because local dev runs
-    over plain http.
+    back automatically. `secure` follows AUTH_COOKIE_SECURE: off in dev
+    (plain http), on in prod unless DJANGO_HTTPS=false (see prod.py).
 
     `role` (the user's primary role slug, e.g. "teacher") rides along as a
     third httpOnly cookie, same lifetime as the REFRESH token. It is NOT a
@@ -31,7 +31,7 @@ def set_auth_cookies(response, *, access: str, refresh: str, role: str | None = 
     common = {
         "httponly": True,
         "samesite": "Lax",
-        "secure": not settings.DEBUG,
+        "secure": settings.AUTH_COOKIE_SECURE,
         "path": "/",
     }
     access_max_age = int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds())

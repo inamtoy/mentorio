@@ -31,10 +31,11 @@ phase_base() {
     log "Timezone"
     timedatectl set-timezone Asia/Tashkent
 
-    log "Swap (only if RAM < 2 GB and no swap yet)"
-    local mem_mb
+    log "Swap (2 GB /swapfile if RAM < 2 GB and swap < 2 GB)"
+    local mem_mb swap_mb
     mem_mb=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
-    if (( mem_mb < 2000 )) && ! swapon --show | grep -q .; then
+    swap_mb=$(awk '/SwapTotal/ {print int($2/1024)}' /proc/meminfo)
+    if (( mem_mb < 2000 && swap_mb < 1900 )) && [[ ! -f /swapfile ]]; then
         fallocate -l 2G /swapfile
         chmod 600 /swapfile
         mkswap /swapfile

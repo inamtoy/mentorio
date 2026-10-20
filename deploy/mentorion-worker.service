@@ -11,6 +11,10 @@ Group=deploy
 WorkingDirectory=/home/deploy/mentorion/backend
 Environment=DJANGO_SETTINGS_MODULE=config.settings.prod
 Environment=PYTHONUNBUFFERED=1
+# Without a bot token the command exits at once and Restart=always would loop
+# forever. A failed condition skips the unit cleanly instead; after setting
+# the token: sudo systemctl restart mentorion-worker
+ExecCondition=/bin/sh -c 'grep -q "^TELEGRAM_BOT_TOKEN=." .env'
 ExecStart=/home/deploy/mentorion/backend/.venv/bin/python manage.py send_notifications --loop
 Restart=always
 RestartSec=5

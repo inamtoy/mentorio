@@ -1,4 +1,9 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Origin of the API, prefixed to every "/api/v1/..." path. Production sets
+// it to an empty string (frontend/.env.example): nginx serves the API under
+// /api/ on the same origin, so requests stay relative and one build works on
+// the IP, on mentorio.uz and over HTTPS. `??` keeps that empty string; only
+// an unset variable falls back to the local-dev backend.
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 interface Envelope<T> {
   success: boolean;

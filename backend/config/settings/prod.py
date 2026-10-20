@@ -8,18 +8,26 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
-# TLS ends at the reverse proxy (deploy/Caddyfile), which talks plain http to
-# gunicorn. Without this, request.is_secure() is always False behind it and
-# SECURE_SSL_REDIRECT redirects every request forever. Only safe because the
-# backend port is never published — the proxy is the only thing that can
-# reach it, and it overwrites X-Forwarded-Proto.
+# TLS ends at the reverse proxy (deploy/Caddyfile or deploy/nginx-mentorion.conf),
+# which talks plain http to gunicorn. Without this, request.is_secure() is
+# always False behind it and SECURE_SSL_REDIRECT redirects every request
+# forever. Only safe because the backend listens on localhost / an
+# unpublished port — the proxy is the only thing that can reach it, and it
+# overwrites X-Forwarded-Proto.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_HSTS_SECONDS = 31536000
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+
+# DJANGO_HTTPS=false exists only for the first minutes of a fresh server,
+# before certbot has issued the certificate: with it on, the SSL redirect
+# loops and browsers drop the Secure auth cookies over plain http, so login
+# can't work. Never leave it off once HTTPS is up.
+HTTPS = env.bool("DJANGO_HTTPS", default=True)
+SECURE_SSL_REDIRECT = HTTPS
+SESSION_COOKIE_SECURE = HTTPS
+CSRF_COOKIE_SECURE = HTTPS
+AUTH_COOKIE_SECURE = HTTPS
+SECURE_HSTS_SECONDS = 31536000 if HTTPS else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = HTTPS
+SECURE_HSTS_PRELOAD = HTTPS
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
 # Pooling (e.g. PgBouncer) sits in front in production. Only ever use `SET LOCAL`

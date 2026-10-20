@@ -197,6 +197,10 @@ SIMPLE_JWT = {
     # see auth_custom/services/token_service.py::issue_tokens.
 }
 
+# Secure flag on the httpOnly auth cookies (common/cookies.py). dev.py turns
+# it off for plain-http localhost; prod.py ties it to DJANGO_HTTPS.
+AUTH_COOKIE_SECURE = True
+
 # Max simultaneously-active refresh tokens per user (DDL comment, enforced in token_service.py)
 AUTH_MAX_ACTIVE_REFRESH_TOKENS = 5
 

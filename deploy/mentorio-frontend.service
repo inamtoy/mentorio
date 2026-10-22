@@ -9,7 +9,7 @@ After=network.target
 Type=simple
 User=deploy
 Group=deploy
-WorkingDirectory=/home/deploy/mentorion/frontend/.next/standalone
+WorkingDirectory=/home/deploy/mentorio/frontend/.next/standalone
 Environment=NODE_ENV=production
 Environment=NEXT_TELEMETRY_DISABLED=1
 Environment=PORT=3001

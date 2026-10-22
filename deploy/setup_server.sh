@@ -6,7 +6,7 @@
 #                swap, packages, deploy user, ufw, fail2ban, unattended
 #                upgrades, PostgreSQL, nginx, certbot, Node, uv.
 #                Needs no repo checkout:  ssh root@HOST 'bash -s base' < setup_server.sh
-#   app          Mentorio itself (repo must already be at /home/deploy/mentorion):
+#   app          Mentorio itself (repo must already be at /home/deploy/mentorio):
 #                DB roles + database, backend/.env, systemd units, nginx site, cron.
 #   cert EMAIL   Let's Encrypt certificate for mentorio.uz + www, switches
 #                nginx and Django to HTTPS.
@@ -14,7 +14,7 @@
 #                `ssh deploy@HOST` works with a key.
 set -euo pipefail
 
-APP=mentorion
+APP=mentorio
 APP_USER=deploy
 APP_DIR=/home/$APP_USER/$APP
 DOMAIN=mentorio.uz

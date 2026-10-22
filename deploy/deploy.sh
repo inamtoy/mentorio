@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Updates Mentorio on the server. Run as the deploy user:
-#   ~/mentorion/deploy/deploy.sh            # pull main, rebuild, restart
-#   ~/mentorion/deploy/deploy.sh --no-pull  # rebuild what is checked out
+#   ~/mentorio/deploy/deploy.sh            # pull main, rebuild, restart
+#   ~/mentorio/deploy/deploy.sh --no-pull  # rebuild what is checked out
 # Order: pull → backend deps → migrate → frontend build → restart → health check.
 # Any failing step stops the script before the running services are touched.
 set -euo pipefail
 
-APP=mentorion
+APP=mentorio
 APP_DIR=/home/deploy/$APP
 BRANCH=${DEPLOY_BRANCH:-main}
 export PATH=$HOME/.local/bin:$PATH

@@ -8,7 +8,7 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
-# TLS ends at the reverse proxy (deploy/Caddyfile or deploy/nginx-mentorion.conf),
+# TLS ends at the reverse proxy (deploy/Caddyfile or deploy/nginx-mentorio.conf),
 # which talks plain http to gunicorn. Without this, request.is_secure() is
 # always False behind it and SECURE_SSL_REDIRECT redirects every request
 # forever. Only safe because the backend listens on localhost / an

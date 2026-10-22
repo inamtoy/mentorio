@@ -5,12 +5,12 @@ Docker'siz. Keyinchalik shu serverga boshqa loyihalar (masalan Prava.uz)
 qo'shiladi, shuning uchun hamma narsa loyiha nomi bilan ajratilgan.
 
 ```
-internet ─443─▶ nginx ─/api/──────────▶ mentorion.service           127.0.0.1:8001  (gunicorn, Django)
+internet ─443─▶ nginx ─/api/──────────▶ mentorio.service           127.0.0.1:8001  (gunicorn, Django)
                   │   ─/_next/static/─▶ diskdan (frontend/.next/static)
-                  └── qolgani ────────▶ mentorion-frontend.service  127.0.0.1:3001  (Next.js)
-                 mentorion-worker.service  — Telegram bildirishnomalari
+                  └── qolgani ────────▶ mentorio-frontend.service  127.0.0.1:3001  (Next.js)
+                 mentorio-worker.service  — Telegram bildirishnomalari
                  PostgreSQL               127.0.0.1:5432
-                 /etc/cron.d/mentorion    — 08:00 hisob-fakturalar, 09:00 eslatmalar, 03:00 backup
+                 /etc/cron.d/mentorio    — 08:00 hisob-fakturalar, 09:00 eslatmalar, 03:00 backup
 ```
 
 | Fayl | Vazifasi |
@@ -18,10 +18,10 @@ internet ─443─▶ nginx ─/api/──────────▶ mentorion.
 | `setup_server.sh` | Idempotent sozlash: `base` (server poydevori), `app` (Mentorio), `cert EMAIL` (HTTPS), `harden-ssh` |
 | `deploy.sh` | Yangilash: git pull → bog'liqliklar → migratsiya → frontend build → restart → health check |
 | `backup.sh <loyiha>` | Kunlik `pg_dump` (gzip) + media arxivi, 7 kun saqlanadi, `/var/backups/<loyiha>/` |
-| `mentorion*.service` | systemd: API, worker, frontend |
-| `nginx-mentorion.conf` | HTTPS konfiguratsiya (www → mentorio.uz, http → https). `nginx-mentorion-http.conf` — sertifikat olinguncha |
+| `mentorio*.service` | systemd: API, worker, frontend |
+| `nginx-mentorio.conf` | HTTPS konfiguratsiya (www → mentorio.uz, http → https). `nginx-mentorio-http.conf` — sertifikat olinguncha |
 | `nginx-proxy-snippet.conf`, `nginx-ssl-params.conf` | `/etc/nginx/snippets/` ga o'rnatiladi |
-| `mentorion.cron` | `/etc/cron.d/mentorion` |
+| `mentorio.cron` | `/etc/cron.d/mentorio` |
 | `postgres/roles.sql` | Uch DB roli va baza |
 
 ## Serverga joylash
@@ -43,22 +43,22 @@ fail2ban, unattended-upgrades, PostgreSQL, nginx, certbot, Node 22, uv.
 
 ```bash
 ssh deploy@SERVER
-ssh-keygen -t ed25519 -N "" -C "deploy@server mentorion" -f ~/.ssh/github_mentorion
+ssh-keygen -t ed25519 -N "" -C "deploy@server mentorio" -f ~/.ssh/github_mentorio
 cat >> ~/.ssh/config <<'CFG'
-Host github-mentorion
+Host github-mentorio
     HostName github.com
     User git
-    IdentityFile ~/.ssh/github_mentorion
+    IdentityFile ~/.ssh/github_mentorio
     IdentitiesOnly yes
 CFG
-cat ~/.ssh/github_mentorion.pub   # → GitHub: repo Settings → Deploy keys (read-only)
-git clone git@github-mentorion:inamtoy/mentorio.git ~/mentorion
+cat ~/.ssh/github_mentorio.pub   # → GitHub: repo Settings → Deploy keys (read-only)
+git clone git@github-mentorio:inamtoy/mentorio.git ~/mentorio
 ```
 
 **3. Ilova:**
 
 ```bash
-sudo bash ~/mentorion/deploy/setup_server.sh app
+sudo bash ~/mentorio/deploy/setup_server.sh app
 ```
 
 `backend/.env` (600, tasodifiy maxfiy kalitlar va DB parollari), DB rollari +
@@ -68,7 +68,7 @@ tushirish.
 **4. HTTPS** (DNS tarqalgandan keyin — skript avval `dig` bilan tekshiradi):
 
 ```bash
-sudo bash ~/mentorion/deploy/setup_server.sh cert you@example.com
+sudo bash ~/mentorio/deploy/setup_server.sh cert you@example.com
 ```
 
 Let's Encrypt sertifikati (webroot; yangilashni `certbot.timer` qiladi va
@@ -83,7 +83,7 @@ nisbiy `/api/` yo'li bilan chaqiradi (`NEXT_PUBLIC_API_URL` bo'sh, `frontend/.en
 **5. Super admin:**
 
 ```bash
-cd ~/mentorion/backend
+cd ~/mentorio/backend
 set -a; . ./.env; set +a
 DJANGO_SETTINGS_MODULE=config.settings.prod DB_USER=$DB_AUTH_BYPASS_USER DB_PASSWORD=$DB_AUTH_BYPASS_PASSWORD \
   .venv/bin/python manage.py create_super_admin --first-name Ism --last-name Familiya --phone +998901234567
@@ -96,22 +96,22 @@ platforma tashkilotini hali hech qanday tenant konteksti yo'q paytda yaratadi.
 ishlashini tekshiring:
 
 ```bash
-sudo bash ~/mentorion/deploy/setup_server.sh harden-ssh
+sudo bash ~/mentorio/deploy/setup_server.sh harden-ssh
 ```
 
 **7. Telegram bot** — production bot (@BotFather), qiymatlarini `backend/.env`
 ga yozing, keyin:
 
 ```bash
-sudo systemctl restart mentorion mentorion-worker
-cd ~/mentorion/backend && DJANGO_SETTINGS_MODULE=config.settings.prod \
+sudo systemctl restart mentorio mentorio-worker
+cd ~/mentorio/backend && DJANGO_SETTINGS_MODULE=config.settings.prod \
   .venv/bin/python manage.py set_telegram_webhook https://mentorio.uz/api/v1/auth/telegram/webhook/
 ```
 
 ### Yangilash
 
 ```bash
-ssh deploy@SERVER '~/mentorion/deploy/deploy.sh'
+ssh deploy@SERVER '~/mentorio/deploy/deploy.sh'
 ```
 
 Biror qadam xato bersa skript to'xtaydi va ishlab turgan xizmatlarga tegmaydi.
@@ -119,12 +119,12 @@ Biror qadam xato bersa skript to'xtaydi va ishlab turgan xizmatlarga tegmaydi.
 ### Kundalik ishlar
 
 ```bash
-systemctl status mentorion mentorion-worker mentorion-frontend
-journalctl -u mentorion -f                  # API loglari (Django xatolari traceback bilan)
-journalctl -u mentorion-frontend -f
-tail -f /var/log/mentorion/cron.log /var/log/mentorion/backup.log
-sudo /home/deploy/mentorion/deploy/backup.sh mentorion   # hozir backup olish
-ls -lh /var/backups/mentorion/
+systemctl status mentorio mentorio-worker mentorio-frontend
+journalctl -u mentorio -f                  # API loglari (Django xatolari traceback bilan)
+journalctl -u mentorio-frontend -f
+tail -f /var/log/mentorio/cron.log /var/log/mentorio/backup.log
+sudo /home/deploy/mentorio/deploy/backup.sh mentorio   # hozir backup olish
+ls -lh /var/backups/mentorio/
 ```
 
 ### Backup'dan tiklash
@@ -132,11 +132,11 @@ ls -lh /var/backups/mentorion/
 Rollar allaqachon mavjud (`setup_server.sh app` yaratgan):
 
 ```bash
-sudo systemctl stop mentorion mentorion-worker
-sudo -u postgres psql -c "DROP DATABASE mentorion WITH (FORCE)"
-sudo -u postgres psql -c "CREATE DATABASE mentorion OWNER mentorion ENCODING 'UTF8' TEMPLATE template0"
-gunzip -c /var/backups/mentorion/mentorion-YYYYmmdd-HHMM.sql.gz | sudo -u postgres psql -v ON_ERROR_STOP=1 -d mentorion
-sudo systemctl start mentorion mentorion-worker
+sudo systemctl stop mentorio mentorio-worker
+sudo -u postgres psql -c "DROP DATABASE mentorio WITH (FORCE)"
+sudo -u postgres psql -c "CREATE DATABASE mentorio OWNER mentorio ENCODING 'UTF8' TEMPLATE template0"
+gunzip -c /var/backups/mentorio/mentorio-YYYYmmdd-HHMM.sql.gz | sudo -u postgres psql -v ON_ERROR_STOP=1 -d mentorio
+sudo systemctl start mentorio mentorio-worker
 ```
 
 Backup'lar baza bilan bir diskda — ularni muntazam server tashqarisiga ham
@@ -144,9 +144,9 @@ ko'chiring.
 
 ### Ma'lumotlar bazasi rollari
 
-- `mentorion` — sxema egasi, faqat `migrate` (deploy.sh) uchun. CREATEDB yo'q
-- `mentorion_app` — har bir so'rov; row-level security unga to'liq ta'sir qiladi
-- `mentorion_auth_bypass` (BYPASSRLS) — faqat login qidiruvi, platforma backup'i va `create_super_admin`
+- `mentorio` — sxema egasi, faqat `migrate` (deploy.sh) uchun. CREATEDB yo'q
+- `mentorio_app` — har bir so'rov; row-level security unga to'liq ta'sir qiladi
+- `mentorio_auth_bypass` (BYPASSRLS) — faqat login qidiruvi, platforma backup'i va `create_super_admin`
 
 Loyihaning RLS dizayni uchta rolni talab qiladi: ega rol va BYPASSRLS rolida
 RLS ishlamaydi, shuning uchun ilova ularning hech biri bilan oddiy so'rov bajarmaydi.
@@ -163,7 +163,7 @@ Masalan Prava.uz. `base` qismini qayta bajarish shart emas (u umumiy).
 4. **systemd**: `/etc/systemd/system/prava.service` — `User=deploy`, faqat `127.0.0.1:<port>` ga bind.
 5. **nginx**: `/etc/nginx/sites-available/prava` + `sites-enabled` ga symlink, o'z `server_name` i bilan. upstream nomlari loyihaga xos bo'lsin (`prava_api`), `snippets/ssl-params.conf` ni qayta ishlating. Mentorio fayllariga tegmang.
 6. **Sertifikat**: `sudo certbot certonly --webroot -w /var/www/certbot --cert-name prava.uz -d prava.uz -d www.prava.uz` (nginx'da `/.well-known/acme-challenge/` → `/var/www/certbot` bo'lishi kerak).
-7. **Backup**: `/etc/cron.d/prava` ga `0 3 * * * root /home/deploy/mentorion/deploy/backup.sh prava >> /var/log/prava-backup.log 2>&1` (baza nomi loyiha nomidan farq qilsa `DB_NAME=...`, media boshqa joyda bo'lsa `MEDIA_DIR=...`).
+7. **Backup**: `/etc/cron.d/prava` ga `0 3 * * * root /home/deploy/mentorio/deploy/backup.sh prava >> /var/log/prava-backup.log 2>&1` (baza nomi loyiha nomidan farq qilsa `DB_NAME=...`, media boshqa joyda bo'lsa `MEDIA_DIR=...`).
 8. **RAM**: `free -h` — har bir gunicorn worker ~100–150 MB, Next.js ~150 MB.
 
 ## Muqobil: Docker Compose (Caddy bilan)

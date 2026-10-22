@@ -98,4 +98,6 @@ def set_webhook(url: str, secret_token: str) -> None:
 
 
 def deep_link(start_param: str) -> str:
-    return f"https://t.me/{settings.TELEGRAM_BOT_USERNAME}?start={start_param}"
+    # BotFather shows the name as "@name"; t.me/@name drops the start param.
+    username = settings.TELEGRAM_BOT_USERNAME.lstrip("@")
+    return f"https://t.me/{username}?start={start_param}"

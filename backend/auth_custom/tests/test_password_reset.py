@@ -239,6 +239,12 @@ def test_start_is_unavailable_without_a_configured_bot(user, settings):
     assert _start(APIClient(), user.login_id).status_code == 503
 
 
+def test_bot_link_tolerates_username_written_with_at(settings):
+    settings.TELEGRAM_BOT_USERNAME = "@test_mentorio_bot"
+
+    assert telegram_client.deep_link("abc") == "https://t.me/test_mentorio_bot?start=abc"
+
+
 def test_webhook_requires_the_secret_header(user, sent):
     client = APIClient()
     update = {"update_id": 9, "message": {"chat": {"id": CHAT_ID, "type": "private"}, "from": {"id": 1}, "text": "/start"}}

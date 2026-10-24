@@ -90,11 +90,14 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       >
       {/* Logo */}
       <div className="flex items-center h-16 px-4 border-b border-border gap-3">
-        {/* eslint-disable-next-line @next/next/no-img-element -- static local asset, matches the plain <img> convention already used for branding.logoUrl on the login page */}
-        <img src="/logo.png" alt="Mentorio" className="flex-shrink-0 h-12 w-12 object-contain rounded-xl" />
-        <span className={cn("text-xl font-bold text-card-foreground tracking-tight", collapsed && "lg:hidden")}>
-          Mentorio
-        </span>
+        {/* Logo links back to this portal's dashboard */}
+        <Link href="/" onClick={onMobileClose} className="flex items-center gap-3 min-w-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          {/* eslint-disable-next-line @next/next/no-img-element -- static local asset, matches the plain <img> convention already used for branding.logoUrl on the login page */}
+          <img src="/logo.png" alt="Mentorio" className="flex-shrink-0 h-12 w-12 object-contain rounded-xl" />
+          <span className={cn("text-xl font-bold text-card-foreground tracking-tight", collapsed && "lg:hidden")}>
+            Mentorio
+          </span>
+        </Link>
         <button
           onClick={onToggle}
           className={cn(

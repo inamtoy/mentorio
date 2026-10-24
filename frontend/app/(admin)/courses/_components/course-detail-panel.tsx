@@ -1,8 +1,7 @@
 "use client";
 
-import { ChevronLeft, Clock, DollarSign, BookOpen, Pencil, Trash2 } from "lucide-react";
+import { Clock, DollarSign, BookOpen, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/badge";
 import { useGroupsQuery } from "@/lib/queries/groups";
@@ -13,24 +12,19 @@ import { useFormatCurrency } from "@/i18n/format-currency";
 
 interface CourseDetailPanelProps {
   course: CourseProfile;
-  onBack: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export function CourseDetailPanel({ course, onBack, onEdit, onDelete }: CourseDetailPanelProps) {
+export function CourseDetailPanel({ course, onEdit, onDelete }: CourseDetailPanelProps) {
   const t = useTranslations("AdminCourses");
   const formatMoney = useFormatCurrency();
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   const { data: groups } = useGroupsQuery({ organizationId: organizationId ?? "", course: course.id });
 
   return (
-    <Card noPadding>
-      <div className="flex items-center gap-4 px-6 py-5 border-b border-slate-100">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ChevronLeft className="h-4 w-4" />
-          {t("backButton")}
-        </Button>
+    <div>
+      <div className="flex flex-wrap items-center gap-4 px-6 py-5 pr-12 border-b border-slate-100">
         <div
           className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: `${course.color ?? "#6366f1"}18` }}
@@ -85,7 +79,7 @@ export function CourseDetailPanel({ course, onBack, onEdit, onDelete }: CourseDe
           )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 

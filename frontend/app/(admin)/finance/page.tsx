@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { SearchInput, Select } from "@/components/ui/input";
 import { StatCard } from "@/components/ui/stat-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DetailDialog } from "@/components/ui/dialog";
 import { useAuthStore } from "@/lib/store/auth-store";
 import {
   useInvoicesPageQuery,
@@ -303,13 +304,14 @@ function InvoicesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onForm
         )}
       </Card>
 
-      {selectedInvoice && (
-        <InvoiceDetailPanel
-          invoice={selectedInvoice}
-          onBack={() => setSelectedId(null)}
-          onDelete={() => setDeletingInvoice(selectedInvoice)}
-        />
-      )}
+      <DetailDialog open={!!selectedInvoice} onClose={() => setSelectedId(null)} title={selectedInvoice?.student_name ?? ""}>
+        {selectedInvoice && (
+          <InvoiceDetailPanel
+            invoice={selectedInvoice}
+            onDelete={() => setDeletingInvoice(selectedInvoice)}
+          />
+        )}
+      </DetailDialog>
 
       <InvoiceFormDialog open={formOpen} onOpenChange={onFormOpenChange} />
 
@@ -467,13 +469,14 @@ function ExpensesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onForm
         )}
       </Card>
 
-      {selectedExpense && (
-        <ExpenseDetailPanel
-          expense={selectedExpense}
-          onBack={() => setSelectedId(null)}
-          onDelete={() => setDeletingExpense(selectedExpense)}
-        />
-      )}
+      <DetailDialog open={!!selectedExpense} onClose={() => setSelectedId(null)} title={selectedExpense?.title ?? ""}>
+        {selectedExpense && (
+          <ExpenseDetailPanel
+            expense={selectedExpense}
+            onDelete={() => setDeletingExpense(selectedExpense)}
+          />
+        )}
+      </DetailDialog>
 
       <ExpenseFormDialog open={formOpen} onOpenChange={onFormOpenChange} />
 
@@ -604,13 +607,14 @@ function PayrollTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onFormO
         )}
       </Card>
 
-      {selectedPayroll && (
-        <PayrollDetailPanel
-          payroll={selectedPayroll}
-          onBack={() => setSelectedId(null)}
-          onDelete={() => setDeletingPayroll(selectedPayroll)}
-        />
-      )}
+      <DetailDialog open={!!selectedPayroll} onClose={() => setSelectedId(null)} title={selectedPayroll?.teacher_name ?? ""}>
+        {selectedPayroll && (
+          <PayrollDetailPanel
+            payroll={selectedPayroll}
+            onDelete={() => setDeletingPayroll(selectedPayroll)}
+          />
+        )}
+      </DetailDialog>
 
       <PayrollFormDialog open={formOpen} onOpenChange={onFormOpenChange} />
 

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { Input, Select } from '@/components/ui/input';
 import { StatCard } from '@/components/ui/stat-card';
+import { DetailDialog } from '@/components/ui/dialog';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { useMyTeacherProfileQuery } from '@/lib/queries/teachers';
 import { useGroupsQuery, useGroupMembersQuery } from '@/lib/queries/groups';
@@ -33,8 +34,6 @@ import {
   ClipboardCheck,
   CheckCircle2,
   BarChart3,
-  ChevronLeft,
-  XCircle,
   Edit2,
   Trash2,
 } from 'lucide-react';
@@ -98,10 +97,9 @@ const EMPTY_FORM: FormValues = {
 
 interface ResultsPanelProps {
   exam: Exam;
-  onClose: () => void;
 }
 
-function ResultsPanel({ exam, onClose }: ResultsPanelProps) {
+function ResultsPanel({ exam }: ResultsPanelProps) {
   const t = useTranslations('TeacherExams');
   const tc = useTranslations('Common');
   const organizationId = useAuthStore((s) => s.user?.organizationId) ?? '';
@@ -171,16 +169,11 @@ function ResultsPanel({ exam, onClose }: ResultsPanelProps) {
   }
 
   return (
-    <Card className="mt-4">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-500">
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <h3 className="font-semibold text-slate-900">{exam.title}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">{t('enterResultsSubtitle')}</p>
-          </div>
+    <div className="p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pr-8">
+        <div>
+          <h3 className="font-semibold text-slate-900">{exam.title}</h3>
+          <p className="text-xs text-slate-400 mt-0.5">{t('enterResultsSubtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           {scores.length > 0 && (
@@ -191,9 +184,6 @@ function ResultsPanel({ exam, onClose }: ResultsPanelProps) {
               </p>
             </div>
           )}
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <XCircle className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 
@@ -226,7 +216,6 @@ function ResultsPanel({ exam, onClose }: ResultsPanelProps) {
                       <Avatar name={member.student_name} size="sm" />
                       <div>
                         <p className="text-sm font-medium text-slate-800">{member.student_name}</p>
-                        <p className="text-xs text-slate-400">{member.student_login_id}</p>
                       </div>
                     </div>
                   </td>
@@ -262,7 +251,7 @@ function ResultsPanel({ exam, onClose }: ResultsPanelProps) {
           {t('saveResultsButton')}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -542,7 +531,7 @@ export default function ExamsPage() {
   }
 
   function handleEnterResults(exam: Exam) {
-    setActiveExam((prev) => (prev?.id === exam.id ? null : exam));
+    setActiveExam(exam);
   }
 
   return (
@@ -675,12 +664,15 @@ export default function ExamsPage() {
                   onEnterResults={handleEnterResults}
                   isActive={activeExam?.id === exam.id}
                 />
-                {activeExam?.id === exam.id && <ResultsPanel exam={exam} onClose={() => setActiveExam(null)} />}
               </div>
             ))}
           </div>
         )}
       </section>
+
+      <DetailDialog open={!!activeExam} onClose={() => setActiveExam(null)} title={activeExam?.title ?? ''}>
+        {activeExam && <ResultsPanel exam={activeExam} />}
+      </DetailDialog>
     </div>
   );
 }

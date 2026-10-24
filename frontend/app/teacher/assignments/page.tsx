@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { SearchInput, Input, Select } from '@/components/ui/input';
 import { StatCard } from '@/components/ui/stat-card';
+import { DetailDialog } from '@/components/ui/dialog';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { useMyTeacherProfileQuery } from '@/lib/queries/teachers';
 import { useGroupsQuery, useGroupMembersQuery } from '@/lib/queries/groups';
@@ -32,9 +33,7 @@ import {
   ClipboardList,
   AlertCircle,
   Clock,
-  ChevronLeft,
   CheckCircle2,
-  XCircle,
   Edit2,
 } from 'lucide-react';
 
@@ -112,10 +111,9 @@ const EMPTY_FORM: FormValues = {
 interface SubmissionsPanelProps {
   assignment: Assignment;
   organizationId: string;
-  onClose: () => void;
 }
 
-function SubmissionsPanel({ assignment, organizationId, onClose }: SubmissionsPanelProps) {
+function SubmissionsPanel({ assignment, organizationId }: SubmissionsPanelProps) {
   const t = useTranslations('TeacherAssignments');
   const tc = useTranslations('Common');
   const rawLocale = useLocale();
@@ -193,24 +191,11 @@ function SubmissionsPanel({ assignment, organizationId, onClose }: SubmissionsPa
   }
 
   return (
-    <Card className="mt-4">
+    <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-500"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <h3 className="font-semibold text-slate-900">{assignment.title}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">{t('submissionsPanelSubtitle')}</p>
-          </div>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <XCircle className="h-4 w-4" />
-        </Button>
+      <div className="mb-6 pr-8">
+        <h3 className="font-semibold text-slate-900">{assignment.title}</h3>
+        <p className="text-xs text-slate-400 mt-0.5">{t('submissionsPanelSubtitle')}</p>
       </div>
 
       {/* Tabs */}
@@ -345,7 +330,7 @@ function SubmissionsPanel({ assignment, organizationId, onClose }: SubmissionsPa
           {t('saveGradesButton')}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -520,7 +505,7 @@ export default function AssignmentsPage() {
   }
 
   function handleViewSubmissions(assignment: Assignment) {
-    setActiveAssignment((prev) => (prev?.id === assignment.id ? null : assignment));
+    setActiveAssignment(assignment);
   }
 
   return (
@@ -657,19 +642,14 @@ export default function AssignmentsPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filtered.map((assignment) => (
-            <div key={assignment.id}>
-              <AssignmentCard assignment={assignment} onViewSubmissions={handleViewSubmissions} onEdit={handleEdit} />
-              {activeAssignment?.id === assignment.id && (
-                <SubmissionsPanel
-                  assignment={assignment}
-                  organizationId={organizationId}
-                  onClose={() => setActiveAssignment(null)}
-                />
-              )}
-            </div>
+            <AssignmentCard key={assignment.id} assignment={assignment} onViewSubmissions={handleViewSubmissions} onEdit={handleEdit} />
           ))}
         </div>
       )}
+
+      <DetailDialog open={!!activeAssignment} onClose={() => setActiveAssignment(null)} title={activeAssignment?.title ?? ''}>
+        {activeAssignment && <SubmissionsPanel assignment={activeAssignment} organizationId={organizationId} />}
+      </DetailDialog>
     </div>
   );
 }

@@ -194,7 +194,12 @@
     "submitHomework": "Сдать задание",
     "submitLate": "Сдать с опозданием",
     "noHomeworkCategory": "В этой категории нет заданий",
-    "submitSuccessToast": "Задание отправлено"
+    "submitSuccessToast": "Задание отправлено",
+    "yourWorkLabel": "Ваша работа",
+    "submitEmptyError": "Напишите ответ или прикрепите хотя бы один файл",
+    "answerLabel": "Ответ",
+    "answerPlaceholder": "Напишите ответ (необязательно, если прикрепляете файлы)",
+    "filesLabel": "Файлы — фото тетради, PDF или Word"
   },
   "StudentGrades": {
     "pageTitle": "Оценки",
@@ -581,7 +586,9 @@
     "statusPending": "Ожидает",
     "statusGraded": "Оценено",
     "statusLate": "С опозданием",
-    "statusSubmitted": "Отправлено"
+    "statusSubmitted": "Отправлено",
+    "fieldAttachments": "Файлы (необязательно)",
+    "studentWorkLabel": "Работа студента"
   },
   "TeacherGrades": {
     "pageTitle": "Оценки",
@@ -2524,5 +2531,17 @@
     "room": "{room} занята {start}–{end} группой {group}. Выберите другую аудиторию или время.",
     "group": "У группы {group} уже есть урок {start}–{end}. Выберите другое время.",
     "teacher": "{teacher} ведёт урок у группы {group} {start}–{end}. Выберите другое время."
+  },
+  "HomeworkAttachments": {
+    "attachButton": "Прикрепить файлы",
+    "uploading": "Загрузка…",
+    "hint": "Фото, PDF или Word · до 10 МБ · не более {count}",
+    "tooMany": "Можно прикрепить не более {count} файлов",
+    "badType": "{name}: такой тип файла не разрешён (загрузите фото, PDF или Word)",
+    "tooLarge": "{name}: файл больше 10 МБ",
+    "uploadFailed": "{name}: не удалось загрузить, попробуйте ещё раз",
+    "download": "Скачать",
+    "downloadFailed": "Не удалось скачать файл",
+    "remove": "Удалить"
   }
 }

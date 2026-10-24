@@ -2,11 +2,18 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from groups.models import GroupMember
+from homework.attachments import ENTITY_ASSIGNMENT, ENTITY_SUBMISSION, MAX_ATTACHMENTS, AttachmentFieldsMixin
 from homework.models import Assignment, Submission
 from student.models import StudentProfile
 
 
-class AssignmentSerializer(serializers.ModelSerializer):
+class AssignmentSerializer(AttachmentFieldsMixin, serializers.ModelSerializer):
+    attachment_entity_type = ENTITY_ASSIGNMENT
+
+    attachments = serializers.SerializerMethodField()
+    attachment_ids = serializers.ListField(
+        child=serializers.UUIDField(), write_only=True, required=False, max_length=MAX_ATTACHMENTS
+    )
     group_name = serializers.CharField(source="group.name", read_only=True)
     total_students = serializers.SerializerMethodField()
     submitted_count = serializers.SerializerMethodField()
@@ -16,7 +23,8 @@ class AssignmentSerializer(serializers.ModelSerializer):
         model = Assignment
         fields = [
             "id", "organization", "group", "group_name", "title", "description", "due_date", "max_score", "status",
-            "created_by", "total_students", "submitted_count", "graded_count", "created_at", "updated_at",
+            "created_by", "total_students", "submitted_count", "graded_count", "attachments", "attachment_ids",
+            "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]
 
@@ -36,7 +44,13 @@ class AssignmentSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class SubmissionSerializer(serializers.ModelSerializer):
+class SubmissionSerializer(AttachmentFieldsMixin, serializers.ModelSerializer):
+    attachment_entity_type = ENTITY_SUBMISSION
+
+    attachments = serializers.SerializerMethodField()
+    attachment_ids = serializers.ListField(
+        child=serializers.UUIDField(), write_only=True, required=False, max_length=MAX_ATTACHMENTS
+    )
     assignment_title = serializers.CharField(source="assignment.title", read_only=True)
     student_name = serializers.CharField(source="student_profile.user.get_full_name", read_only=True)
     is_late = serializers.SerializerMethodField()
@@ -51,7 +65,8 @@ class SubmissionSerializer(serializers.ModelSerializer):
         model = Submission
         fields = [
             "id", "organization", "assignment", "assignment_title", "student_profile", "student_name", "content",
-            "submitted_at", "score", "feedback", "graded_by", "graded_at", "is_late", "created_at",
+            "submitted_at", "score", "feedback", "graded_by", "graded_at", "is_late", "attachments", "attachment_ids",
+            "created_at",
         ]
         read_only_fields = ["id", "submitted_at", "graded_by", "graded_at", "created_at"]
         # ModelSerializer auto-adds a UniqueTogetherValidator from

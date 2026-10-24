@@ -46,3 +46,4 @@ frontend/.vercel
 *.tsbuildinfo
 frontend/next-env.d.ts
 frontend/tsconfig.tsbuildinfo
+/media/

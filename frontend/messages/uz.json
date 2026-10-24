@@ -194,7 +194,12 @@
     "submitHomework": "Vazifani topshirish",
     "submitLate": "Kechikib topshirish",
     "noHomeworkCategory": "Bu toifada uy vazifasi yo'q",
-    "submitSuccessToast": "Uy vazifasi topshirildi"
+    "submitSuccessToast": "Uy vazifasi topshirildi",
+    "yourWorkLabel": "Sizning ishingiz",
+    "submitEmptyError": "Javob yozing yoki kamida bitta fayl biriktiring",
+    "answerLabel": "Javob",
+    "answerPlaceholder": "Javobingizni yozing (ixtiyoriy, agar fayl biriktirsangiz)",
+    "filesLabel": "Fayllar — daftar rasmi, PDF yoki Word"
   },
   "StudentGrades": {
     "pageTitle": "Baholar",
@@ -581,7 +586,9 @@
     "statusPending": "Kutilmoqda",
     "statusGraded": "Baholangan",
     "statusLate": "Kechikkan",
-    "statusSubmitted": "Topshirilgan"
+    "statusSubmitted": "Topshirilgan",
+    "fieldAttachments": "Fayllar (ixtiyoriy)",
+    "studentWorkLabel": "O'quvchi ishi"
   },
   "TeacherGrades": {
     "pageTitle": "Baholar",
@@ -2524,5 +2531,17 @@
     "room": "{room} soat {start}–{end} oralig'ida {group} guruhi uchun band. Boshqa xona yoki vaqtni tanlang.",
     "group": "{group} guruhining soat {start}–{end} oralig'ida darsi bor. Boshqa vaqtni tanlang.",
     "teacher": "{teacher} soat {start}–{end} oralig'ida {group} guruhida dars o'tadi. Boshqa vaqtni tanlang."
+  },
+  "HomeworkAttachments": {
+    "attachButton": "Fayl biriktirish",
+    "uploading": "Yuklanmoqda…",
+    "hint": "Rasm, PDF yoki Word · 10 MB gacha · {count} tagacha",
+    "tooMany": "Ko'pi bilan {count} ta fayl biriktirish mumkin",
+    "badType": "{name}: bu turdagi fayl ruxsat etilmaydi (rasm, PDF yoki Word yuklang)",
+    "tooLarge": "{name}: fayl 10 MB dan katta",
+    "uploadFailed": "{name}: yuklab bo'lmadi, qayta urinib ko'ring",
+    "download": "Yuklab olish",
+    "downloadFailed": "Faylni yuklab olib bo'lmadi",
+    "remove": "Olib tashlash"
   }
 }

@@ -194,7 +194,12 @@
     "submitHomework": "Submit Homework",
     "submitLate": "Submit Late",
     "noHomeworkCategory": "No homework in this category",
-    "submitSuccessToast": "Homework submitted"
+    "submitSuccessToast": "Homework submitted",
+    "yourWorkLabel": "Your work",
+    "submitEmptyError": "Write an answer or attach at least one file",
+    "answerLabel": "Answer",
+    "answerPlaceholder": "Write your answer (optional if you attach files)",
+    "filesLabel": "Files — notebook photo, PDF or Word"
   },
   "StudentGrades": {
     "pageTitle": "Grades",
@@ -581,7 +586,9 @@
     "statusPending": "Pending",
     "statusGraded": "Graded",
     "statusLate": "Late",
-    "statusSubmitted": "Submitted"
+    "statusSubmitted": "Submitted",
+    "fieldAttachments": "Files (optional)",
+    "studentWorkLabel": "Student's work"
   },
   "TeacherGrades": {
     "pageTitle": "Grades",
@@ -2524,5 +2531,17 @@
     "room": "{room} is already taken {start}–{end} by group {group}. Choose another room or time.",
     "group": "Group {group} already has a lesson {start}–{end}. Choose another time.",
     "teacher": "{teacher} already teaches group {group} {start}–{end}. Choose another time."
+  },
+  "HomeworkAttachments": {
+    "attachButton": "Attach files",
+    "uploading": "Uploading…",
+    "hint": "Photo, PDF or Word · up to 10 MB · max {count}",
+    "tooMany": "You can attach at most {count} files",
+    "badType": "{name}: this file type isn't allowed (upload a photo, PDF or Word file)",
+    "tooLarge": "{name}: the file is larger than 10 MB",
+    "uploadFailed": "{name}: upload failed, please try again",
+    "download": "Download",
+    "downloadFailed": "Couldn't download the file",
+    "remove": "Remove"
   }
 }

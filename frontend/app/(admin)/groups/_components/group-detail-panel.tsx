@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, Users, Clock, MapPin, Pencil, Trash2, UserPlus, X, DollarSign, CalendarDays } from "lucide-react";
+import { Users, Clock, MapPin, Pencil, Trash2, UserPlus, X, DollarSign, CalendarDays } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
@@ -19,12 +18,11 @@ import type { Group } from "@/lib/api/groups";
 
 interface GroupDetailPanelProps {
   group: Group;
-  onBack: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export function GroupDetailPanel({ group, onBack, onEdit, onDelete }: GroupDetailPanelProps) {
+export function GroupDetailPanel({ group, onEdit, onDelete }: GroupDetailPanelProps) {
   const t = useTranslations("AdminGroups");
   const formatMoney = useFormatCurrency();
   const DAY_LABELS: Record<string, string> = {
@@ -77,12 +75,8 @@ export function GroupDetailPanel({ group, onBack, onEdit, onDelete }: GroupDetai
   }
 
   return (
-    <Card noPadding>
-      <div className="flex items-center gap-4 px-6 py-5 border-b border-slate-100">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ChevronLeft className="h-4 w-4" />
-          {t("backButton")}
-        </Button>
+    <div>
+      <div className="flex flex-wrap items-center gap-4 px-6 py-5 pr-12 border-b border-slate-100">
         <div>
           <p className="font-semibold text-slate-900">{group.name}</p>
           <p className="text-xs text-slate-500">{group.course_name}</p>
@@ -169,7 +163,7 @@ export function GroupDetailPanel({ group, onBack, onEdit, onDelete }: GroupDetai
           )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 

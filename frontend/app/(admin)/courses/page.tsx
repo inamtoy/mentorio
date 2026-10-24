@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { SearchInput, Select } from "@/components/ui/input";
 import { StatCard } from "@/components/ui/stat-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DetailDialog } from "@/components/ui/dialog";
 import { toast } from "@/lib/store/toast-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useCoursesPageQuery, useCoursesQuery, useDeleteCourseMutation } from "@/lib/queries/courses";
@@ -223,17 +224,18 @@ export default function CoursesPage() {
         )}
       </Card>
 
-      {selectedCourse && (
-        <CourseDetailPanel
-          course={selectedCourse}
-          onBack={() => setSelectedId(null)}
-          onEdit={() => {
-            setEditingCourse(selectedCourse);
-            setFormOpen(true);
-          }}
-          onDelete={() => setDeletingCourse(selectedCourse)}
-        />
-      )}
+      <DetailDialog open={!!selectedCourse} onClose={() => setSelectedId(null)} title={selectedCourse?.name ?? ""}>
+        {selectedCourse && (
+          <CourseDetailPanel
+            course={selectedCourse}
+            onEdit={() => {
+              setEditingCourse(selectedCourse);
+              setFormOpen(true);
+            }}
+            onDelete={() => setDeletingCourse(selectedCourse)}
+          />
+        )}
+      </DetailDialog>
 
       <CourseFormDialog open={formOpen} onOpenChange={setFormOpen} course={editingCourse} />
 

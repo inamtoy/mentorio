@@ -32,3 +32,23 @@ def phone_key(raw: str | None) -> str | None:
     if len(digits) < _SIGNIFICANT_DIGITS:
         return None
     return digits[-_SIGNIFICANT_DIGITS:]
+
+
+UZ_PHONE_ERROR = (
+    "Enter an Uzbek phone number: +998 followed by 9 digits (e.g. +998 90 123 45 67)."
+)
+
+
+def normalize_uz_phone(raw: str) -> str:
+    """Canonical "+998XXXXXXXXX" for anything that is clearly an Uzbek
+    number — "+998 90 123-45-67", "998901234567" or the bare 9-digit
+    "901234567" — and ValueError for the rest. Every center is in
+    Uzbekistan for now (see settings.TIME_ZONE); per-org country rules would
+    build on Organization.timezone/country when that changes.
+    """
+    digits = digits_only(raw)
+    if len(digits) == _SIGNIFICANT_DIGITS:
+        digits = "998" + digits
+    if len(digits) != 12 or not digits.startswith("998"):
+        raise ValueError(UZ_PHONE_ERROR)
+    return "+" + digits

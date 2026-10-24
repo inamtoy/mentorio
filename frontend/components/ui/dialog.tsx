@@ -15,7 +15,7 @@ interface DialogContentProps {
 export function DialogContent({ children, className }: DialogContentProps) {
   return (
     <RadixDialog.Portal>
-      <RadixDialog.Overlay className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm" />
+      <RadixDialog.Overlay className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-md" />
       <RadixDialog.Content
         className={cn(
           "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white shadow-lg border border-slate-100 max-h-[85vh] overflow-y-auto focus:outline-none",
@@ -28,6 +28,31 @@ export function DialogContent({ children, className }: DialogContentProps) {
         {children}
       </RadixDialog.Content>
     </RadixDialog.Portal>
+  );
+}
+
+/** A record's detail view (student, teacher, group) opened over its list —
+ * the list stays where it was underneath instead of the detail being
+ * appended below it, which meant scrolling past every row to reach it. The
+ * panel renders its own visible header, so the title is screen-reader only. */
+export function DetailDialog({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <RadixDialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="max-w-5xl w-[calc(100%-2rem)]">
+        <RadixDialog.Title className="sr-only">{title}</RadixDialog.Title>
+        {children}
+      </DialogContent>
+    </RadixDialog.Root>
   );
 }
 

@@ -1,10 +1,16 @@
 from rest_framework import serializers
 
+from auth_custom.services.phone import normalize_uz_phone
+from common.serializers import OptionalSequentialCodeMixin
 from notifications.services.telegram_links import parent_link_is_current
 from student.models import EmergencyContact, StudentDocument, StudentParent, StudentProfile
 
 
-class StudentProfileSerializer(serializers.ModelSerializer):
+class StudentProfileSerializer(OptionalSequentialCodeMixin, serializers.ModelSerializer):
+    code_field = "student_code"
+    code_prefix = "STU-"
+    code_label = "student code"
+
     user_full_name = serializers.CharField(source="user.get_full_name", read_only=True)
     user_login_id = serializers.CharField(source="user.login_id", read_only=True)
     user_phone = serializers.CharField(source="user.phone", read_only=True)
@@ -20,6 +26,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             "notes", "metadata", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+        extra_kwargs = {"student_code": {"required": False, "allow_blank": True}}
 
 
 class StudentParentSerializer(serializers.ModelSerializer):
@@ -35,6 +42,17 @@ class StudentParentSerializer(serializers.ModelSerializer):
             "telegram_connected", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate_phone(self, value):
+        # Optional here (a parent may be reachable by email only), but a
+        # number that is given must be a real one — the Telegram bot links
+        # parents by matching it.
+        if not value:
+            return value
+        try:
+            return normalize_uz_phone(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
 
     def get_telegram_connected(self, obj) -> bool:
         link = getattr(obj, "telegram_link", None)

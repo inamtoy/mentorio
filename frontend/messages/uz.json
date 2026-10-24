@@ -629,7 +629,9 @@
     "statusPresent": "Kelgan",
     "statusAbsent": "Kelmagan",
     "statusLate": "Kechikkan",
-    "statusExcused": "Sababli"
+    "statusExcused": "Sababli",
+    "readOnlyPastDayHint": "O'tgan kunlarni faqat ko'rish mumkin — davomat faqat bugungi kun uchun belgilanadi. O'tgan kunni tuzatish uchun markaz administratoriga murojaat qiling.",
+    "goToTodayButton": "Bugunga o'tish"
   },
   "TeacherExams": {
     "pageTitle": "Imtihonlar",
@@ -947,7 +949,7 @@
     "fieldFirstName": "Ism",
     "fieldLastName": "Familiya",
     "fieldPhone": "Telefon",
-    "fieldStudentCode": "O'quvchi kodi",
+    "fieldStudentCode": "O'quvchi kodi (ixtiyoriy — bo'sh qolsa avtomatik)",
     "fieldLoginId": "Login ID",
     "fieldParentName": "Ota-ona ismi",
     "fieldParentPhone": "Ota-ona telefoni",
@@ -1028,7 +1030,7 @@
     "fieldFirstName": "Ism",
     "fieldLastName": "Familiya",
     "fieldPhone": "Telefon",
-    "fieldTeacherCode": "O'qituvchi kodi",
+    "fieldTeacherCode": "O'qituvchi kodi (ixtiyoriy — bo'sh qolsa avtomatik)",
     "fieldLoginId": "Login ID",
     "fieldSpecialization": "Mutaxassislik (masalan, Matematika)",
     "fieldMonthlySalary": "Oylik maosh",

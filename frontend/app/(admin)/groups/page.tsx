@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { SearchInput, Select } from "@/components/ui/input";
 import { StatCard } from "@/components/ui/stat-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DetailDialog } from "@/components/ui/dialog";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { toast } from "@/lib/store/toast-store";
 import { useDeleteGroupMutation, useGroupsPageQuery, useGroupsQuery } from "@/lib/queries/groups";
@@ -220,14 +221,15 @@ export default function GroupsPage() {
         )}
       </Card>
 
-      {selectedGroup && (
-        <GroupDetailPanel
-          group={selectedGroup}
-          onBack={() => setSelectedId(null)}
-          onEdit={() => openEdit(selectedGroup)}
-          onDelete={() => setDeletingGroup(selectedGroup)}
-        />
-      )}
+      <DetailDialog open={!!selectedGroup} onClose={() => setSelectedId(null)} title={selectedGroup?.name ?? ""}>
+        {selectedGroup && (
+          <GroupDetailPanel
+            group={selectedGroup}
+            onEdit={() => openEdit(selectedGroup)}
+            onDelete={() => setDeletingGroup(selectedGroup)}
+          />
+        )}
+      </DetailDialog>
 
       <GroupFormDialog open={formOpen} onOpenChange={setFormOpen} group={editingGroup} />
 

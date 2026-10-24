@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, KeyRound, Phone, Briefcase, DollarSign, Pencil, Trash2 } from "lucide-react";
+import { KeyRound, Phone, Briefcase, DollarSign, Pencil, Trash2 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
@@ -19,12 +18,11 @@ import { useFormatCurrency } from "@/i18n/format-currency";
 
 interface TeacherDetailPanelProps {
   teacher: TeacherProfile;
-  onBack: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export function TeacherDetailPanel({ teacher, onBack, onEdit, onDelete }: TeacherDetailPanelProps) {
+export function TeacherDetailPanel({ teacher, onEdit, onDelete }: TeacherDetailPanelProps) {
   const t = useTranslations("AdminTeachers");
   const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
@@ -47,12 +45,8 @@ export function TeacherDetailPanel({ teacher, onBack, onEdit, onDelete }: Teache
   const [salaryDialogOpen, setSalaryDialogOpen] = useState(false);
 
   return (
-    <Card noPadding>
-      <div className="flex items-center gap-4 px-6 py-5 border-b border-slate-100">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ChevronLeft className="h-4 w-4" />
-          {t("backButton")}
-        </Button>
+    <div>
+      <div className="flex flex-wrap items-center gap-4 px-6 py-5 pr-12 border-b border-slate-100">
         <div className="flex items-center gap-3">
           <Avatar name={teacher.user_full_name} size="md" />
           <div>
@@ -136,7 +130,7 @@ export function TeacherDetailPanel({ teacher, onBack, onEdit, onDelete }: Teache
       </div>
 
       <TeacherSalaryDialog open={salaryDialogOpen} onOpenChange={setSalaryDialogOpen} teacher={teacher} />
-    </Card>
+    </div>
   );
 }
 

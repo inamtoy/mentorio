@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from auth_custom.services.phone import normalize_uz_phone
 from billing.serializers import SubscriptionPlanSummarySerializer
 from foundation.models import ApiKey, AuditLog, Branch, Organization, Permission, PlatformBackup, Role, User
 from foundation.password_policy import validate_password_policy
@@ -173,6 +174,12 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id", "login_id", "member_code", "must_change_password", "last_login", "created_at", "updated_at",
         ]
+
+    def validate_phone(self, value):
+        try:
+            return normalize_uz_phone(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
 
     def get_roles(self, obj):
         return [

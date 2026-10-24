@@ -140,16 +140,19 @@ function SuperAdminSidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: S
       >
       {/* Logo */}
       <div className="flex items-center h-16 px-4 border-b border-border gap-3 flex-shrink-0">
-        {/* eslint-disable-next-line @next/next/no-img-element -- static local asset, matches the plain <img> convention already used for branding.logoUrl on the login page */}
-        <img src="/logo.png" alt="Mentorio" className="flex-shrink-0 h-12 w-12 object-contain rounded-xl" />
-        <div className={cn("flex items-center gap-2 min-w-0", collapsed && "lg:hidden")}>
-          <span className="text-xl font-bold text-card-foreground tracking-tight">
-            Mentorio
-          </span>
-          <span className="text-[11px] font-semibold bg-violet-100 text-violet-700 rounded-md px-1.5 py-0.5 leading-none flex-shrink-0">
-            {t("superAdminBadge")}
-          </span>
-        </div>
+        {/* Logo links back to this portal's dashboard */}
+        <Link href="/super-admin" onClick={onMobileClose} className="flex items-center gap-3 min-w-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          {/* eslint-disable-next-line @next/next/no-img-element -- static local asset, matches the plain <img> convention already used for branding.logoUrl on the login page */}
+          <img src="/logo.png" alt="Mentorio" className="flex-shrink-0 h-12 w-12 object-contain rounded-xl" />
+          <div className={cn("flex items-center gap-2 min-w-0", collapsed && "lg:hidden")}>
+            <span className="text-xl font-bold text-card-foreground tracking-tight">
+              Mentorio
+            </span>
+            <span className="text-[11px] font-semibold bg-violet-100 text-violet-700 rounded-md px-1.5 py-0.5 leading-none flex-shrink-0">
+              {t("superAdminBadge")}
+            </span>
+          </div>
+        </Link>
         <button
           onClick={onToggle}
           className={cn(

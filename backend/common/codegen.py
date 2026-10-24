@@ -6,6 +6,10 @@ name rather than a global counter, so it needs an app-side retry loop
 instead of a DB sequence.
 """
 
+import re
+
+from django.db.models import BigIntegerField, Max
+from django.db.models.functions import Cast, Substr
 from django.utils.text import slugify
 
 
@@ -25,3 +29,19 @@ def generate_unique_code(model_cls, organization, name: str, *, code_field: str 
         suffix += 1
         candidate = f"{base}-{suffix}"[:max_length]
     return candidate
+
+
+def generate_sequential_code(model_cls, organization, *, prefix: str, code_field: str = "code", width: int = 4) -> str:
+    """The next "<prefix><n>" in the org (e.g. "STU-0001"), for a code the
+    form makes optional. Only codes of exactly that shape count toward n, so
+    hand-typed codes ("EDU", "STU-TEST-001") can't break the sequence; the
+    max is numeric, not lexicographic, so "STU-10000" follows "STU-9999".
+    Soft-deleted rows count too (same unique-constraint gotcha as above).
+    Two simultaneous creates can still collide on the unique constraint —
+    acceptable for a hand-driven admin form, unlike invoice numbering.
+    """
+    manager = model_cls.all_objects if hasattr(model_cls, "all_objects") else model_cls.objects
+    last = manager.filter(
+        organization=organization, **{f"{code_field}__regex": rf"^{re.escape(prefix)}[0-9]+$"}
+    ).aggregate(n=Max(Cast(Substr(code_field, len(prefix) + 1), BigIntegerField())))["n"]
+    return f"{prefix}{(last or 0) + 1:0{width}d}"

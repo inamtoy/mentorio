@@ -1,5 +1,6 @@
+from django.utils import timezone
 from rest_framework import viewsets
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from attendance.filters import AttendanceFilter
 from attendance.models import Attendance
@@ -54,8 +55,29 @@ class AttendanceViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
         if teacher_profile is not None and group.teacher_id != teacher_profile.id:
             raise PermissionDenied("You can only mark attendance for groups you teach.")
 
+    def _check_date_allowed(self, date):
+        """A teacher marks attendance for the lesson they're giving today —
+        back-dating (or re-editing yesterday's sheet) would let a missed
+        roll-call be filled in from memory later, which defeats the record.
+        Center admins (no linked teacher_profile) can still correct any past
+        day; the future is blocked for everyone in AttendanceSerializer.
+        "Today" is the Tashkent calendar day (settings.TIME_ZONE).
+        """
+        teacher_profile = getattr(self.request.user, "teacher_profile", None)
+        today = timezone.localdate()
+        if teacher_profile is not None and date != today:
+            raise ValidationError(
+                {
+                    "date": (
+                        f"Teachers can only mark attendance for today ({today.isoformat()}). "
+                        "Ask a center admin to correct an earlier day."
+                    )
+                }
+            )
+
     def perform_create(self, serializer):
         self._check_owns_group(serializer.validated_data["group"])
+        self._check_date_allowed(serializer.validated_data["date"])
         attendance = serializer.save()
         if attendance.status == "absent":
             notification_events.student_absent(attendance)
@@ -63,6 +85,10 @@ class AttendanceViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     def perform_update(self, serializer):
         group = serializer.validated_data.get("group", serializer.instance.group)
         self._check_owns_group(group)
+        # Both the record's current day and any day it's being moved to —
+        # otherwise a teacher could PATCH an old record's status unchecked.
+        self._check_date_allowed(serializer.instance.date)
+        self._check_date_allowed(serializer.validated_data.get("date", serializer.instance.date))
         was_absent = serializer.instance.status == "absent"
         attendance = serializer.save()
         # Only the transition into "absent" notifies; editing notes on an

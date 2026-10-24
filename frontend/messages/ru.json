@@ -629,7 +629,9 @@
     "statusPresent": "Присутствовал",
     "statusAbsent": "Отсутствовал",
     "statusLate": "Опоздал",
-    "statusExcused": "По уважительной причине"
+    "statusExcused": "По уважительной причине",
+    "readOnlyPastDayHint": "Прошлые дни доступны только для просмотра — отмечать посещаемость можно только за сегодня. Чтобы исправить прошлый день, обратитесь к администратору центра.",
+    "goToTodayButton": "Перейти к сегодня"
   },
   "TeacherExams": {
     "pageTitle": "Экзамены",
@@ -947,7 +949,7 @@
     "fieldFirstName": "Имя",
     "fieldLastName": "Фамилия",
     "fieldPhone": "Телефон",
-    "fieldStudentCode": "Код студента",
+    "fieldStudentCode": "Код студента (необязательно — присвоится автоматически)",
     "fieldLoginId": "Логин",
     "fieldParentName": "Имя родителя",
     "fieldParentPhone": "Телефон родителя",
@@ -1028,7 +1030,7 @@
     "fieldFirstName": "Имя",
     "fieldLastName": "Фамилия",
     "fieldPhone": "Телефон",
-    "fieldTeacherCode": "Код преподавателя",
+    "fieldTeacherCode": "Код преподавателя (необязательно — присвоится автоматически)",
     "fieldLoginId": "Логин",
     "fieldSpecialization": "Специализация (например, Математика)",
     "fieldMonthlySalary": "Оклад в месяц",

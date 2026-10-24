@@ -629,7 +629,9 @@
     "statusPresent": "Present",
     "statusAbsent": "Absent",
     "statusLate": "Late",
-    "statusExcused": "Excused"
+    "statusExcused": "Excused",
+    "readOnlyPastDayHint": "You can view earlier days, but attendance can only be marked for today. To correct a past day, contact your center admin.",
+    "goToTodayButton": "Go to today"
   },
   "TeacherExams": {
     "pageTitle": "Exams",
@@ -947,7 +949,7 @@
     "fieldFirstName": "First name",
     "fieldLastName": "Last name",
     "fieldPhone": "Phone",
-    "fieldStudentCode": "Student code",
+    "fieldStudentCode": "Student code (optional — auto if blank)",
     "fieldLoginId": "Login ID",
     "fieldParentName": "Parent name",
     "fieldParentPhone": "Parent phone",
@@ -1028,7 +1030,7 @@
     "fieldFirstName": "First name",
     "fieldLastName": "Last name",
     "fieldPhone": "Phone",
-    "fieldTeacherCode": "Teacher code",
+    "fieldTeacherCode": "Teacher code (optional — auto if blank)",
     "fieldLoginId": "Login ID",
     "fieldSpecialization": "Specialization (e.g. Mathematics)",
     "fieldMonthlySalary": "Monthly salary",

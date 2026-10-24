@@ -1,9 +1,14 @@
 from rest_framework import serializers
 
+from common.serializers import OptionalSequentialCodeMixin
 from teacher.models import TeacherAvailability, TeacherDocument, TeacherProfile, TeacherSalary, TeacherSpecialization
 
 
-class TeacherProfileSerializer(serializers.ModelSerializer):
+class TeacherProfileSerializer(OptionalSequentialCodeMixin, serializers.ModelSerializer):
+    code_field = "teacher_code"
+    code_prefix = "TCH-"
+    code_label = "teacher code"
+
     user_full_name = serializers.CharField(source="user.get_full_name", read_only=True)
     user_login_id = serializers.CharField(source="user.login_id", read_only=True)
     user_phone = serializers.CharField(source="user.phone", read_only=True)
@@ -18,6 +23,7 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+        extra_kwargs = {"teacher_code": {"required": False, "allow_blank": True}}
 
 
 class TeacherSalarySerializer(serializers.ModelSerializer):

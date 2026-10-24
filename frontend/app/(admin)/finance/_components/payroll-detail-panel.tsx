@@ -1,8 +1,7 @@
 "use client";
 
-import { ChevronLeft, DollarSign, Calendar, Trash2, CheckCircle2, XCircle, Wallet } from "lucide-react";
+import { DollarSign, Calendar, Trash2, CheckCircle2, XCircle, Wallet } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/badge";
 import { toast } from "@/lib/store/toast-store";
@@ -20,11 +19,10 @@ import { useFormatCurrency } from "@/i18n/format-currency";
 
 interface PayrollDetailPanelProps {
   payroll: Payroll;
-  onBack: () => void;
   onDelete: () => void;
 }
 
-export function PayrollDetailPanel({ payroll, onBack, onDelete }: PayrollDetailPanelProps) {
+export function PayrollDetailPanel({ payroll, onDelete }: PayrollDetailPanelProps) {
   const t = useTranslations("AdminFinance");
   const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
@@ -63,12 +61,8 @@ export function PayrollDetailPanel({ payroll, onBack, onDelete }: PayrollDetailP
   }
 
   return (
-    <Card noPadding>
-      <div className="flex items-center gap-4 px-6 py-5 border-b border-slate-100">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ChevronLeft className="h-4 w-4" />
-          {t("backButton")}
-        </Button>
+    <div>
+      <div className="flex flex-wrap items-center gap-4 px-6 py-5 pr-12 border-b border-slate-100">
         <div>
           <p className="font-semibold text-slate-900">{payroll.teacher_name}</p>
           <p className="text-xs text-slate-500">
@@ -126,7 +120,7 @@ export function PayrollDetailPanel({ payroll, onBack, onDelete }: PayrollDetailP
           </div>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 

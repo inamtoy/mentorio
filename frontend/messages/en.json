@@ -949,7 +949,7 @@
     "fieldFirstName": "First name",
     "fieldLastName": "Last name",
     "fieldPhone": "Phone",
-    "fieldStudentCode": "Student code",
+    "fieldStudentCode": "Student code (optional — auto if blank)",
     "fieldLoginId": "Login ID",
     "fieldParentName": "Parent name",
     "fieldParentPhone": "Parent phone",

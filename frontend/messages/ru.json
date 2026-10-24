@@ -949,7 +949,7 @@
     "fieldFirstName": "Имя",
     "fieldLastName": "Фамилия",
     "fieldPhone": "Телефон",
-    "fieldStudentCode": "Код студента",
+    "fieldStudentCode": "Код студента (необязательно — присвоится автоматически)",
     "fieldLoginId": "Логин",
     "fieldParentName": "Имя родителя",
     "fieldParentPhone": "Телефон родителя",

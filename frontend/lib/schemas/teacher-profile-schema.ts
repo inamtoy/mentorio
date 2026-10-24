@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeUzPhone, UZ_PHONE_ERROR } from "@/lib/phone";
 
 // Real-API form schema for the Admin Teachers page. lib/schemas/teacher-schema.ts
 // (the mock-era counterpart this used to be "kept separate" from) was
@@ -9,7 +10,7 @@ import { z } from "zod";
 export const teacherProfileSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required"),
   lastName: z.string().trim().min(1, "Last name is required"),
-  phone: z.string().trim().min(7, "Phone number is required"),
+  phone: z.string().trim().refine((v) => normalizeUzPhone(v) !== null, UZ_PHONE_ERROR),
   gender: z.enum(["male", "female", "other"]),
   teacherCode: z.string().trim().min(1, "Teacher code is required"),
   status: z.enum(["active", "inactive", "on_leave", "terminated", "pending"]),

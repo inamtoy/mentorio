@@ -949,7 +949,7 @@
     "fieldFirstName": "Ism",
     "fieldLastName": "Familiya",
     "fieldPhone": "Telefon",
-    "fieldStudentCode": "O'quvchi kodi",
+    "fieldStudentCode": "O'quvchi kodi (ixtiyoriy — bo'sh qolsa avtomatik)",
     "fieldLoginId": "Login ID",
     "fieldParentName": "Ota-ona ismi",
     "fieldParentPhone": "Ota-ona telefoni",

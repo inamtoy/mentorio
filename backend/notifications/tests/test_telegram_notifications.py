@@ -239,7 +239,7 @@ def test_stop_switches_everything_off_and_sharing_again_switches_it_back_on(sent
 def _mark(client, group, student, status, attendance_id=None):
     payload = {
         "organization": str(group.organization_id), "group": str(group.id), "student_profile": str(student.id),
-        "date": "2026-10-09", "status": status,
+        "date": timezone.localdate().isoformat(), "status": status,
     }
     if attendance_id is None:
         return client.post("/api/v1/attendance/", payload, format="json")

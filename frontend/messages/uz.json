@@ -629,7 +629,9 @@
     "statusPresent": "Kelgan",
     "statusAbsent": "Kelmagan",
     "statusLate": "Kechikkan",
-    "statusExcused": "Sababli"
+    "statusExcused": "Sababli",
+    "readOnlyPastDayHint": "O'tgan kunlarni faqat ko'rish mumkin — davomat faqat bugungi kun uchun belgilanadi. O'tgan kunni tuzatish uchun markaz administratoriga murojaat qiling.",
+    "goToTodayButton": "Bugunga o'tish"
   },
   "TeacherExams": {
     "pageTitle": "Imtihonlar",

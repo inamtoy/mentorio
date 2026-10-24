@@ -629,7 +629,9 @@
     "statusPresent": "Present",
     "statusAbsent": "Absent",
     "statusLate": "Late",
-    "statusExcused": "Excused"
+    "statusExcused": "Excused",
+    "readOnlyPastDayHint": "You can view earlier days, but attendance can only be marked for today. To correct a past day, contact your center admin.",
+    "goToTodayButton": "Go to today"
   },
   "TeacherExams": {
     "pageTitle": "Exams",

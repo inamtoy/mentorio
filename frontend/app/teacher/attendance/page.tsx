@@ -24,9 +24,11 @@ import { isLocale, DEFAULT_LOCALE } from '@/i18n/locales';
 
 type MarkableStatus = 'present' | 'absent' | 'late' | 'excused';
 
+// The Tashkent calendar day, matching the backend's "today" (settings.TIME_ZONE)
+// rather than the browser's — a teacher may only mark this day, and the API
+// enforces it (AttendanceViewSet._check_date_allowed). en-CA formats as YYYY-MM-DD.
 function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(new Date());
 }
 
 export default function TeacherAttendancePage() {
@@ -62,7 +64,10 @@ export default function TeacherAttendancePage() {
 
   const { data: groups } = useGroupsQuery({ organizationId: organizationId ?? '', teacher: myProfile?.id });
   const [activeGroupId, setActiveGroupId] = useState<string>('');
-  const [date, setDate] = useState(todayIso());
+  const today = todayIso();
+  const [date, setDate] = useState(today);
+  // Earlier days stay viewable as history, but only today can be marked.
+  const isEditable = date === today;
 
   const activeGroup = (groups ?? []).find((g) => g.id === activeGroupId) ?? groups?.[0];
   const groupId = activeGroup?.id;
@@ -89,10 +94,13 @@ export default function TeacherAttendancePage() {
   const [draft, setDraft] = useState<Record<string, { status: MarkableStatus; notes: string }>>({});
   const [saving, setSaving] = useState(false);
 
-  function statusFor(studentProfileId: string): MarkableStatus {
+  function statusFor(studentProfileId: string): MarkableStatus | null {
     if (draft[studentProfileId]) return draft[studentProfileId].status;
     const existing = sessionRecords?.find((r) => r.student_profile === studentProfileId);
-    return (existing?.status as MarkableStatus) ?? 'present';
+    if (existing) return existing.status as MarkableStatus;
+    // Defaulting to "present" only makes sense for a sheet being filled in;
+    // on a read-only past day it would claim attendance nobody recorded.
+    return isEditable ? 'present' : null;
   }
 
   function notesFor(studentProfileId: string): string {
@@ -105,16 +113,16 @@ export default function TeacherAttendancePage() {
   }
 
   function setNotes(studentProfileId: string, notes: string) {
-    setDraft((d) => ({ ...d, [studentProfileId]: { status: d[studentProfileId]?.status ?? statusFor(studentProfileId), notes } }));
+    setDraft((d) => ({ ...d, [studentProfileId]: { status: d[studentProfileId]?.status ?? statusFor(studentProfileId) ?? 'present', notes } }));
   }
 
   async function handleSave() {
-    if (!organizationId || !groupId) return;
+    if (!organizationId || !groupId || !isEditable) return;
     setSaving(true);
     try {
       await Promise.all(
         activeMembers.map((m) => {
-          const status = statusFor(m.student_profile) as AttendanceStatus;
+          const status = (statusFor(m.student_profile) ?? 'present') as AttendanceStatus;
           const notes = notesFor(m.student_profile);
           const existing = sessionRecords?.find((r) => r.student_profile === m.student_profile);
           if (existing) {
@@ -138,7 +146,7 @@ export default function TeacherAttendancePage() {
     const counts = { present: 0, absent: 0, late: 0, excused: 0 };
     activeMembers.forEach((m) => {
       const st = statusFor(m.student_profile);
-      if (st in counts) counts[st as keyof typeof counts]++;
+      if (st) counts[st]++;
     });
     return counts;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -171,7 +179,10 @@ export default function TeacherAttendancePage() {
             <Input
               type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => {
+                setDate(e.target.value);
+                setDraft({});
+              }}
               className="w-40"
             />
           </div>
@@ -201,7 +212,7 @@ export default function TeacherAttendancePage() {
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={saving || activeMembers.length === 0}
+                    disabled={saving || !isEditable || activeMembers.length === 0}
                     className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                   >
                     <Save className="h-4 w-4" />
@@ -210,6 +221,21 @@ export default function TeacherAttendancePage() {
                 </div>
               }
             >
+              {!isEditable && (
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-100 bg-amber-50 px-4 py-2.5">
+                  <p className="text-xs text-amber-700">{t('readOnlyPastDayHint')}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDate(today);
+                      setDraft({});
+                    }}
+                    className="text-xs font-medium text-amber-800 underline underline-offset-2 hover:text-amber-900"
+                  >
+                    {t('goToTodayButton')}
+                  </button>
+                </div>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[560px]">
                   <thead>
@@ -244,8 +270,9 @@ export default function TeacherAttendancePage() {
                                     <button
                                       key={cfg.value}
                                       type="button"
+                                      disabled={!isEditable}
                                       onClick={() => setStatus(m.student_profile, cfg.value)}
-                                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
                                         isActive
                                           ? `${cfg.activeBg} ${cfg.activeText} ${cfg.activeBorder}`
                                           : `${cfg.inactiveBg} ${cfg.inactiveText} border-slate-200 hover:border-current`
@@ -262,8 +289,9 @@ export default function TeacherAttendancePage() {
                                 type="text"
                                 value={currentNote}
                                 onChange={(e) => setNotes(m.student_profile, e.target.value)}
-                                placeholder={t('notePlaceholder')}
-                                className="h-8 w-full max-w-[200px] rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all"
+                                disabled={!isEditable}
+                                placeholder={isEditable ? t('notePlaceholder') : ''}
+                                className="h-8 w-full max-w-[200px] rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-700 placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all disabled:bg-slate-50 disabled:cursor-not-allowed"
                               />
                             </td>
                           </tr>

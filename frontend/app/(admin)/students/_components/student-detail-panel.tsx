@@ -1,8 +1,7 @@
 "use client";
 
-import { ChevronLeft, KeyRound, Phone, Send, Users, DollarSign, Pencil, Trash2 } from "lucide-react";
+import { KeyRound, Phone, Send, Users, DollarSign, Pencil, Trash2 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/ui/badge";
@@ -27,12 +26,11 @@ const ATTENDANCE_COLORS: Record<string, string> = {
 
 interface StudentDetailPanelProps {
   student: StudentProfile;
-  onBack: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export function StudentDetailPanel({ student, onBack, onEdit, onDelete }: StudentDetailPanelProps) {
+export function StudentDetailPanel({ student, onEdit, onDelete }: StudentDetailPanelProps) {
   const t = useTranslations("AdminStudents");
   const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
@@ -66,12 +64,8 @@ export function StudentDetailPanel({ student, onBack, onEdit, onDelete }: Studen
   const balance = invoices.reduce((sum, inv) => sum + Number(inv.balance), 0);
 
   return (
-    <Card noPadding>
-      <div className="flex items-center gap-4 px-6 py-5 border-b border-slate-100">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ChevronLeft className="h-4 w-4" />
-          {t("backButton")}
-        </Button>
+    <div>
+      <div className="flex flex-wrap items-center gap-4 px-6 py-5 pr-12 border-b border-slate-100">
         <div className="flex items-center gap-3">
           <Avatar name={student.user_full_name} size="md" />
           <div>
@@ -185,7 +179,7 @@ export function StudentDetailPanel({ student, onBack, onEdit, onDelete }: Studen
           </div>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 

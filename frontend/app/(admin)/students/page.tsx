@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { SearchInput, Select } from "@/components/ui/input";
 import { StatCard } from "@/components/ui/stat-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DetailDialog } from "@/components/ui/dialog";
 import { toast } from "@/lib/store/toast-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useDeleteStudentMutation, useStudentsPageQuery, useStudentsQuery } from "@/lib/queries/students";
@@ -207,17 +208,18 @@ export default function StudentsPage() {
         )}
       </Card>
 
-      {selectedStudent && (
-        <StudentDetailPanel
-          student={selectedStudent}
-          onBack={() => setSelectedId(null)}
-          onEdit={() => {
-            setEditingStudent(selectedStudent);
-            setFormOpen(true);
-          }}
-          onDelete={() => setDeletingStudent(selectedStudent)}
-        />
-      )}
+      <DetailDialog open={!!selectedStudent} onClose={() => setSelectedId(null)} title={selectedStudent?.user_full_name ?? ""}>
+        {selectedStudent && (
+          <StudentDetailPanel
+            student={selectedStudent}
+            onEdit={() => {
+              setEditingStudent(selectedStudent);
+              setFormOpen(true);
+            }}
+            onDelete={() => setDeletingStudent(selectedStudent)}
+          />
+        )}
+      </DetailDialog>
 
       <StudentFormDialog open={formOpen} onOpenChange={setFormOpen} student={editingStudent} />
 

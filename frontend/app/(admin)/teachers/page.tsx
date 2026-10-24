@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { SearchInput, Select } from "@/components/ui/input";
 import { StatCard } from "@/components/ui/stat-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DetailDialog } from "@/components/ui/dialog";
 import { toast } from "@/lib/store/toast-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useDeleteTeacherMutation, useTeachersPageQuery, useTeachersQuery } from "@/lib/queries/teachers";
@@ -215,17 +216,18 @@ export default function TeachersPage() {
         )}
       </Card>
 
-      {selectedTeacher && (
-        <TeacherDetailPanel
-          teacher={selectedTeacher}
-          onBack={() => setSelectedId(null)}
-          onEdit={() => {
-            setEditingTeacher(selectedTeacher);
-            setFormOpen(true);
-          }}
-          onDelete={() => setDeletingTeacher(selectedTeacher)}
-        />
-      )}
+      <DetailDialog open={!!selectedTeacher} onClose={() => setSelectedId(null)} title={selectedTeacher?.user_full_name ?? ""}>
+        {selectedTeacher && (
+          <TeacherDetailPanel
+            teacher={selectedTeacher}
+            onEdit={() => {
+              setEditingTeacher(selectedTeacher);
+              setFormOpen(true);
+            }}
+            onDelete={() => setDeletingTeacher(selectedTeacher)}
+          />
+        )}
+      </DetailDialog>
 
       <TeacherFormDialog open={formOpen} onOpenChange={setFormOpen} teacher={editingTeacher} />
 

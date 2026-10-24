@@ -1,15 +1,15 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Users, ClipboardCheck, KeyRound, Phone, ChevronLeft, Loader2 } from 'lucide-react';
+import { Users, ClipboardCheck, Phone, Loader2 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { PageHeader } from '@/components/ui/page-header';
-import { Card } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { SearchInput, Select } from '@/components/ui/input';
+import { DetailDialog } from '@/components/ui/dialog';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { useMyTeacherProfileQuery } from '@/lib/queries/teachers';
 import { useGroupsQuery, useMyRosterQuery } from '@/lib/queries/groups';
@@ -73,10 +73,6 @@ function StudentCard({
       </div>
 
       <div className="w-full space-y-1">
-        <div className="flex items-center gap-2 text-xs text-slate-500 truncate">
-          <KeyRound className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
-          <span className="truncate">{member.student_login_id}</span>
-        </div>
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <Phone className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
           <span>{member.student_phone}</span>
@@ -96,12 +92,10 @@ function StudentDetailPanel({
   member,
   attendanceRate,
   records,
-  onBack,
 }: {
   member: GroupMember;
   attendanceRate: number;
   records: { id: string; date: string; status: string; notes: string | null }[];
-  onBack: () => void;
 }) {
   const t = useTranslations('TeacherStudents');
   const rawLocale = useLocale();
@@ -123,12 +117,8 @@ function StudentDetailPanel({
   const statusLabel = memberStatusLabel(member.status, t);
 
   return (
-    <Card className="mt-6" noPadding>
-      <div className="flex items-center gap-4 px-6 py-5 border-b border-slate-100">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ChevronLeft className="h-4 w-4" />
-          {t('backButton')}
-        </Button>
+    <div>
+      <div className="flex flex-wrap items-center gap-4 px-6 py-5 pr-12 border-b border-slate-100">
         <div className="flex items-center gap-3">
           <Avatar name={member.student_name} size="md" />
           <div>
@@ -145,7 +135,6 @@ function StudentDetailPanel({
         <div className="space-y-4">
           <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{t('personalInfoTitle')}</h4>
           <div className="space-y-3">
-            <InfoRow icon={<KeyRound className="h-4 w-4" />} label={t('loginIdLabel')} value={member.student_login_id} />
             <InfoRow icon={<Phone className="h-4 w-4" />} label={t('phoneLabel')} value={member.student_phone} />
             <InfoRow icon={<Users className="h-4 w-4" />} label={t('groupLabel')} value={member.group_name} />
             <InfoRow icon={<Users className="h-4 w-4" />} label={t('courseLabel')} value={member.course_name} />
@@ -179,7 +168,7 @@ function StudentDetailPanel({
           </div>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -238,7 +227,7 @@ export default function TeacherStudentsPage() {
   }
 
   const filtered = activeRoster.filter((m) => {
-    const matchSearch = !search || m.student_name.toLowerCase().includes(search.toLowerCase()) || m.student_login_id.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || m.student_name.toLowerCase().includes(search.toLowerCase());
     const matchGroup = !groupFilter || m.group === groupFilter;
     return matchSearch && matchGroup;
   });
@@ -252,9 +241,6 @@ export default function TeacherStudentsPage() {
 
   const handleViewProfile = (member: GroupMember) => {
     setSelectedId(member.student_profile);
-    setTimeout(() => {
-      document.getElementById('student-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
   };
 
   return (
@@ -292,8 +278,8 @@ export default function TeacherStudentsPage() {
         </div>
       )}
 
-      {selectedMember && (
-        <div id="student-detail">
+      <DetailDialog open={!!selectedMember} onClose={() => setSelectedId(null)} title={selectedMember?.student_name ?? ''}>
+        {selectedMember && (
           <StudentDetailPanel
             key={selectedMember.id}
             member={selectedMember}
@@ -301,10 +287,9 @@ export default function TeacherStudentsPage() {
             records={attendance
               .filter((r) => r.student_profile === selectedMember.student_profile)
               .map((r) => ({ id: r.id, date: r.date, status: r.status, notes: r.notes }))}
-            onBack={() => setSelectedId(null)}
           />
-        </div>
-      )}
+        )}
+      </DetailDialog>
     </div>
   );
 }

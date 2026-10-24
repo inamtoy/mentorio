@@ -19,7 +19,8 @@ import {
   useUpdateAssignmentMutation,
   useGradeSubmissionMutation,
 } from '@/lib/queries/homework';
-import type { Assignment, AssignmentStatus } from '@/lib/api/homework';
+import type { Assignment, AssignmentStatus, Attachment } from '@/lib/api/homework';
+import { AttachmentList, AttachmentUploader } from '@/components/homework/attachments';
 import { ApiError } from '@/lib/api/client';
 import { toast } from '@/lib/store/toast-store';
 import { formatLocalizedDate, INTL_DATE_LOCALES } from '@/i18n/date-locale';
@@ -93,6 +94,7 @@ interface FormValues {
   dueDate: string;
   maxScore: string;
   status: AssignmentStatus;
+  attachments: Attachment[];
 }
 
 const EMPTY_FORM: FormValues = {
@@ -102,6 +104,7 @@ const EMPTY_FORM: FormValues = {
   dueDate: '',
   maxScore: '100',
   status: 'active',
+  attachments: [],
 };
 
 // ─── Submissions Panel ─────────────────────────────────────────────────────────
@@ -289,6 +292,17 @@ function SubmissionsPanel({ assignment, organizationId, onClose }: SubmissionsPa
                     </button>
                   </td>
                 </tr>
+                {(sub.content || sub.attachments.length > 0) && (
+                  <tr className="border-b border-slate-50">
+                    <td colSpan={5} className="px-4 pb-3">
+                      <div className="rounded-xl bg-slate-50 p-3 space-y-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('studentWorkLabel')}</p>
+                        {sub.content && <p className="text-sm text-slate-700 whitespace-pre-wrap">{sub.content}</p>}
+                        <AttachmentList attachments={sub.attachments} />
+                      </div>
+                    </td>
+                  </tr>
+                )}
                 {gradeFor(sub.id).feedbackOpen && (
                   <tr className="border-b border-slate-50">
                     <td colSpan={5} className="px-4 pb-3">
@@ -377,6 +391,8 @@ function AssignmentCard({ assignment, onViewSubmissions, onEdit }: AssignmentCar
 
       {assignment.description && <p className="text-xs text-slate-500 line-clamp-2">{assignment.description}</p>}
 
+      <AttachmentList attachments={assignment.attachments} />
+
       <div className="flex items-center gap-2 flex-wrap">
         <span className="inline-flex items-center gap-1 text-xs font-medium bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full">
           <CheckCircle2 className="h-3 w-3" />
@@ -462,6 +478,7 @@ export default function AssignmentsPage() {
             dueDate: form.dueDate,
             maxScore: Number(form.maxScore) || 100,
             status: form.status,
+            attachmentIds: form.attachments.map((a) => a.id),
           },
         });
         toast.success(t('assignmentUpdatedToast'));
@@ -473,6 +490,7 @@ export default function AssignmentsPage() {
           description: form.description,
           dueDate: form.dueDate,
           maxScore: Number(form.maxScore) || 100,
+          attachmentIds: form.attachments.map((a) => a.id),
         });
         toast.success(t('assignmentCreatedToast'));
       }
@@ -495,6 +513,7 @@ export default function AssignmentsPage() {
       dueDate: assignment.due_date,
       maxScore: String(assignment.max_score),
       status: assignment.status,
+      attachments: assignment.attachments,
     });
     setActiveAssignment(null);
     setShowCreateForm(true);
@@ -597,6 +616,15 @@ export default function AssignmentsPage() {
                 onChange={(e) => handleFormChange('description', e.target.value)}
                 className="rounded-xl border border-slate-200 w-full p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 rows={3}
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">{t('fieldAttachments')}</label>
+              <AttachmentUploader
+                value={form.attachments}
+                onChange={(next) => handleFormChange('attachments', next)}
+                disabled={saving}
               />
             </div>
           </div>

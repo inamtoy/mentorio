@@ -61,14 +61,40 @@ function refreshAccessToken(): Promise<boolean> {
 }
 
 function doFetch(path: string, init: RequestInit): Promise<Response> {
+  // A FormData body (file upload) must let the browser set its own
+  // multipart Content-Type, boundary included.
+  const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
   return fetch(`${API_URL}${path}`, {
     ...init,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...init.headers,
     },
   });
+}
+
+/** Downloads a permission-checked file (e.g. a homework attachment) and
+ * hands it to the browser as a save. Goes through fetch rather than a plain
+ * link so an expired access token gets the same refresh-and-retry as every
+ * other API call. */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  let response = await doFetch(path, {});
+  if (response.status === 401 && (await refreshAccessToken())) {
+    response = await doFetch(path, {});
+  }
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as Envelope<unknown> | null;
+    throw new ApiError(body?.message ?? "Download failed.", response.status);
+  }
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 /**

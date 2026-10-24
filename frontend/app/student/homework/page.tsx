@@ -16,11 +16,14 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/ui/stat-card';
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { AttachmentList, AttachmentUploader } from '@/components/homework/attachments';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { useStudentsQuery } from '@/lib/queries/students';
 import { useStudentGroupMembershipsQuery } from '@/lib/queries/groups';
 import { useAssignmentsQuery, useSubmissionsQuery, useCreateSubmissionMutation } from '@/lib/queries/homework';
-import type { Assignment, Submission } from '@/lib/api/homework';
+import type { Assignment, Attachment, Submission } from '@/lib/api/homework';
 import { ApiError } from '@/lib/api/client';
 import { toast } from '@/lib/store/toast-store';
 import { formatLocalizedDate } from '@/i18n/date-locale';
@@ -63,13 +66,11 @@ function HomeworkCard({
   submission,
   status,
   onSubmit,
-  submitting,
 }: {
   assignment: Assignment;
   submission: Submission | undefined;
   status: HomeworkStatus;
-  onSubmit: (assignmentId: string) => void;
-  submitting: boolean;
+  onSubmit: (assignment: Assignment) => void;
 }) {
   const t = useTranslations('StudentHomework');
   const rawLocale = useLocale();
@@ -110,7 +111,17 @@ function HomeworkCard({
         <span>{t('maxPtsLabel', { points: assignment.max_score })}</span>
       </div>
 
-      {assignment.description && <p className="text-xs text-slate-500 line-clamp-2">{assignment.description}</p>}
+      {assignment.description && <p className="text-xs text-slate-500 whitespace-pre-wrap">{assignment.description}</p>}
+
+      <AttachmentList attachments={assignment.attachments} />
+
+      {submission && (submission.content || submission.attachments.length > 0) && (
+        <div className="rounded-xl border border-slate-100 p-3 space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('yourWorkLabel')}</p>
+          {submission.content && <p className="text-xs text-slate-600 whitespace-pre-wrap">{submission.content}</p>}
+          <AttachmentList attachments={submission.attachments} />
+        </div>
+      )}
 
       {status === 'graded' && submission && (
         <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-xl p-3">
@@ -138,8 +149,7 @@ function HomeworkCard({
           <Button
             variant={status === 'late' ? 'outline' : 'primary'}
             size="sm"
-            onClick={() => onSubmit(assignment.id)}
-            loading={submitting}
+            onClick={() => onSubmit(assignment)}
           >
             <Upload className="h-3.5 w-3.5" />
             {status === 'late' ? t('submitLate') : t('submitHomework')}
@@ -179,7 +189,10 @@ export default function StudentHomeworkPage() {
   const submissionByAssignment = new Map(submissions.map((s) => [s.assignment, s]));
 
   const createMutation = useCreateSubmissionMutation();
-  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  // The assignment whose submit dialog is open, and that dialog's draft.
+  const [submitFor, setSubmitFor] = useState<Assignment | null>(null);
+  const [answer, setAnswer] = useState('');
+  const [files, setFiles] = useState<Attachment[]>([]);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
 
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -206,16 +219,29 @@ export default function StudentHomeworkPage() {
         )
       : 0;
 
-  async function handleSubmit(assignmentId: string) {
-    if (!myProfile) return;
-    setSubmittingId(assignmentId);
+  function openSubmit(assignment: Assignment) {
+    setSubmitFor(assignment);
+    setAnswer('');
+    setFiles([]);
+  }
+
+  async function handleSubmit() {
+    if (!myProfile || !submitFor) return;
+    if (!answer.trim() && files.length === 0) {
+      toast.error(t('submitEmptyError'));
+      return;
+    }
     try {
-      await createMutation.mutateAsync({ organizationId, assignment: assignmentId });
+      await createMutation.mutateAsync({
+        organizationId,
+        assignment: submitFor.id,
+        content: answer.trim(),
+        attachmentIds: files.map((f) => f.id),
+      });
       toast.success(t('submitSuccessToast'));
+      setSubmitFor(null);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : tc('somethingWentWrong'));
-    } finally {
-      setSubmittingId(null);
     }
   }
 
@@ -288,12 +314,44 @@ export default function StudentHomeworkPage() {
               assignment={r.assignment}
               submission={r.submission}
               status={r.status}
-              onSubmit={handleSubmit}
-              submitting={submittingId === r.assignment.id}
+              onSubmit={openSubmit}
             />
           ))}
         </div>
       )}
+
+      <Dialog open={!!submitFor} onOpenChange={(open) => !open && !createMutation.isPending && setSubmitFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{submitFor?.title ?? ''}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">{t('answerLabel')}</label>
+              <Textarea
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                placeholder={t('answerPlaceholder')}
+                rows={4}
+                disabled={createMutation.isPending}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1.5">{t('filesLabel')}</label>
+              <AttachmentUploader value={files} onChange={setFiles} disabled={createMutation.isPending} />
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setSubmitFor(null)} disabled={createMutation.isPending}>
+              {tc('cancel')}
+            </Button>
+            <Button variant="primary" onClick={handleSubmit} loading={createMutation.isPending}>
+              <Upload className="h-3.5 w-3.5" />
+              {t('submitHomework')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

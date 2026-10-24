@@ -1,4 +1,31 @@
-import { apiFetch, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
+import { apiFetch, downloadFile, fetchAllPages, fetchPage, type Page } from "@/lib/api/client";
+
+/** A file on an assignment (teacher's materials) or a submission (student's
+ * work) — backend/homework/attachments.py. */
+export interface Attachment {
+  id: string;
+  original_name: string;
+  mime_type: string;
+  size_bytes: number;
+  created_at: string;
+}
+
+// Mirrors backend/foundation/file_storage.py — the API re-checks all of it.
+export const ATTACHMENT_EXTENSIONS = [".jpg", ".jpeg", ".png", ".heic", ".heif", ".pdf", ".doc", ".docx"];
+export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+export const ATTACHMENT_MAX_COUNT = 5;
+
+/** Step one of attaching: stores the file and returns it unlinked; its id
+ * then goes into `attachmentIds` on the assignment/submission save. */
+export async function uploadHomeworkAttachment(file: File): Promise<Attachment> {
+  const body = new FormData();
+  body.append("file", file);
+  return apiFetch<Attachment>("/api/v1/homework/attachments/", { method: "POST", body });
+}
+
+export async function downloadHomeworkAttachment(attachment: Attachment): Promise<void> {
+  return downloadFile(`/api/v1/homework/attachments/${attachment.id}/download/`, attachment.original_name);
+}
 
 export type AssignmentStatus = "active" | "closed";
 
@@ -16,6 +43,7 @@ export interface Assignment {
   total_students: number;
   submitted_count: number;
   graded_count: number;
+  attachments: Attachment[];
   created_at: string;
   updated_at: string | null;
 }
@@ -34,6 +62,7 @@ export interface Submission {
   graded_by: string | null;
   graded_at: string | null;
   is_late: boolean;
+  attachments: Attachment[];
   created_at: string;
 }
 
@@ -84,6 +113,8 @@ export interface AssignmentInput {
   dueDate: string;
   maxScore?: number;
   status?: AssignmentStatus;
+  /** The full set of attachments after the save — omitted leaves them as is. */
+  attachmentIds?: string[];
 }
 
 export async function createAssignment(input: AssignmentInput): Promise<Assignment> {
@@ -97,6 +128,7 @@ export async function createAssignment(input: AssignmentInput): Promise<Assignme
       due_date: input.dueDate,
       max_score: input.maxScore ?? 100,
       status: input.status ?? "active",
+      attachment_ids: input.attachmentIds ?? [],
     }),
   });
 }
@@ -108,6 +140,7 @@ export async function updateAssignment(id: string, input: Partial<AssignmentInpu
   if (input.dueDate !== undefined) body.due_date = input.dueDate;
   if (input.maxScore !== undefined) body.max_score = input.maxScore;
   if (input.status !== undefined) body.status = input.status;
+  if (input.attachmentIds !== undefined) body.attachment_ids = input.attachmentIds;
 
   return apiFetch<Assignment>(`/api/v1/homework/assignments/${id}/`, {
     method: "PATCH",
@@ -143,6 +176,7 @@ export interface SubmissionInput {
   organizationId: string;
   assignment: string;
   content?: string;
+  attachmentIds?: string[];
 }
 
 export async function createSubmission(input: SubmissionInput): Promise<Submission> {
@@ -152,6 +186,7 @@ export async function createSubmission(input: SubmissionInput): Promise<Submissi
       organization: input.organizationId,
       assignment: input.assignment,
       content: input.content || null,
+      attachment_ids: input.attachmentIds ?? [],
     }),
   });
 }

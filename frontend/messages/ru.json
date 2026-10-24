@@ -1030,7 +1030,7 @@
     "fieldFirstName": "Имя",
     "fieldLastName": "Фамилия",
     "fieldPhone": "Телефон",
-    "fieldTeacherCode": "Код преподавателя",
+    "fieldTeacherCode": "Код преподавателя (необязательно — присвоится автоматически)",
     "fieldLoginId": "Логин",
     "fieldSpecialization": "Специализация (например, Математика)",
     "fieldMonthlySalary": "Оклад в месяц",

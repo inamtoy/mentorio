@@ -1,4 +1,4 @@
-"""Server-assigned student codes (StudentProfileSerializer.create, via
+"""Server-assigned student/teacher codes (common.serializers.OptionalSequentialCodeMixin, via
 common.codegen.generate_sequential_code) and Uzbek phone validation
 (auth_custom.services.phone.normalize_uz_phone) on the user and parent
 endpoints the Admin student form writes to.
@@ -141,3 +141,28 @@ def test_blank_student_code_on_update_keeps_the_current_code():
 
     assert response.status_code == 200
     assert response.json()["data"]["student_code"] == "STU-0042"
+
+
+def test_blank_teacher_code_gets_the_next_sequential_code():
+    # Same OptionalSequentialCodeMixin as students, with the TCH- prefix.
+    from teacher.models import TeacherProfile
+
+    org = _make_org()
+    client = _admin_client(org, "+998940000012")
+    TeacherProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=_plain_user(org, "+998940000013"), teacher_code="TCH-TEST-001")
+
+    response = client.post(
+        "/api/v1/teachers/",
+        {"organization": str(org.id), "user": str(_plain_user(org, "+998940000014").id), "teacher_code": "", "hire_date": "2026-10-01"},
+        format="json",
+    )
+    duplicate = client.post(
+        "/api/v1/teachers/",
+        {"organization": str(org.id), "user": str(_plain_user(org, "+998940000015").id), "teacher_code": "TCH-TEST-001", "hire_date": "2026-10-01"},
+        format="json",
+    )
+
+    assert response.status_code == 201, response.json()
+    assert response.json()["data"]["teacher_code"] == "TCH-0001"
+    assert duplicate.status_code == 400
+    assert "teacher_code" in duplicate.json()["data"]

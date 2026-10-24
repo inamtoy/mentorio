@@ -12,7 +12,8 @@ export const teacherProfileSchema = z.object({
   lastName: z.string().trim().min(1, "Last name is required"),
   phone: z.string().trim().refine((v) => normalizeUzPhone(v) !== null, UZ_PHONE_ERROR),
   gender: z.enum(["male", "female", "other"]),
-  teacherCode: z.string().trim().min(1, "Teacher code is required"),
+  // Optional — left blank, the API assigns the next TCH-#### code.
+  teacherCode: z.string().trim(),
   status: z.enum(["active", "inactive", "on_leave", "terminated", "pending"]),
   employmentType: z.enum(["full_time", "part_time", "contract", "freelance", "intern"]),
   specialization: z.string().trim().min(1, "Specialization is required"),

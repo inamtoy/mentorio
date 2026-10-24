@@ -1030,7 +1030,7 @@
     "fieldFirstName": "First name",
     "fieldLastName": "Last name",
     "fieldPhone": "Phone",
-    "fieldTeacherCode": "Teacher code",
+    "fieldTeacherCode": "Teacher code (optional — auto if blank)",
     "fieldLoginId": "Login ID",
     "fieldSpecialization": "Specialization (e.g. Mathematics)",
     "fieldMonthlySalary": "Monthly salary",

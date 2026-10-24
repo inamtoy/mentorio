@@ -1030,7 +1030,7 @@
     "fieldFirstName": "Ism",
     "fieldLastName": "Familiya",
     "fieldPhone": "Telefon",
-    "fieldTeacherCode": "O'qituvchi kodi",
+    "fieldTeacherCode": "O'qituvchi kodi (ixtiyoriy — bo'sh qolsa avtomatik)",
     "fieldLoginId": "Login ID",
     "fieldSpecialization": "Mutaxassislik (masalan, Matematika)",
     "fieldMonthlySalary": "Oylik maosh",

@@ -161,6 +161,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # under the `platform_settings` module.
 BACKUP_DIR = Path(env("BACKUP_DIR", default=str(BASE_DIR / "backups")))
 
+# Uploaded files (homework attachments) — foundation/file_storage.py. Like
+# BACKUP_DIR, never served as a public URL: downloads go through
+# permission-checked views. The default sits next to backend/, i.e.
+# /home/deploy/mentorio/media on the server, which deploy/backup.sh archives.
+MEDIA_ROOT = Path(env("MEDIA_ROOT", default=str(BASE_DIR.parent / "media")))
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "common.authentication.SessionValidatingJWTAuthentication",

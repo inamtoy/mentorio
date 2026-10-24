@@ -1,9 +1,18 @@
-from rest_framework import viewsets
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from django.http import FileResponse
+from rest_framework import status, viewsets
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from common.audit import audited
-from common.permissions import HasModulePermission
+from common.permissions import HasModulePermission, user_has_permission
+from foundation.file_storage import UploadRejected, store_upload, stored_file_path
+from foundation.models import File
 from foundation.views import SoftDeleteDestroyMixin
+from homework.attachments import CATEGORY as ATTACHMENT_CATEGORY
+from homework.attachments import AttachmentSerializer, can_download
 from homework.filters import AssignmentFilter, SubmissionFilter
 from homework.models import Assignment, Submission
 from homework.serializers import AssignmentSerializer, SubmissionSerializer
@@ -128,9 +137,61 @@ class SubmissionViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
                 serializer.validated_data.pop(field, None)
         elif teacher_profile is not None and instance.assignment.group.teacher_id != teacher_profile.id:
             raise PermissionDenied("You can only grade submissions for groups you teach.")
+        if student_profile is None:
+            # The files are the student's work — a grader changes the score
+            # and feedback, never what was handed in.
+            serializer.validated_data.pop("attachment_ids", None)
 
         serializer.save()
 
     @audited(action="delete", entity_type="submission")
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
+
+
+class HomeworkAttachmentUploadView(APIView):
+    """Step one of attaching a file: store it, unlinked, and return its id
+    for the client to send as `attachment_ids` (see homework/attachments.py).
+    Open to whoever can create assignments (teachers, admins) or submit
+    homework (students)."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        user = request.user
+        if not (user_has_permission(user, "assignments", "create") or user_has_permission(user, "submissions", "create")):
+            raise PermissionDenied("You don't have permission to attach files to homework.")
+        if user.organization_id is None:
+            raise ValidationError({"file": "Homework files belong to a center. Sign in with a center account to upload."})
+        uploaded = request.FILES.get("file")
+        if uploaded is None:
+            raise ValidationError({"file": "Choose a file to upload."})
+        try:
+            stored = store_upload(uploaded, organization_id=user.organization_id, uploaded_by=user, category=ATTACHMENT_CATEGORY)
+        except UploadRejected as exc:
+            raise ValidationError({"file": str(exc)}) from exc
+        return Response(
+            {"success": True, "message": "File uploaded", "data": AttachmentSerializer(stored).data},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class HomeworkAttachmentDownloadView(APIView):
+    """Streams an attachment to someone allowed to see its assignment or
+    submission. Answers 404 rather than 403 when they aren't, so ids can't
+    be probed for existence. Always a download (Content-Disposition:
+    attachment), never rendered inline by the browser."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, file_id):
+        file = File.objects.filter(id=file_id, category=ATTACHMENT_CATEGORY).first()
+        if file is None or not can_download(request.user, file):
+            raise NotFound("Attachment not found.")
+        try:
+            path = stored_file_path(file)
+            handle = open(path, "rb")
+        except FileNotFoundError as exc:
+            raise NotFound("This file is missing on the server. Ask whoever attached it to upload it again.") from exc
+        return FileResponse(handle, as_attachment=True, filename=file.original_name, content_type=file.mime_type)

@@ -23,6 +23,7 @@ x-backend-env: &backend-env
   GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
   DB_BACKUP_KEEP_DAYS: ${DB_BACKUP_KEEP_DAYS:-14}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  MEDIA_ROOT: /data/media
   TZ: Asia/Tashkent
 
 x-backend: &backend
@@ -79,6 +80,7 @@ services:
     <<: *backend
     volumes:
       - app_backups:/data/backups
+      - app_media:/data/media
 
   # Drains the notification outbox to Telegram. Safe to scale out.
   worker:
@@ -136,6 +138,7 @@ services:
 volumes:
   pgdata:
   app_backups:
+  app_media:
   db_backups:
   caddy_data:
   caddy_config:

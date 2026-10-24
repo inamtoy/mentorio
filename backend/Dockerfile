@@ -44,7 +44,7 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY . .
 
 RUN useradd --system --uid 1000 --home /app app \
- && mkdir -p /data/backups /data/db-backups \
+ && mkdir -p /data/backups /data/db-backups /data/media \
  && chown -R app:app /data
 USER app
 

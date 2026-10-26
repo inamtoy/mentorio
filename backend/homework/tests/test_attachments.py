@@ -4,15 +4,21 @@ logins, setup through the auth_bypass_rls alias). Files go to a per-test
 MEDIA_ROOT under tmp_path.
 """
 
+import io
+import os
 import uuid
+from datetime import timedelta
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
 from django.db import transaction as db_transaction
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from common.context import apply_org_context
 from course.models import Course
+from foundation.file_storage import stored_file_path
 from foundation.models import File, Organization, Role, User, UserRole
 from groups.models import Group, GroupMember
 from student.models import StudentProfile
@@ -172,3 +178,66 @@ def test_removing_an_attachment_soft_deletes_it():
     assert response.status_code == 200
     assert [a["id"] for a in response.json()["data"]["attachments"]] == [keep]
     assert File.all_objects.using(BYPASS_ALIAS).get(id=drop).deleted_at is not None
+
+
+def _age(file_id, hours):
+    File.all_objects.using(BYPASS_ALIAS).filter(id=file_id).update(created_at=timezone.now() - timedelta(hours=hours))
+
+
+def _cleanup(*args) -> str:
+    out = io.StringIO()
+    call_command("cleanup_unlinked_uploads", *args, stdout=out)
+    return out.getvalue()
+
+
+def test_cleanup_removes_only_old_unlinked_uploads():
+    org, group, teacher_user, _member, _outsider = _setup("07")
+    teacher = _client(teacher_user)
+    abandoned = _upload(teacher, "abandoned.pdf", PDF).json()["data"]["id"]
+    fresh = _upload(teacher, "fresh.pdf", PDF).json()["data"]["id"]
+    attached = _upload(teacher, "attached.pdf", PDF).json()["data"]["id"]
+    dropped = _upload(teacher, "dropped.pdf", PDF).json()["data"]["id"]
+    assignment_id = _create_assignment(teacher, org, group, [attached, dropped]).json()["data"]["id"]
+    teacher.patch(f"/api/v1/homework/assignments/{assignment_id}/", {"attachment_ids": [attached]}, format="json")
+    for file_id in (abandoned, attached, dropped):
+        _age(file_id, 48)
+    files = {f.id: f for f in File.all_objects.using(BYPASS_ALIAS).filter(id__in=[abandoned, fresh, attached, dropped])}
+
+    _cleanup()
+
+    after = {f.id: f for f in File.all_objects.using(BYPASS_ALIAS).filter(id__in=files)}
+    gone = after[uuid.UUID(abandoned)]
+    assert gone.deleted_at is not None and gone.metadata["cleanup"]
+    assert not stored_file_path(gone).exists()
+    for kept in (fresh, attached):
+        assert after[uuid.UUID(kept)].deleted_at is None
+        assert stored_file_path(after[uuid.UUID(kept)]).exists()
+    # A removal from a saved record stays undoable: the bytes are kept.
+    assert stored_file_path(after[uuid.UUID(dropped)]).exists()
+
+
+def test_cleanup_dry_run_changes_nothing():
+    _org, _group, teacher_user, _member, _outsider = _setup("08")
+    file_id = _upload(_client(teacher_user), "abandoned.pdf", PDF).json()["data"]["id"]
+    _age(file_id, 48)
+
+    output = _cleanup("--dry-run")
+
+    assert output.startswith("Would remove")
+    file = File.objects.using(BYPASS_ALIAS).get(id=file_id)
+    assert stored_file_path(file).exists()
+
+
+def test_cleanup_removes_stale_part_files(media_root):
+    partial = media_root / "homework" / "x" / "broken.pdf.part"
+    partial.parent.mkdir(parents=True)
+    partial.write_bytes(PDF)
+    old = (timezone.now() - timedelta(hours=48)).timestamp()
+    os.utime(partial, (old, old))
+    recent = partial.with_name("writing.pdf.part")
+    recent.write_bytes(PDF)
+
+    _cleanup()
+
+    assert not partial.exists()
+    assert recent.exists()

@@ -10,7 +10,7 @@ internet ─443─▶ nginx ─/api/──────────▶ mentorio.s
                   └── qolgani ────────▶ mentorio-frontend.service  127.0.0.1:3001  (Next.js)
                  mentorio-worker.service  — Telegram bildirishnomalari
                  PostgreSQL               127.0.0.1:5432
-                 /etc/cron.d/mentorio    — 08:00 hisob-fakturalar, 09:00 eslatmalar, 03:00 backup
+                 /etc/cron.d/mentorio    — 08:00 hisob-fakturalar, 09:00 eslatmalar, 03:00 backup, 04:30 biriktirilmagan fayllarni tozalash
 ```
 
 | Fayl | Vazifasi |
@@ -187,7 +187,7 @@ internet ──443──▶ caddy ──/api/*──▶ backend (gunicorn, Djang
 | `migrate` | Runs `manage.py migrate` as the owner role on every `up`, then exits. The other backend services wait for it |
 | `backend` | The API |
 | `worker` | Sends queued notifications to Telegram (`send_notifications --loop`) |
-| `cron` | 08:00 monthly invoices, 09:00 payment reminders, 02:30 database backup (Asia/Tashkent) |
+| `cron` | 08:00 monthly invoices, 09:00 payment reminders, 02:30 database backup, 04:30 cleanup of never-attached uploads (Asia/Tashkent) |
 | `frontend` | The web app |
 | `db` | Postgres. Not reachable from outside the server |
 

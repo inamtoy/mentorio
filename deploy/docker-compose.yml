@@ -93,6 +93,7 @@ services:
     volumes:
       - ./cron:/app/deploy-scripts:ro
       - db_backups:/data/db-backups
+      - app_media:/data/media
 
   # One-off admin commands that must run without a tenant context, e.g.
   #   docker compose run --rm tools python manage.py create_super_admin ...

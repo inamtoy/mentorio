@@ -3,5 +3,7 @@
 # soon gets its reminder the same morning.
 0 8 * * * python manage.py issue_monthly_invoices
 0 9 * * * python manage.py send_payment_reminders
+# Uploads never attached to homework (form closed without saving), older than 24h.
+30 4 * * * python manage.py cleanup_unlinked_uploads
 # Nightly database backup, kept for 14 days.
 30 2 * * * sh /app/deploy-scripts/backup-db.sh

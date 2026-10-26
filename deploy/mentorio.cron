@@ -5,5 +5,7 @@ SHELL=/bin/sh
 M=/home/deploy/mentorio/backend
 0 8 * * * deploy cd $M && DJANGO_SETTINGS_MODULE=config.settings.prod .venv/bin/python manage.py issue_monthly_invoices >> /var/log/mentorio/cron.log 2>&1
 0 9 * * * deploy cd $M && DJANGO_SETTINGS_MODULE=config.settings.prod .venv/bin/python manage.py send_payment_reminders >> /var/log/mentorio/cron.log 2>&1
+# Uploads never attached to homework (form closed without saving), older than 24h.
+30 4 * * * deploy cd $M && DJANGO_SETTINGS_MODULE=config.settings.prod .venv/bin/python manage.py cleanup_unlinked_uploads >> /var/log/mentorio/cron.log 2>&1
 # Daily database backup, kept 7 days (deploy/backup.sh).
 0 3 * * * root /home/deploy/mentorio/deploy/backup.sh mentorio >> /var/log/mentorio/backup.log 2>&1

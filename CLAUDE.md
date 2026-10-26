@@ -64,55 +64,7 @@ Always think in this order:
 
 # Architecture Rules
 
-Always follow:
-
-Feature Based Architecture
-
-Example
-
-backend/
-
-accounts/
-
-students/
-
-teachers/
-
-groups/
-
-attendance/
-
-payments/
-
-notifications/
-
-dashboard/
-
-frontend/
-
-features/
-
-students/
-
-teachers/
-
-payments/
-
-dashboard/
-
-Each feature owns:
-
-API
-
-Business Logic
-
-Components
-
-Tests
-
-Types
-
-Validation
+Feature Based Architecture: each feature owns its API, business logic, components, tests, types and validation.
 
 ---
 
@@ -389,64 +341,6 @@ Point out UX issues.
 Point out performance issues.
 
 Do not blindly follow requests that reduce code quality.
-
----
-
-# Mentorio Modules
-
-Core
-
-Authentication
-
-Organizations
-
-Branches
-
-Users
-
-Roles
-
-Permissions
-
-Students
-
-Teachers
-
-Groups
-
-Courses
-
-Lessons
-
-Attendance
-
-Homework
-
-Exams
-
-Grades
-
-Finance
-
-Payments
-
-Invoices
-
-Salary
-
-Notifications
-
-Reports
-
-Analytics
-
-Settings
-
-Audit Logs
-
-AI Assistant
-
-Dashboard
 
 ---
 

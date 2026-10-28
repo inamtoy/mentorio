@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import DEFAULT_DB_ALIAS, IntegrityError, transaction
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import DecimalField, ExpressionWrapper, F, Q, Sum
 from django.utils import timezone
 
 from finance.models import Invoice, Payroll
@@ -74,6 +74,25 @@ def billing_period_of(day) -> date:
     return day.replace(day=1)
 
 
+def month_end(period: date) -> date:
+    next_month = date(period.year + period.month // 12, period.month % 12 + 1, 1)
+    return next_month - timedelta(days=1)
+
+
+def month_invoice_q(period: date) -> Q:
+    """Invoices that bill `period` (first of the month): the monthly-billing
+    one (`billing_period`), and a hand-made one with its due date in that
+    month — an admin can bill a month either way, and both count as that
+    month's bill. Callers add their own student/Group filter."""
+    return Q(billing_period=period) | Q(
+        billing_period__isnull=True, due_date__gte=period, due_date__lte=month_end(period)
+    )
+
+
+# A cancelled invoice no longer bills anything; a draft was never issued.
+NOT_BILLING_STATUSES = ("cancelled", "draft")
+
+
 def billing_due_date(group, period: date) -> date:
     """When `period`'s monthly fee is due: the Group's billing day that month."""
     return period.replace(day=group.billing_day)
@@ -91,7 +110,7 @@ def first_month_due_date(group, today: date) -> date:
 
 def get_or_create_group_invoice(
     group, student_profile, *, period: date | None = None, due_date: date | None = None, created_by=None,
-    using: str = DEFAULT_DB_ALIAS,
+    using: str = DEFAULT_DB_ALIAS, notify: bool = True,
 ) -> tuple[Invoice, bool] | None:
     """The one place a Group's monthly fee is invoiced — shared by an admin
     enrolling a student (groups.views.GroupMemberViewSet), the student
@@ -101,10 +120,15 @@ def get_or_create_group_invoice(
     `period` defaults to the current month and `due_date` to
     first_month_due_date — the enrollment case. Returns (invoice, created),
     or None when the Group has no billable price. Idempotent per student,
-    Group and month: the live invoice already raised for that month is
-    returned instead of a duplicate (uq_invoices_student_group_period backs
-    this up against a concurrent run). Call inside a transaction — the
-    invoice_issued notification commits with the invoice.
+    Group and month: an invoice already billing that month — the monthly
+    one, or one an admin made by hand for this Group (month_invoice_q) — is
+    returned instead of a second one, so the student is never billed twice
+    for the month (uq_invoices_student_group_period backs the monthly case
+    up against a concurrent run). Call inside a transaction — the
+    invoice_issued notification commits with the invoice. `notify=False`
+    skips that notification — for an admin raising the invoice only to
+    record a payment against it right away (finance.group_billing), where a
+    "you have a new invoice" message would arrive already settled.
     """
     price = group_monthly_price(group)
     if price is None:
@@ -112,8 +136,13 @@ def get_or_create_group_invoice(
 
     today = timezone.localdate()
     period = period or billing_period_of(today)
-    live = Invoice.objects.using(using).filter(student_profile=student_profile, group=group, billing_period=period)
-    existing = live.exclude(status="cancelled").first()
+    live = (
+        Invoice.objects.using(using)
+        .filter(month_invoice_q(period), student_profile=student_profile, group=group)
+        .exclude(status__in=NOT_BILLING_STATUSES)
+        .order_by("due_date", "created_at")
+    )
+    existing = live.first()
     if existing is not None:
         return existing, False
 
@@ -133,9 +162,10 @@ def get_or_create_group_invoice(
     except IntegrityError:
         # Lost a race with a concurrent request/run for the same month —
         # anything else (e.g. an invoice-number clash) is a real error.
-        existing = live.exclude(status="cancelled").first()
+        existing = live.first()
         if existing is None:
             raise
         return existing, False
-    notification_events.invoice_issued(invoice, using=using)
+    if notify:
+        notification_events.invoice_issued(invoice, using=using)
     return invoice, True

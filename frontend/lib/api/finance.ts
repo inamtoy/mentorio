@@ -162,6 +162,92 @@ export async function createPayment(input: PaymentInput): Promise<Payment> {
   });
 }
 
+// Per-Group monthly payment roster — finance.views.GroupBillingViewSet.
+// `period` is always "YYYY-MM". Amounts are null where the Group has no
+// monthly price set.
+
+export interface GroupBillingSummary {
+  id: string;
+  name: string;
+  code: string;
+  course_name: string;
+  teacher_name: string | null;
+  monthly_price: number | null;
+  currency: string;
+  billing_day: number;
+  student_count: number;
+  paid_count: number;
+  partially_paid_count: number;
+  unpaid_count: number;
+  overdue_count: number;
+  expected_amount: number;
+  collected_amount: number;
+}
+
+export type GroupBillingMemberStatus = "paid" | "partially_paid" | "unpaid";
+
+export interface GroupBillingMember {
+  student_profile: string;
+  student_name: string;
+  student_login_id: string;
+  phone: string;
+  /** The month's invoices for this Group — monthly-billing and hand-made
+   * alike. 0 until one is raised; recording a payment raises it. */
+  invoice_count: number;
+  total_amount: number | null;
+  paid_amount: number;
+  balance: number | null;
+  due_date: string | null;
+  status: GroupBillingMemberStatus;
+  is_overdue: boolean;
+}
+
+export interface GroupBillingDetail extends GroupBillingSummary {
+  period: string;
+  members: GroupBillingMember[];
+}
+
+export interface ListGroupBillingParams {
+  period: string;
+  search?: string;
+  page?: number;
+}
+
+export async function listGroupBillingPage(params: ListGroupBillingParams): Promise<Page<GroupBillingSummary>> {
+  const query = new URLSearchParams({ period: params.period });
+  if (params.search) query.set("search", params.search);
+  return fetchPage<GroupBillingSummary>("/api/v1/finance/group-billing/", query, params.page ?? 1);
+}
+
+export async function getGroupBilling(groupId: string, period: string): Promise<GroupBillingDetail> {
+  return apiFetch<GroupBillingDetail>(`/api/v1/finance/group-billing/${groupId}/?period=${period}`);
+}
+
+export interface GroupPaymentInput {
+  groupId: string;
+  studentProfile: string;
+  period: string;
+  amount: number;
+  paymentMethod: PaymentMethod;
+  notes?: string;
+}
+
+/** Records a payment toward one student's monthly fee in a Group, raising
+ * that month's invoice first if it doesn't exist yet. Returns the Group's
+ * refreshed roster. */
+export async function recordGroupPayment(input: GroupPaymentInput): Promise<GroupBillingDetail> {
+  return apiFetch<GroupBillingDetail>(`/api/v1/finance/group-billing/${input.groupId}/pay/`, {
+    method: "POST",
+    body: JSON.stringify({
+      student_profile: input.studentProfile,
+      period: input.period,
+      amount: input.amount,
+      payment_method: input.paymentMethod,
+      notes: input.notes || null,
+    }),
+  });
+}
+
 // Money going OUT (operating expenses, teacher payroll) — see
 // finance.models.expense/payroll on the backend. `OutgoingPaymentMethod` is
 // a deliberately smaller set than `PaymentMethod` above: no online/

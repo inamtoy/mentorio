@@ -11,8 +11,10 @@ import {
   deleteExpense,
   deleteInvoice,
   deletePayroll,
+  getGroupBilling,
   listExpenses,
   listExpensesPage,
+  listGroupBillingPage,
   listInvoices,
   listInvoicesPage,
   listPayments,
@@ -20,8 +22,11 @@ import {
   listPayrollPage,
   markExpensePaid,
   markPayrollPaid,
+  recordGroupPayment,
   rejectExpense,
   type ExpenseInput,
+  type GroupPaymentInput,
+  type ListGroupBillingParams,
   type InvoiceInput,
   type ListExpensesPageParams,
   type ListExpensesParams,
@@ -102,6 +107,36 @@ export function useCreatePaymentMutation() {
   return useMutation({
     mutationFn: (input: PaymentInput) => createPayment(input),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices-page"] });
+    },
+  });
+}
+
+export function useGroupBillingPageQuery(params: ListGroupBillingParams) {
+  return useQuery({
+    queryKey: ["group-billing", params] as const,
+    queryFn: () => listGroupBillingPage(params),
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useGroupBillingQuery(groupId: string, period: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["group-billing-detail", groupId, period] as const,
+    queryFn: () => getGroupBilling(groupId, period),
+    enabled,
+  });
+}
+
+export function useRecordGroupPaymentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: GroupPaymentInput) => recordGroupPayment(input),
+    onSuccess: (detail, input) => {
+      queryClient.setQueryData(["group-billing-detail", input.groupId, input.period], detail);
+      queryClient.invalidateQueries({ queryKey: ["group-billing"] });
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["invoices-page"] });

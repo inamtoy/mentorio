@@ -33,6 +33,7 @@ import type { Invoice, Expense, Payroll } from "@/lib/api/finance";
 import { FinanceRevenueChart } from "@/components/charts/finance-chart";
 import { InvoiceFormDialog } from "./_components/invoice-form-dialog";
 import { InvoiceDetailPanel } from "./_components/invoice-detail-panel";
+import { GroupPaymentsCard } from "./_components/group-payments-card";
 import { ExpenseFormDialog } from "./_components/expense-form-dialog";
 import { ExpenseDetailPanel } from "./_components/expense-detail-panel";
 import { PayrollFormDialog } from "./_components/payroll-form-dialog";
@@ -54,10 +55,14 @@ const REVENUE_CHART_MONTHS = 12;
 const RECENT_WINDOW_DAYS = 365;
 
 type FinanceTab = "invoices" | "expenses" | "payroll";
+// The Payments tab opens on the per-Group roster; the raw invoice list (and
+// its hand-made one-off "New invoice" form) is the secondary view.
+type InvoicesView = "groups" | "all";
 
 export default function FinancePage() {
   const t = useTranslations("AdminFinance");
   const [activeTab, setActiveTab] = useState<FinanceTab>("invoices");
+  const [invoicesView, setInvoicesView] = useState<InvoicesView>("groups");
   const [invoiceFormOpen, setInvoiceFormOpen] = useState(false);
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
   const [payrollFormOpen, setPayrollFormOpen] = useState(false);
@@ -75,10 +80,12 @@ export default function FinancePage() {
         subtitle={`${t("pageSubtitle")} — ${t("last12MonthsNote")}`}
         actions={
           activeTab === "invoices" ? (
-            <Button onClick={() => setInvoiceFormOpen(true)}>
-              <DollarSign className="h-4 w-4" />
-              {t("newInvoiceButton")}
-            </Button>
+            invoicesView === "all" && (
+              <Button onClick={() => setInvoiceFormOpen(true)}>
+                <DollarSign className="h-4 w-4" />
+                {t("newInvoiceButton")}
+              </Button>
+            )
           ) : activeTab === "expenses" ? (
             <Button onClick={() => setExpenseFormOpen(true)}>
               <Receipt className="h-4 w-4" />
@@ -107,7 +114,14 @@ export default function FinancePage() {
         ))}
       </div>
 
-      {activeTab === "invoices" && <InvoicesTab formOpen={invoiceFormOpen} onFormOpenChange={setInvoiceFormOpen} />}
+      {activeTab === "invoices" && (
+        <InvoicesTab
+          view={invoicesView}
+          onViewChange={setInvoicesView}
+          formOpen={invoiceFormOpen}
+          onFormOpenChange={setInvoiceFormOpen}
+        />
+      )}
       {activeTab === "expenses" && <ExpensesTab formOpen={expenseFormOpen} onFormOpenChange={setExpenseFormOpen} />}
       {activeTab === "payroll" && <PayrollTab formOpen={payrollFormOpen} onFormOpenChange={setPayrollFormOpen} />}
     </div>
@@ -116,8 +130,44 @@ export default function FinancePage() {
 
 // ─── Invoices ──────────────────────────────────────────────────────────────
 
-function InvoicesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onFormOpenChange: (open: boolean) => void }) {
+function InvoicesViewSwitcher({ view, onChange }: { view: InvoicesView; onChange: (view: InvoicesView) => void }) {
   const t = useTranslations("AdminFinance");
+  const options: { key: InvoicesView; label: string }[] = [
+    { key: "groups", label: t("viewByGroups") },
+    { key: "all", label: t("viewAllInvoices") },
+  ];
+  return (
+    <div className="inline-flex rounded-lg bg-slate-100 p-0.5" role="group">
+      {options.map((option) => (
+        <button
+          key={option.key}
+          type="button"
+          aria-pressed={view === option.key}
+          onClick={() => onChange(option.key)}
+          className={`h-8 rounded-md px-3 text-xs font-medium transition-colors ${
+            view === option.key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function InvoicesTab({
+  view,
+  onViewChange,
+  formOpen,
+  onFormOpenChange,
+}: {
+  view: InvoicesView;
+  onViewChange: (view: InvoicesView) => void;
+  formOpen: boolean;
+  onFormOpenChange: (open: boolean) => void;
+}) {
+  const t = useTranslations("AdminFinance");
+  const viewSwitcher = <InvoicesViewSwitcher view={view} onChange={onViewChange} />;
   const formatMoney = useFormatCurrency();
   const rawLocale = useLocale();
   const locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
@@ -279,30 +329,35 @@ function InvoicesTab({ formOpen, onFormOpenChange }: { formOpen: boolean; onForm
         </Card>
       </div>
 
-      <Card
-        noPadding
-        title={t("invoicesTitle")}
-        subtitle={t("invoicesCount", { count: invoicesPage?.totalCount ?? 0 })}
-        actions={
-          <div className="flex items-center gap-2">
-            <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t("searchStudentPlaceholder")} />
-            <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => updateStatusFilter(e.target.value)} className="w-40" />
-          </div>
-        }
-      >
-        <DataTable
-          columns={INVOICE_COLUMNS}
-          data={tableRows}
-          keyField="id"
-          emptyMessage={isLoading ? t("loadingInvoices") : t("noInvoicesFound")}
-          onRowClick={(row) => setSelectedId(row.id)}
-        />
-        {invoicesPage && invoicesPage.pageCount > 1 && (
-          <div className="py-4 border-t border-slate-50">
-            <Pagination page={page} pageCount={invoicesPage.pageCount} onPageChange={setPage} />
-          </div>
-        )}
-      </Card>
+      {view === "groups" ? (
+        <GroupPaymentsCard viewSwitcher={viewSwitcher} />
+      ) : (
+        <Card
+          noPadding
+          title={t("invoicesTitle")}
+          subtitle={t("invoicesCount", { count: invoicesPage?.totalCount ?? 0 })}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {viewSwitcher}
+              <SearchInput value={search} onChange={(e) => updateSearch(e.target.value)} placeholder={t("searchStudentPlaceholder")} />
+              <Select options={STATUS_OPTIONS} value={statusFilter} onChange={(e) => updateStatusFilter(e.target.value)} className="w-40" />
+            </div>
+          }
+        >
+          <DataTable
+            columns={INVOICE_COLUMNS}
+            data={tableRows}
+            keyField="id"
+            emptyMessage={isLoading ? t("loadingInvoices") : t("noInvoicesFound")}
+            onRowClick={(row) => setSelectedId(row.id)}
+          />
+          {invoicesPage && invoicesPage.pageCount > 1 && (
+            <div className="py-4 border-t border-slate-50">
+              <Pagination page={page} pageCount={invoicesPage.pageCount} onPageChange={setPage} />
+            </div>
+          )}
+        </Card>
+      )}
 
       <DetailDialog open={!!selectedInvoice} onClose={() => setSelectedId(null)} title={selectedInvoice?.student_name ?? ""}>
         {selectedInvoice && (

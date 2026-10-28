@@ -4,7 +4,13 @@ from rest_framework import serializers
 
 from finance.models import Expense, Invoice, Payment, Payroll
 from finance.numbering import generate_invoice_number
-from finance.services import invoice_paid_amount, payroll_net_amount
+from finance.services import (
+    NOT_BILLING_STATUSES,
+    billing_period_of,
+    invoice_paid_amount,
+    month_invoice_q,
+    payroll_net_amount,
+)
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -27,6 +33,31 @@ class InvoiceSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id", "invoice_number", "status", "issued_date", "billing_period", "created_at", "updated_at",
         ]
+
+    def validate(self, attrs):
+        """One bill per student, Group and month. An admin can bill a month
+        by hand or let monthly billing do it (finance.services.
+        get_or_create_group_invoice, which already defers to a hand-made
+        one) — but never both, or the student owes the month twice.
+        """
+        group = attrs.get("group", getattr(self.instance, "group", None))
+        student_profile = attrs.get("student_profile", getattr(self.instance, "student_profile", None))
+        due_date = attrs.get("due_date", getattr(self.instance, "due_date", None))
+        if group is not None and student_profile is not None and due_date is not None:
+            clash = Invoice.objects.filter(
+                month_invoice_q(billing_period_of(due_date)), group=group, student_profile=student_profile
+            ).exclude(status__in=NOT_BILLING_STATUSES)
+            if self.instance is not None:
+                clash = clash.exclude(pk=self.instance.pk)
+            existing = clash.first()
+            if existing is not None:
+                raise serializers.ValidationError({
+                    "due_date": (
+                        f"This student already has invoice {existing.invoice_number} for {group.name} this month. "
+                        "Record the payment on that invoice instead of creating a second one."
+                    )
+                })
+        return attrs
 
     def get_paid_amount(self, obj) -> Decimal:
         return invoice_paid_amount(obj)
@@ -137,3 +168,21 @@ class PayrollSerializer(serializers.ModelSerializer):
         if request is not None and request.user.is_authenticated:
             validated_data["created_by"] = request.user.id
         return super().create(validated_data)
+
+
+class GroupPaymentSerializer(serializers.Serializer):
+    """Input for GroupBillingViewSet.pay — one student's payment toward one
+    Group's monthly fee. Gateway rails (payme/click) are left out: those
+    Payments are only ever written by the gateway webhooks.
+    """
+
+    student_profile = serializers.UUIDField()
+    period = serializers.DateField(input_formats=["%Y-%m", "%Y-%m-%d"])
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0.01"))
+    payment_method = serializers.ChoiceField(
+        choices=["cash", "card", "bank_transfer", "online", "mobile_payment", "other"], default="cash"
+    )
+    notes = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=1000)
+
+    def validate_period(self, value):
+        return value.replace(day=1)

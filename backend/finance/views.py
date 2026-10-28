@@ -1,19 +1,36 @@
+from datetime import datetime
+
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from common.audit import audit_log, audited
 from common.permissions import HasModulePermission, user_has_permission
+from finance import group_billing
 from finance.filters import ExpenseFilter, InvoiceFilter, PayrollFilter, PaymentFilter
 from finance.models import Expense, Invoice, Payment, Payroll
-from finance.serializers import ExpenseSerializer, InvoiceSerializer, PayrollSerializer, PaymentSerializer
-from finance.services import get_or_create_group_invoice, recompute_invoice_status
+from finance.serializers import (
+    ExpenseSerializer,
+    GroupPaymentSerializer,
+    InvoiceSerializer,
+    PayrollSerializer,
+    PaymentSerializer,
+)
+from finance.services import (
+    billing_due_date,
+    billing_period_of,
+    get_or_create_group_invoice,
+    invoice_paid_amount,
+    recompute_invoice_status,
+)
 from foundation.views import SoftDeleteDestroyMixin
 from groups.models import Group, GroupMember
 from notifications.services import events as notification_events
+from student.models import StudentProfile
 
 FINANCE_PERMISSION_MAP = {
     "list": ("finance", "view"),
@@ -154,6 +171,170 @@ class PaymentViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
         response = super().destroy(request, *args, **kwargs)
         recompute_invoice_status(invoice)
         return response
+
+
+class GroupBillingViewSet(viewsets.GenericViewSet):
+    """The Admin Finance page's main view: every Group with how many of its
+    students have paid a given month, and recording a payment for one of
+    them — see finance/group_billing.py for how a roster is derived.
+
+        GET  finance/group-billing/?period=2026-10&search=...   Group summaries (paginated)
+        GET  finance/group-billing/{group}/?period=2026-10      one Group + its students
+        POST finance/group-billing/{group}/pay/                 record a payment
+
+    `period` defaults to the current month; future months are refused.
+    """
+
+    permission_classes = [HasModulePermission]
+    permission_map = {
+        "list": ("finance", "view"),
+        "retrieve": ("finance", "view"),
+        "pay": ("finance", "create"),
+    }
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        # A student holds `finance:view` too (scoped to their own invoices,
+        # see InvoiceViewSet.get_queryset) — but a whole Group's roster is
+        # other students' payment status. Staff-only, using the same
+        # `finance:create` test InvoiceViewSet uses to tell the two apart.
+        if getattr(request.user, "student_profile", None) is not None and not user_has_permission(
+            request.user, "finance", "create"
+        ):
+            raise PermissionDenied("Only center staff can view group billing.")
+
+    def _period(self, raw):
+        current = billing_period_of(timezone.localdate())
+        if not raw:
+            return current
+        try:
+            period = datetime.strptime(raw, "%Y-%m").date()
+        except ValueError as exc:
+            raise ValidationError({"period": "Use the YYYY-MM format, e.g. 2026-10."}) from exc
+        if period > current:
+            raise ValidationError({"period": "Future months have nothing to collect yet."})
+        return period
+
+    def _group(self, pk):
+        group = Group.objects.filter(pk=pk).select_related("course", "teacher__user").first()
+        if group is None:
+            raise NotFound("Group not found.")
+        return group
+
+    def list(self, request):
+        period = self._period(request.query_params.get("period"))
+        groups, rosters = group_billing.build_roster(period)
+
+        search = (request.query_params.get("search") or "").strip()
+        if search:
+            # Matches a Group by its own name/code or by any student in it —
+            # the student names their Group, or the admin types the name.
+            students = group_billing.matching_student_ids(search)
+            needle = search.lower()
+            groups = {
+                gid: g for gid, g in groups.items()
+                if needle in g.name.lower() or needle in g.code.lower()
+                or any(r.student_profile_id in students for r in rosters[gid])
+            }
+
+        today = timezone.localdate()
+        summaries = sorted(
+            (group_billing.group_summary(g, rosters[gid], today) for gid, g in groups.items()),
+            key=lambda s: s["name"].lower(),
+        )
+        page = self.paginate_queryset(summaries)
+        return self.get_paginated_response(page)
+
+    def retrieve(self, request, pk=None):
+        group = self._group(pk)
+        period = self._period(request.query_params.get("period"))
+        return Response(self._detail(group, period))
+
+    @action(detail=True, methods=["post"])
+    def pay(self, request, pk=None):
+        """Records a payment toward one student's bill for this Group and
+        month. With no invoice for the month yet, raises the monthly one
+        first — the admin never creates an invoice by hand. With several
+        (e.g. a hand-made one-off next to the monthly one), the amount is
+        applied to them earliest-due first, one Payment per invoice touched.
+        All-or-nothing, with the invoices locked so two admins recording at
+        once can't overpay them.
+        """
+        group = self._group(pk)
+        serializer = GroupPaymentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        period = self._period(data["period"].strftime("%Y-%m"))
+
+        _groups, rosters = group_billing.build_roster(period, group_ids=[group.pk])
+        student_id = str(data["student_profile"])
+        if not any(r.student_profile_id == student_id for r in rosters.get(str(group.pk), [])):
+            raise ValidationError({"student_profile": "This student is not in this group for that month."})
+
+        student = StudentProfile.objects.get(pk=student_id)
+        current = billing_period_of(timezone.localdate())
+        with transaction.atomic():
+            invoices = list(
+                group_billing.period_invoices(period)
+                .filter(group=group, student_profile=student)
+                .select_for_update()
+                .order_by("due_date", "created_at")
+            )
+            invoice_created = False
+            if not invoices:
+                result = get_or_create_group_invoice(
+                    group, student, period=period, created_by=request.user.id, notify=False,
+                    # A past month is due on its billing day; the current month
+                    # keeps get_or_create_group_invoice's joiner-friendly default.
+                    due_date=billing_due_date(group, period) if period < current else None,
+                )
+                if result is None:
+                    raise ValidationError({"group": "This group has no monthly price. Set one on the group first."})
+                invoice, invoice_created = result
+                invoices = [Invoice.objects.select_for_update().get(pk=invoice.pk)]
+
+            open_invoices = [(i, i.total_amount - invoice_paid_amount(i)) for i in invoices]
+            open_invoices = [(i, balance) for i, balance in open_invoices if balance > 0]
+            remaining = sum((balance for _i, balance in open_invoices), 0)
+            if remaining <= 0:
+                raise ValidationError({"amount": "This month is already fully paid."})
+            if data["amount"] > remaining:
+                raise ValidationError(
+                    {"amount": f"Amount exceeds the remaining balance ({remaining} {invoices[0].currency})."}
+                )
+
+            to_apply = data["amount"]
+            for invoice, balance in open_invoices:
+                if to_apply <= 0:
+                    break
+                amount = min(to_apply, balance)
+                to_apply -= amount
+                payment = Payment.objects.create(
+                    organization_id=invoice.organization_id, invoice=invoice, student_profile=student,
+                    amount=amount, currency=invoice.currency, payment_method=data["payment_method"],
+                    notes=data.get("notes") or None, created_by=request.user.id,
+                )
+                recompute_invoice_status(invoice)
+                audit_log(
+                    request, action="create", entity_type="payment", entity_id=str(payment.id),
+                    new_values={"amount": str(payment.amount), "payment_method": payment.payment_method},
+                    metadata={
+                        "group": str(group.pk), "period": period.isoformat(), "invoice": str(invoice.pk),
+                        "invoice_created": invoice_created,
+                    },
+                )
+
+        return Response(self._detail(group, period), status=201)
+
+    def _detail(self, group, period):
+        _groups, rosters = group_billing.build_roster(period, group_ids=[group.pk])
+        rows = rosters.get(str(group.pk), [])
+        today = timezone.localdate()
+        return {
+            **group_billing.group_summary(group, rows, today),
+            "period": period.strftime("%Y-%m"),
+            "members": group_billing.roster_members(rows, today),
+        }
 
 
 class ExpenseViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):

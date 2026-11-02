@@ -12,6 +12,12 @@
 #                nginx and Django to HTTPS.
 #   harden-ssh   PasswordAuthentication no. Run only after confirming
 #                `ssh deploy@HOST` works with a key.
+#   configs      Re-install nginx/systemd/cron files from deploy/ after they
+#                change (deploy.sh only updates code). Restarts nothing but
+#                nginx (a reload); the next deploy.sh restarts the services.
+#   cf-firewall  After the Cloudflare proxy (orange cloud) is on: ports 80/443
+#                accept only Cloudflare's ranges, so the origin can't be hit
+#                directly. Refuses to run while DNS still points here.
 set -euo pipefail
 
 APP=mentorio
@@ -177,8 +183,19 @@ EOF
             -f - < "$APP_DIR/deploy/postgres/roles.sql"
     fi
 
-    log "Logs + systemd units"
+    log "Logs"
     install -d -o "$APP_USER" -g "$APP_USER" /var/log/$APP
+
+    install_configs
+
+    log "First build + start (deploy.sh)"
+    sudo -u "$APP_USER" bash -lc "$APP_DIR/deploy/deploy.sh --no-pull"
+
+    log "app done"
+}
+
+install_configs() {
+    log "systemd units"
     for unit in $APP.service $APP-worker.service $APP-frontend.service; do
         install -m 644 "$APP_DIR/deploy/$unit" /etc/systemd/system/$unit
     done
@@ -190,22 +207,72 @@ EOF
     chmod 755 "$APP_DIR/deploy/backup.sh" "$APP_DIR/deploy/deploy.sh"
 
     install_nginx_site
+}
 
-    log "First build + start (deploy.sh)"
-    sudo -u "$APP_USER" bash -lc "$APP_DIR/deploy/deploy.sh --no-pull"
+phase_cf_firewall() {
+    log "Cloudflare proxy check"
+    local ip got
+    ip=$(curl -fsS https://api.ipify.org)
+    got=$(dig +short A "$DOMAIN" @1.1.1.1 | tail -1)
+    if [[ -z $got || $got == "$ip" ]]; then
+        echo "$DOMAIN resolves to '$got' (this server). Turn on the Cloudflare proxy first, or this would take the site offline." >&2
+        exit 1
+    fi
+    # One source of truth for the ranges: the real_ip list nginx already uses.
+    local ranges
+    ranges=$(sed -n 's/^set_real_ip_from \(.*\);$/\1/p' "$APP_DIR/deploy/nginx-$APP-limits.conf")
+    [[ -n $ranges ]] || { echo "No Cloudflare ranges found in nginx-$APP-limits.conf." >&2; exit 1; }
 
-    log "app done"
+    log "ufw: 80/443 only from Cloudflare"
+    local r
+    for r in $ranges; do
+        ufw allow proto tcp from "$r" to any port 80,443 comment cloudflare >/dev/null
+    done
+    ufw delete allow 80/tcp >/dev/null || true
+    ufw delete allow 443/tcp >/dev/null || true
+    ufw status numbered
+    log "cf-firewall done — undo: ufw allow 80/tcp && ufw allow 443/tcp"
+}
+
+phase_configs() {
+    install_configs
+    log "configs done — run deploy.sh to restart the services with new units"
 }
 
 install_nginx_site() {
     log "nginx site"
-    install -m 644 "$APP_DIR/deploy/nginx-proxy-snippet.conf" /etc/nginx/snippets/$APP-proxy.conf
-    install -m 644 "$APP_DIR/deploy/nginx-ssl-params.conf" /etc/nginx/snippets/ssl-params.conf
     local src=nginx-$APP-http.conf
     [[ -d /etc/letsencrypt/live/$DOMAIN ]] && src=nginx-$APP.conf
-    install -m 644 "$APP_DIR/deploy/$src" /etc/nginx/sites-available/$APP
+    # source -> installed path. If the new set fails `nginx -t`, the previous
+    # files are put back, so a typo can't leave nginx unable to (re)start.
+    local -A files=(
+        ["nginx-proxy-snippet.conf"]=/etc/nginx/snippets/$APP-proxy.conf
+        ["nginx-ssl-params.conf"]=/etc/nginx/snippets/ssl-params.conf
+        ["nginx-security-headers.conf"]=/etc/nginx/snippets/$APP-security-headers.conf
+        ["nginx-$APP-limits.conf"]=/etc/nginx/conf.d/$APP-limits.conf
+        ["$src"]=/etc/nginx/sites-available/$APP
+    )
+    local backup
+    backup=$(mktemp -d)
+    local name dest
+    for name in "${!files[@]}"; do
+        dest=${files[$name]}
+        [[ -e $dest ]] && cp -p "$dest" "$backup/$(basename "$dest").$(echo "$dest" | md5sum | cut -c1-8)"
+        install -m 644 "$APP_DIR/deploy/$name" "$dest"
+    done
     ln -sf /etc/nginx/sites-available/$APP /etc/nginx/sites-enabled/$APP
-    nginx -t
+    if ! nginx -t; then
+        echo "nginx -t failed — restoring the previous files; nginx keeps running the old config." >&2
+        for name in "${!files[@]}"; do
+            dest=${files[$name]}
+            local saved="$backup/$(basename "$dest").$(echo "$dest" | md5sum | cut -c1-8)"
+            if [[ -e $saved ]]; then cp -p "$saved" "$dest"; else rm -f "$dest"; fi
+        done
+        nginx -t
+        rm -rf "$backup"
+        exit 1
+    fi
+    rm -rf "$backup"
     systemctl reload nginx
 }
 
@@ -260,5 +327,7 @@ case ${1:-} in
     app) phase_app ;;
     cert) shift; phase_cert "$@" ;;
     harden-ssh) phase_harden_ssh ;;
-    *) sed -n '2,16p' "$0"; exit 1 ;;
+    configs) phase_configs ;;
+    cf-firewall) phase_cf_firewall ;;
+    *) sed -n '2,22p' "$0"; exit 1 ;;
 esac

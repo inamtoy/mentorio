@@ -15,12 +15,13 @@ internet ─443─▶ nginx ─/api/──────────▶ mentorio.s
 
 | Fayl | Vazifasi |
 |---|---|
-| `setup_server.sh` | Idempotent sozlash: `base` (server poydevori), `app` (Mentorio), `cert EMAIL` (HTTPS), `harden-ssh` |
+| `setup_server.sh` | Idempotent sozlash: `base` (server poydevori), `app` (Mentorio), `cert EMAIL` (HTTPS), `harden-ssh`, `configs` (nginx/systemd/cron fayllarini yangilash), `cf-firewall` (faqat Cloudflare) |
 | `deploy.sh` | Yangilash: git pull → bog'liqliklar → migratsiya → frontend build → restart → health check |
 | `backup.sh <loyiha>` | Kunlik `pg_dump` (gzip) + media arxivi, 7 kun saqlanadi, `/var/backups/<loyiha>/` |
 | `mentorio*.service` | systemd: API, worker, frontend |
 | `nginx-mentorio.conf` | HTTPS konfiguratsiya (www → mentorio.uz, http → https). `nginx-mentorio-http.conf` — sertifikat olinguncha |
-| `nginx-proxy-snippet.conf`, `nginx-ssl-params.conf` | `/etc/nginx/snippets/` ga o'rnatiladi |
+| `nginx-proxy-snippet.conf`, `nginx-ssl-params.conf`, `nginx-security-headers.conf` | `/etc/nginx/snippets/` ga o'rnatiladi |
+| `nginx-mentorio-limits.conf` | `/etc/nginx/conf.d/` — rate limit zonalari, slow-client timeout'lari, Cloudflare real IP ro'yxati |
 | `mentorio.cron` | `/etc/cron.d/mentorio` |
 | `postgres/roles.sql` | Uch DB roli va baza |
 
@@ -115,6 +116,45 @@ ssh deploy@SERVER '~/mentorio/deploy/deploy.sh'
 ```
 
 Biror qadam xato bersa skript to'xtaydi va ishlab turgan xizmatlarga tegmaydi.
+
+`deploy.sh` faqat kodni yangilaydi. `deploy/` dagi nginx, systemd yoki cron
+fayllari o'zgargan bo'lsa, avval ularni o'rnating, keyin deploy qiling:
+
+```bash
+ssh deploy@SERVER 'sudo bash ~/mentorio/deploy/setup_server.sh configs && ~/mentorio/deploy/deploy.sh'
+```
+
+`configs` yangi nginx fayllarini `nginx -t` bilan tekshiradi; xato bo'lsa
+eski fayllarni qaytarib qo'yadi va nginx eski konfiguratsiyada ishlashda davom etadi.
+
+### Hujumlardan himoya (rate limit, Cloudflare)
+
+nginx har bir IP uchun so'rovlarni cheklaydi (`nginx-mentorio-limits.conf`):
+login/parol tiklash — daqiqasiga 20, API — soniyasiga 30, sahifalar —
+soniyasiga 10 (hammasida burst bor). Oshib ketsa — `429` va API formatidagi
+xabar. Bu bitta kompyuterdan keladigan floodni to'xtatadi; ko'p
+kompyuterli haqiqiy DDoS'ga 1 CPU'li server o'zi chiday olmaydi — buning
+uchun Cloudflare proxy kerak:
+
+1. Cloudflare → DNS: `mentorio.uz` va `www` yozuvlarida **Proxy status: Proxied** (to'q sariq bulut).
+2. Cloudflare → SSL/TLS: **Full (strict)** (serverda Let's Encrypt sertifikati bor). *Flexible* qo'ymang — redirect loop bo'ladi.
+3. Bir necha daqiqadan keyin `dig +short mentorio.uz` Cloudflare IP'sini ko'rsatsa, serverga to'g'ridan-to'g'ri kirishni yoping:
+
+   ```bash
+   sudo bash ~/mentorio/deploy/setup_server.sh cf-firewall
+   ```
+
+   DNS hali serverga qarab tursa, skript hech narsani o'zgartirmaydi. Bekor qilish: `sudo ufw allow 80/tcp && sudo ufw allow 443/tcp`.
+
+nginx tashrif buyuruvchining haqiqiy IP'sini `CF-Connecting-IP` dan oladi
+(faqat Cloudflare diapazonlaridan kelgan so'rovlarda), shuning uchun rate
+limit, login bloklash va audit log'lar Cloudflare ortida ham to'g'ri ishlaydi.
+Cloudflare diapazonlari kamdan-kam o'zgaradi: https://www.cloudflare.com/ips/ —
+`nginx-mentorio-limits.conf` ni yangilab, `configs` + `cf-firewall` ni qayta ishga tushiring.
+
+> Shu serverga keyin qo'shiladigan boshqa loyiha (masalan Prava.uz) ham
+> Cloudflare ortida bo'lishi kerak — `cf-firewall` dan keyin 80/443 faqat
+> Cloudflare uchun ochiq.
 
 ### Kundalik ishlar
 

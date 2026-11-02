@@ -116,13 +116,25 @@ class LoginView(APIView):
         never accumulates enough failures on any single one to trip the
         lockout) — that's a materially harder problem than what Max Login
         Attempts is meant to cheaply solve here.
+
+        Deliberately NO address-wide block (all login_ids from one IP): a
+        school Wi-Fi or a mobile carrier's NAT puts hundreds of students
+        behind one address, so a handful of forgotten passwords would lock
+        out every classmate who types theirs correctly. Floods from one
+        address are slowed by nginx's login rate limit instead
+        (deploy/nginx-mentorio-limits.conf), which delays but never locks
+        anyone out.
         """
         max_attempts = get_platform_setting("security", using=BYPASS_ALIAS).get("maxLoginAttempts", 5)
         if not max_attempts or max_attempts <= 0:
             return
         window_start = timezone.now() - LOGIN_LOCKOUT_WINDOW
+        # get_client_ip, not REMOTE_ADDR: behind nginx REMOTE_ADDR is always
+        # 127.0.0.1, which silently made this a login_id-only lockout — the
+        # exact "lock a victim out by knowing their login_id" hole the
+        # docstring above describes.
         recent_failures = LoginAttempt.objects.using(BYPASS_ALIAS).filter(
-            login_id=login_id, ip_address=request.META.get("REMOTE_ADDR"), status="failed", created_at__gte=window_start
+            login_id=login_id, ip_address=get_client_ip(request), status="failed", created_at__gte=window_start
         ).count()
         if recent_failures >= max_attempts:
             self._log_attempt(request, login_id, None, "blocked", "too_many_attempts")
@@ -137,7 +149,7 @@ class LoginView(APIView):
             user=user,
             login_id=login_id,
             status=status_value,
-            ip_address=request.META.get("REMOTE_ADDR"),
+            ip_address=get_client_ip(request),
             user_agent=request.META.get("HTTP_USER_AGENT", ""),
             failure_reason=reason,
         )

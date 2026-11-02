@@ -8,16 +8,34 @@ per-model logging would log far more than CLAUDE.md actually asks for.
 
 from __future__ import annotations
 
+import ipaddress
 from functools import wraps
+
+from django.conf import settings
 
 from common.context import get_current_org_id
 
 
 def get_client_ip(request) -> str | None:
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.META.get("REMOTE_ADDR")
+    """The real client address, for login lockout, sessions and audit logs.
+
+    Behind nginx, REMOTE_ADDR is always the proxy (127.0.0.1), so every
+    visitor looked like the same one — which turned the per-(login_id, IP)
+    login lockout into a per-login_id one anyone could trigger. The proxy's
+    X-Real-IP header is honored only when the request really came from a
+    trusted proxy (settings.TRUSTED_PROXY_IPS), and is never read from a
+    client directly. X-Forwarded-For's first entry is deliberately NOT
+    used: nginx appends to whatever the client sent, so that entry is
+    attacker-controlled.
+    """
+    remote_addr = request.META.get("REMOTE_ADDR")
+    if remote_addr in getattr(settings, "TRUSTED_PROXY_IPS", ()):
+        real_ip = (request.META.get("HTTP_X_REAL_IP") or "").strip()
+        try:
+            return str(ipaddress.ip_address(real_ip))
+        except ValueError:
+            pass
+    return remote_addr
 
 
 def audit_log(

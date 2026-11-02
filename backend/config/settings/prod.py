@@ -16,6 +16,11 @@ CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 # overwrites X-Forwarded-Proto.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# Peers whose X-Real-IP header is trusted as the client address — see
+# common/audit.py::get_client_ip. gunicorn binds to localhost, so only the
+# local nginx can be the peer.
+TRUSTED_PROXY_IPS = env.list("TRUSTED_PROXY_IPS", default=["127.0.0.1", "::1"])
+
 # DJANGO_HTTPS=false exists only for the first minutes of a fresh server,
 # before certbot has issued the certificate: with it on, the SSL redirect
 # loops and browsers drop the Secure auth cookies over plain http, so login

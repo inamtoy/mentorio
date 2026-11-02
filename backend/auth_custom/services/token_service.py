@@ -7,6 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken as SimpleJWTRefreshToke
 
 from auth_custom.models import RefreshToken, Session
 from auth_custom.services.session_service import BYPASS_ALIAS, create_session, hash_token
+from common.audit import get_client_ip
 
 MAX_ACTIVE_REFRESH_TOKENS = getattr(settings, "AUTH_MAX_ACTIVE_REFRESH_TOKENS", 5)
 
@@ -75,7 +76,7 @@ def _mint_and_persist(*, user, session: Session, request) -> dict:
         organization=user.organization,
         token_hash=hash_token(str(refresh)),
         device_info=request.META.get("HTTP_USER_AGENT", "")[:500],
-        ip_address=request.META.get("REMOTE_ADDR"),
+        ip_address=get_client_ip(request),
         status="active",
         expires_at=timezone.now() + settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
     )

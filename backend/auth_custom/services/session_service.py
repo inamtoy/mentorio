@@ -7,6 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from auth_custom.models import Session
+from common.audit import get_client_ip
 
 BYPASS_ALIAS = "auth_bypass_rls"
 
@@ -46,7 +47,7 @@ def create_session(*, user, organization, request) -> Session:
         user=user,
         organization=organization,
         token_hash=hash_token(secrets.token_hex(32)),
-        ip_address=request.META.get("REMOTE_ADDR"),
+        ip_address=get_client_ip(request),
         user_agent=request.META.get("HTTP_USER_AGENT", ""),
         device_type=device_type,
         device_name=device_name,

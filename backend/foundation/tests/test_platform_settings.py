@@ -17,8 +17,11 @@ import uuid
 
 import pytest
 from django.db import transaction as db_transaction
+from django.test import override_settings
 from rest_framework.test import APIClient
 
+from auth_custom.models import LoginAttempt
+from auth_custom.views import LOGIN_IP_FAILURE_MULTIPLIER
 from common.context import apply_org_context
 from foundation.models import Organization, Role, Setting, User, UserRole
 from foundation.services import (
@@ -203,6 +206,100 @@ def test_login_lockout_does_not_apply_across_different_ip_addresses():
     )
 
     assert response.status_code == 200
+
+
+PROXY = {"REMOTE_ADDR": "127.0.0.1"}
+
+
+@override_settings(TRUSTED_PROXY_IPS=["127.0.0.1"])
+def test_login_lockout_behind_nginx_uses_the_real_client_ip():
+    """In production every request reaches Django from nginx (127.0.0.1).
+    The lockout must still key on the visitor's address (X-Real-IP), or an
+    attacker anywhere locks the victim out — the hole the test above
+    guards against, reopened by the proxy."""
+    _set_security(maxLoginAttempts=5)
+    org = _make_org()
+    user = _make_login(org, "+998900820012", "teacher")
+    attacker = APIClient()
+    for _ in range(5):
+        attacker.post(
+            "/api/v1/auth/login/", {"login_id": user.login_id, "password": "wrong-password"},
+            format="json", HTTP_X_REAL_IP="203.0.113.9", **PROXY,
+        )
+    still_locked = attacker.post(
+        "/api/v1/auth/login/", {"login_id": user.login_id, "password": "pw123456"},
+        format="json", HTTP_X_REAL_IP="203.0.113.9", **PROXY,
+    )
+
+    victim = APIClient().post(
+        "/api/v1/auth/login/", {"login_id": user.login_id, "password": "pw123456"},
+        format="json", HTTP_X_REAL_IP="198.51.100.7", **PROXY,
+    )
+
+    assert still_locked.status_code == 401
+    assert victim.status_code == 200
+    attempt = LoginAttempt.objects.using("auth_bypass_rls").filter(login_id=user.login_id, status="success").get()
+    assert attempt.ip_address == "198.51.100.7"
+
+
+@override_settings(TRUSTED_PROXY_IPS=["127.0.0.1"])
+def test_forged_x_forwarded_for_does_not_change_the_recorded_ip():
+    """nginx appends to a client-sent X-Forwarded-For, so its first entry
+    is whatever the attacker wrote — it must never be trusted."""
+    _set_security(maxLoginAttempts=5)
+    org = _make_org()
+    user = _make_login(org, "+998900820013", "teacher")
+
+    APIClient().post(
+        "/api/v1/auth/login/", {"login_id": user.login_id, "password": "wrong-password"},
+        format="json", HTTP_X_FORWARDED_FOR="1.2.3.4, 203.0.113.10", HTTP_X_REAL_IP="203.0.113.10", **PROXY,
+    )
+
+    attempt = LoginAttempt.objects.using("auth_bypass_rls").filter(login_id=user.login_id).get()
+    assert attempt.ip_address == "203.0.113.10"
+
+
+def test_x_real_ip_from_an_untrusted_peer_is_ignored():
+    """Without a trusted proxy in front (TRUSTED_PROXY_IPS empty, as in
+    dev/test), a client-sent X-Real-IP is just a forged header."""
+    _set_security(maxLoginAttempts=5)
+    org = _make_org()
+    user = _make_login(org, "+998900820014", "teacher")
+
+    APIClient().post(
+        "/api/v1/auth/login/", {"login_id": user.login_id, "password": "wrong-password"},
+        format="json", HTTP_X_REAL_IP="8.8.8.8", REMOTE_ADDR="10.0.0.50",
+    )
+
+    attempt = LoginAttempt.objects.using("auth_bypass_rls").filter(login_id=user.login_id).get()
+    assert attempt.ip_address == "10.0.0.50"
+
+
+def test_password_spraying_from_one_ip_gets_blocked():
+    """A few guesses each against many accounts never trips the
+    per-account lockout; the per-address cap (LOGIN_IP_FAILURE_MULTIPLIER x
+    maxLoginAttempts failures) does."""
+    _set_security(maxLoginAttempts=1)
+    org = _make_org()
+    victim = _make_login(org, "+998900820015", "teacher")
+    client = APIClient()
+    for i in range(LOGIN_IP_FAILURE_MULTIPLIER):
+        client.post(
+            "/api/v1/auth/login/", {"login_id": f"no-such-user-{i}", "password": "x"},
+            format="json", REMOTE_ADDR="10.0.0.77",
+        )
+
+    blocked = client.post(
+        "/api/v1/auth/login/", {"login_id": victim.login_id, "password": "pw123456"},
+        format="json", REMOTE_ADDR="10.0.0.77",
+    )
+    elsewhere = APIClient().post(
+        "/api/v1/auth/login/", {"login_id": victim.login_id, "password": "pw123456"},
+        format="json", REMOTE_ADDR="10.0.0.78",
+    )
+
+    assert blocked.status_code == 401
+    assert elsewhere.status_code == 200
 
 
 def test_center_admin_cannot_view_or_update_platform_settings():

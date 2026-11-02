@@ -32,6 +32,12 @@ logger = logging.getLogger(__name__)
 # than needing an admin "unlock" action.
 LOGIN_LOCKOUT_WINDOW = timedelta(minutes=30)
 
+# Failures from one address across ALL login_ids, as a multiple of Max Login
+# Attempts (5 -> 50 per 30 min), before that address is blocked outright.
+# High enough that a shared school/office NAT with a few forgetful users
+# never hits it; low enough to stop password spraying from one machine.
+LOGIN_IP_FAILURE_MULTIPLIER = 10
+
 
 class LoginView(APIView):
     """No email — login_id + password (see plan decision 2). This whole
@@ -121,9 +127,22 @@ class LoginView(APIView):
         if not max_attempts or max_attempts <= 0:
             return
         window_start = timezone.now() - LOGIN_LOCKOUT_WINDOW
-        recent_failures = LoginAttempt.objects.using(BYPASS_ALIAS).filter(
-            login_id=login_id, ip_address=request.META.get("REMOTE_ADDR"), status="failed", created_at__gte=window_start
-        ).count()
+        # get_client_ip, not REMOTE_ADDR: behind nginx REMOTE_ADDR is always
+        # 127.0.0.1, which silently made this a login_id-only lockout — the
+        # exact "lock a victim out by knowing their login_id" hole the
+        # docstring above describes.
+        client_ip = get_client_ip(request)
+        failures = LoginAttempt.objects.using(BYPASS_ALIAS).filter(
+            ip_address=client_ip, status="failed", created_at__gte=window_start
+        )
+        if failures.count() >= max_attempts * LOGIN_IP_FAILURE_MULTIPLIER:
+            # Password spraying: one address trying a few passwords against
+            # many login_ids never trips the per-account check below.
+            self._log_attempt(request, login_id, None, "blocked", "too_many_attempts_ip")
+            raise AuthenticationFailed(
+                f"Too many failed login attempts from your network. Try again in {int(LOGIN_LOCKOUT_WINDOW.total_seconds() // 60)} minutes."
+            )
+        recent_failures = failures.filter(login_id=login_id).count()
         if recent_failures >= max_attempts:
             self._log_attempt(request, login_id, None, "blocked", "too_many_attempts")
             raise AuthenticationFailed(
@@ -137,7 +156,7 @@ class LoginView(APIView):
             user=user,
             login_id=login_id,
             status=status_value,
-            ip_address=request.META.get("REMOTE_ADDR"),
+            ip_address=get_client_ip(request),
             user_agent=request.META.get("HTTP_USER_AGENT", ""),
             failure_reason=reason,
         )

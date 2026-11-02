@@ -207,6 +207,11 @@ SIMPLE_JWT = {
 # it off for plain-http localhost; prod.py ties it to DJANGO_HTTPS.
 AUTH_COOKIE_SECURE = True
 
+# Reverse proxies allowed to report the client address via X-Real-IP (see
+# common/audit.py::get_client_ip). Empty = trust REMOTE_ADDR only; prod.py
+# sets it to the local nginx.
+TRUSTED_PROXY_IPS: list[str] = []
+
 # Max simultaneously-active refresh tokens per user (DDL comment, enforced in token_service.py)
 AUTH_MAX_ACTIVE_REFRESH_TOKENS = 5
 

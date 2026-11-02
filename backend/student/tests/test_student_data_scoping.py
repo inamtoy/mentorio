@@ -218,3 +218,22 @@ def test_center_admin_still_sees_and_edits_every_student():
     assert {str(s1.id), str(s2.id)} <= _ids(client.get("/api/v1/students/"))
     assert client.patch(f"/api/v1/students/{s1.id}/", {"status": "active"}, format="json").status_code == 200
     assert client.patch(f"/api/v1/students/parents/{parent.id}/", {"phone": "+998931199999"}, format="json").status_code == 200
+
+
+def test_teacher_sees_only_members_of_their_own_groups():
+    """/groups/members/ carries student_phone/student_login_id — a teacher
+    used to get every enrollment in the org from it."""
+    org = _make_org()
+    teacher_user, teacher = _make_teacher(org, "+998931000040")
+    _other_teacher_user, other_teacher = _make_teacher(org, "+998931000041")
+    _s1_user, mine = _make_student(org, "+998931000042")
+    _s2_user, not_mine = _make_student(org, "+998931000043")
+    my_group = _make_group(org, teacher, "GRP-T1")
+    _enroll(org, my_group, mine)
+    _enroll(org, _make_group(org, other_teacher, "GRP-T2"), not_mine)
+
+    response = _login(teacher_user).get("/api/v1/groups/members/")
+
+    assert response.status_code == 200
+    rows = response.json()["data"]["results"]
+    assert {row["student_profile"] for row in rows} == {str(mine.id)}

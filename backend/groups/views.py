@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import viewsets
 
 from common.audit import audit_log, audited
@@ -50,8 +51,8 @@ class GroupMemberViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
         *every* other student's phone/login_id via GroupMemberSerializer's
         `student_phone`/`student_login_id` fields. Object-scoped for a
         student caller the same way finance.views.InvoiceViewSet/
-        homework.views.SubmissionViewSet already are; center_admin/teacher
-        (the only other roles with `groups` access) stay unrestricted.
+        homework.views.SubmissionViewSet already are; center_admin stays
+        unrestricted and a teacher is narrowed to their own groups (below).
         Checked in this order (mirrors homework.views.SubmissionViewSet)
         because nothing stops one User from holding both a TeacherProfile
         and a StudentProfile — narrowing on student_profile alone would
@@ -59,12 +60,20 @@ class GroupMemberViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
         """
         qs = GroupMember.objects.all().select_related("student_profile__user", "group__course").order_by("-created_at")
         user = self.request.user
-        if getattr(user, "teacher_profile", None) is not None:
-            return qs
+        if user_has_permission(user, "groups", "create"):
+            return qs  # center_admin / platform: the whole org
+        # A teacher sees the rosters of the groups they teach — every
+        # Teacher-portal page reads members per own group — not every
+        # student's phone in the org (see student/views.py::
+        # visible_student_profiles for the same rule on profiles).
+        q = Q(pk__in=[])
+        teacher_profile = getattr(user, "teacher_profile", None)
+        if teacher_profile is not None:
+            q |= Q(group__teacher=teacher_profile)
         student_profile = getattr(user, "student_profile", None)
         if student_profile is not None:
-            return qs.filter(student_profile=student_profile)
-        return qs
+            q |= Q(student_profile=student_profile)
+        return qs.filter(q)
 
     def create(self, request, *args, **kwargs):
         self.issued_invoice = None

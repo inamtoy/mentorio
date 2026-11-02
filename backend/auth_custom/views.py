@@ -32,12 +32,6 @@ logger = logging.getLogger(__name__)
 # than needing an admin "unlock" action.
 LOGIN_LOCKOUT_WINDOW = timedelta(minutes=30)
 
-# Failures from one address across ALL login_ids, as a multiple of Max Login
-# Attempts (5 -> 50 per 30 min), before that address is blocked outright.
-# High enough that a shared school/office NAT with a few forgetful users
-# never hits it; low enough to stop password spraying from one machine.
-LOGIN_IP_FAILURE_MULTIPLIER = 10
-
 
 class LoginView(APIView):
     """No email — login_id + password (see plan decision 2). This whole
@@ -122,6 +116,14 @@ class LoginView(APIView):
         never accumulates enough failures on any single one to trip the
         lockout) — that's a materially harder problem than what Max Login
         Attempts is meant to cheaply solve here.
+
+        Deliberately NO address-wide block (all login_ids from one IP): a
+        school Wi-Fi or a mobile carrier's NAT puts hundreds of students
+        behind one address, so a handful of forgotten passwords would lock
+        out every classmate who types theirs correctly. Floods from one
+        address are slowed by nginx's login rate limit instead
+        (deploy/nginx-mentorio-limits.conf), which delays but never locks
+        anyone out.
         """
         max_attempts = get_platform_setting("security", using=BYPASS_ALIAS).get("maxLoginAttempts", 5)
         if not max_attempts or max_attempts <= 0:
@@ -131,18 +133,9 @@ class LoginView(APIView):
         # 127.0.0.1, which silently made this a login_id-only lockout — the
         # exact "lock a victim out by knowing their login_id" hole the
         # docstring above describes.
-        client_ip = get_client_ip(request)
-        failures = LoginAttempt.objects.using(BYPASS_ALIAS).filter(
-            ip_address=client_ip, status="failed", created_at__gte=window_start
-        )
-        if failures.count() >= max_attempts * LOGIN_IP_FAILURE_MULTIPLIER:
-            # Password spraying: one address trying a few passwords against
-            # many login_ids never trips the per-account check below.
-            self._log_attempt(request, login_id, None, "blocked", "too_many_attempts_ip")
-            raise AuthenticationFailed(
-                f"Too many failed login attempts from your network. Try again in {int(LOGIN_LOCKOUT_WINDOW.total_seconds() // 60)} minutes."
-            )
-        recent_failures = failures.filter(login_id=login_id).count()
+        recent_failures = LoginAttempt.objects.using(BYPASS_ALIAS).filter(
+            login_id=login_id, ip_address=get_client_ip(request), status="failed", created_at__gte=window_start
+        ).count()
         if recent_failures >= max_attempts:
             self._log_attempt(request, login_id, None, "blocked", "too_many_attempts")
             raise AuthenticationFailed(

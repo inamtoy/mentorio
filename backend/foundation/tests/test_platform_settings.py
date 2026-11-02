@@ -21,7 +21,6 @@ from django.test import override_settings
 from rest_framework.test import APIClient
 
 from auth_custom.models import LoginAttempt
-from auth_custom.views import LOGIN_IP_FAILURE_MULTIPLIER
 from common.context import apply_org_context
 from foundation.models import Organization, Role, Setting, User, UserRole
 from foundation.services import (
@@ -275,31 +274,34 @@ def test_x_real_ip_from_an_untrusted_peer_is_ignored():
     assert attempt.ip_address == "10.0.0.50"
 
 
-def test_password_spraying_from_one_ip_gets_blocked():
-    """A few guesses each against many accounts never trips the
-    per-account lockout; the per-address cap (LOGIN_IP_FAILURE_MULTIPLIER x
-    maxLoginAttempts failures) does."""
-    _set_security(maxLoginAttempts=1)
+def test_classmates_failures_on_a_shared_ip_never_block_another_student():
+    """A school Wi-Fi or carrier NAT puts many students behind one address.
+    However many of them mistype their passwords, a classmate typing theirs
+    correctly from the same address must still get in — the lockout is per
+    (login_id, address), never address-wide."""
+    _set_security(maxLoginAttempts=2)
     org = _make_org()
-    victim = _make_login(org, "+998900820015", "teacher")
-    client = APIClient()
-    for i in range(LOGIN_IP_FAILURE_MULTIPLIER):
-        client.post(
-            "/api/v1/auth/login/", {"login_id": f"no-such-user-{i}", "password": "x"},
-            format="json", REMOTE_ADDR="10.0.0.77",
-        )
+    classmate = _make_login(org, "+998900820015", "student")
+    forgetful = [_make_login(org, f"+99890082002{i}", "student") for i in range(5)]
+    shared_ip = {"REMOTE_ADDR": "10.0.0.77"}
+    for user in forgetful:
+        for _ in range(3):  # each one locks their own account on this network
+            APIClient().post(
+                "/api/v1/auth/login/", {"login_id": user.login_id, "password": "wrong-password"},
+                format="json", **shared_ip,
+            )
 
-    blocked = client.post(
-        "/api/v1/auth/login/", {"login_id": victim.login_id, "password": "pw123456"},
-        format="json", REMOTE_ADDR="10.0.0.77",
+    response = APIClient().post(
+        "/api/v1/auth/login/", {"login_id": classmate.login_id, "password": "pw123456"},
+        format="json", **shared_ip,
     )
-    elsewhere = APIClient().post(
-        "/api/v1/auth/login/", {"login_id": victim.login_id, "password": "pw123456"},
-        format="json", REMOTE_ADDR="10.0.0.78",
+    own_account_locked = APIClient().post(
+        "/api/v1/auth/login/", {"login_id": forgetful[0].login_id, "password": "pw123456"},
+        format="json", **shared_ip,
     )
 
-    assert blocked.status_code == 401
-    assert elsewhere.status_code == 200
+    assert response.status_code == 200
+    assert own_account_locked.status_code == 401
 
 
 def test_center_admin_cannot_view_or_update_platform_settings():

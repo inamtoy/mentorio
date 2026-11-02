@@ -68,4 +68,7 @@ def test_student_cannot_update_another_students_profile():
     client = _login(student_a_user.login_id)
     response = client.patch(f"/api/v1/students/{student_b.id}/", {"education_level": "Grade 11"}, format="json")
 
-    assert response.status_code == 403
+    # 404, not 403: another student's profile isn't in this caller's
+    # queryset at all (student/views.py::visible_student_profiles), so its
+    # existence isn't revealed either.
+    assert response.status_code == 404

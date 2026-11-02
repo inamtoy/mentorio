@@ -3,7 +3,7 @@ from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 
 from common.audit import audited
-from common.permissions import HasModulePermission
+from common.permissions import HasModulePermission, user_has_permission
 from foundation.views import SoftDeleteDestroyMixin
 from teacher.filters import (
     TeacherAvailabilityFilter,
@@ -20,6 +20,19 @@ from teacher.serializers import (
     TeacherSalarySerializer,
     TeacherSpecializationSerializer,
 )
+
+# Fields a teacher may change on their own profile (the Teacher portal's
+# Profile page). status, branch, teacher_code, employment dates, notes and
+# metadata stay admin-only.
+TEACHER_SELF_EDITABLE_FIELDS = {"bio", "experience_years", "education_degree", "university"}
+
+
+def manages_teachers(user) -> bool:
+    """Org-wide teacher management (center_admin, or a platform user).
+    Keyed on `teachers:create` because teachers themselves hold
+    `teachers:view`/`update` for their own profile."""
+    return user_has_permission(user, "teachers", "create")
+
 
 TEACHER_PERMISSION_MAP = {
     "list": ("teachers", "view"),
@@ -54,14 +67,21 @@ class TeacherProfileViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         """teacher:update grants a teacher edit rights on their OWN profile
-        only (e.g. the Teacher Portal's Profile page) — HasModulePermission
-        is module-level only, so without this a teacher with teacher:update
-        could PATCH any teacher's row in the org. Same pattern as
-        attendance/views.py::AttendanceViewSet._check_owns_group.
+        only (e.g. the Teacher Portal's Profile page), and only the
+        TEACHER_SELF_EDITABLE_FIELDS — HasModulePermission is module-level
+        only, so without this a teacher could PATCH any teacher's row, or
+        their own status/branch/teacher_code. Admins are unrestricted.
         """
-        teacher_profile = getattr(self.request.user, "teacher_profile", None)
-        if teacher_profile is not None and serializer.instance.id != teacher_profile.id:
-            raise PermissionDenied("You can only update your own teacher profile.")
+        user = self.request.user
+        if not manages_teachers(user):
+            teacher_profile = getattr(user, "teacher_profile", None)
+            if teacher_profile is None or serializer.instance.id != teacher_profile.id:
+                raise PermissionDenied("You can only update your own teacher profile.")
+            blocked = sorted(set(serializer.validated_data) - TEACHER_SELF_EDITABLE_FIELDS)
+            if blocked:
+                raise PermissionDenied(
+                    f"You can't change {', '.join(blocked)} yourself. Ask your center's administrator to update it."
+                )
         serializer.save()
 
     @audited(action="create", entity_type="teacher_profile")
@@ -133,7 +153,31 @@ class TeacherSalaryViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
-class TeacherAvailabilityViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
+class TeacherSubResourceWriteMixin:
+    """Availability, specializations and documents are written only from
+    the Admin portal. A teacher's module-wide `teachers:update` exists for
+    their own profile; through these endpoints it used to let any teacher
+    edit or delete any colleague's rows.
+    """
+
+    def _require_manager(self):
+        if not manages_teachers(self.request.user):
+            raise PermissionDenied("Only your center's administrator can change this.")
+
+    def perform_create(self, serializer):
+        self._require_manager()
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self._require_manager()
+        serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        self._require_manager()
+        return super().destroy(request, *args, **kwargs)
+
+
+class TeacherAvailabilityViewSet(TeacherSubResourceWriteMixin, SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     queryset = TeacherAvailability.objects.all().select_related("teacher_profile").order_by("day_of_week", "start_time")
     serializer_class = TeacherAvailabilitySerializer
     permission_classes = [HasModulePermission]
@@ -142,7 +186,7 @@ class TeacherAvailabilityViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     permission_map = TEACHER_PERMISSION_MAP
 
 
-class TeacherSpecializationViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
+class TeacherSpecializationViewSet(TeacherSubResourceWriteMixin, SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     queryset = TeacherSpecialization.objects.all().select_related("teacher_profile").order_by("-is_primary", "subject_name")
     serializer_class = TeacherSpecializationSerializer
     permission_classes = [HasModulePermission]
@@ -152,7 +196,7 @@ class TeacherSpecializationViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet
     permission_map = TEACHER_PERMISSION_MAP
 
 
-class TeacherDocumentViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
+class TeacherDocumentViewSet(TeacherSubResourceWriteMixin, SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     queryset = TeacherDocument.objects.all().select_related("teacher_profile", "file").order_by("-created_at")
     serializer_class = TeacherDocumentSerializer
     permission_classes = [HasModulePermission]
@@ -160,3 +204,15 @@ class TeacherDocumentViewSet(SoftDeleteDestroyMixin, viewsets.ModelViewSet):
     search_fields = ["title", "document_number"]
     entity_type = "teacher_document"
     permission_map = TEACHER_PERMISSION_MAP
+
+    def get_queryset(self):
+        """Identity documents (passport numbers, diplomas) — a teacher sees
+        only their own; admins see the whole org. Same "own record only"
+        narrowing as TeacherSalaryViewSet.get_queryset."""
+        queryset = super().get_queryset()
+        if manages_teachers(self.request.user):
+            return queryset
+        teacher_profile = getattr(self.request.user, "teacher_profile", None)
+        if teacher_profile is None:
+            return queryset.none()
+        return queryset.filter(teacher_profile=teacher_profile)

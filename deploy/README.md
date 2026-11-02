@@ -129,10 +129,15 @@ eski fayllarni qaytarib qo'yadi va nginx eski konfiguratsiyada ishlashda davom e
 
 ### Hujumlardan himoya (rate limit, Cloudflare)
 
-nginx har bir IP uchun so'rovlarni cheklaydi (`nginx-mentorio-limits.conf`):
-login/parol tiklash — daqiqasiga 20, API — soniyasiga 30, sahifalar —
-soniyasiga 10 (hammasida burst bor). Oshib ketsa — `429` va API formatidagi
-xabar. Bu bitta kompyuterdan keladigan floodni to'xtatadi; ko'p
+nginx so'rovlarni cheklaydi (`nginx-mentorio-limits.conf`). Bitta maktab
+Wi-Fi'si yoki mobil operator NAT'i ortida yuzlab o'quvchi bitta IP'da
+bo'lgani uchun, tizimga kirgan foydalanuvchilar **sessiya bo'yicha**
+cheklanadi (API — soniyasiga 20, sahifalar — 5, burst bilan), IP bo'yicha emas.
+IP bo'yicha faqat keng zaxira chegara (soniyasiga 150 — butun maktab sig'adi),
+tizimga kirmaganlar uchun soniyasiga 10 va login/parol tiklash uchun daqiqasiga
+30 (bir sinf birdaniga kira oladi). Hech kim bloklanmaydi: oshib ketgan
+so'rov `429` va API formatidagi xabar oladi, birozdan keyin qayta urinish
+ishlaydi. Bu bitta kompyuterdan keladigan floodni to'xtatadi; ko'p
 kompyuterli haqiqiy DDoS'ga 1 CPU'li server o'zi chiday olmaydi — buning
 uchun Cloudflare proxy kerak:
 

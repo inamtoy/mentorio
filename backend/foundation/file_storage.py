@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import hashlib
 import uuid
+from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
+from django.db.models import Count, Sum
 from django.utils import timezone
 
 from foundation.models import File
@@ -37,8 +39,32 @@ ALLOWED_TYPES: dict[str, tuple[str, tuple[bytes, ...] | None]] = {
 }
 
 
+# Per-user cap over a rolling 24 hours. Without it one account (even a
+# student's) could fill the server's disk with 10 MB files in a loop — the
+# daily cleanup only removes files never attached to homework. Generous for
+# real use: a teacher attaching worksheets to every group, or a student
+# photographing a few pages per assignment, stays far below it.
+DAILY_UPLOAD_MAX_FILES = 100
+DAILY_UPLOAD_MAX_BYTES = 300 * 1024 * 1024
+
+
 class UploadRejected(ValueError):
     """The upload breaks a rule; the message is shown to the user as-is."""
+
+
+def _enforce_daily_quota(uploaded_by, size: int) -> None:
+    if uploaded_by is None:
+        return
+    # all_objects: deleted files still used the bandwidth and disk once, and
+    # counting them stops an upload-delete-upload loop from resetting this.
+    recent = File.all_objects.filter(uploaded_by=uploaded_by, created_at__gte=timezone.now() - timedelta(hours=24))
+    totals = recent.aggregate(count=Count("id"), bytes=Sum("size_bytes"))
+    if totals["count"] >= DAILY_UPLOAD_MAX_FILES or (totals["bytes"] or 0) + size > DAILY_UPLOAD_MAX_BYTES:
+        raise UploadRejected(
+            "You've reached today's upload limit "
+            f"({DAILY_UPLOAD_MAX_FILES} files or {DAILY_UPLOAD_MAX_BYTES // (1024 * 1024)} MB in 24 hours). "
+            "Try again tomorrow, or ask your center's administrator if you need more."
+        )
 
 
 def _content_matches(ext: str, head: bytes) -> bool:
@@ -63,6 +89,8 @@ def store_upload(uploaded, *, organization_id, uploaded_by, category: str) -> Fi
     uploaded.seek(0)
     if not _content_matches(ext, head):
         raise UploadRejected(f"The file's content doesn't match its {ext} extension. Save it again in that format and retry.")
+
+    _enforce_daily_quota(uploaded_by, uploaded.size)
 
     file_id = uuid.uuid4()
     stored_name = f"{file_id}{ext}"

@@ -1,4 +1,5 @@
 import base64
+import hmac
 import logging
 
 from django.db import transaction as db_transaction
@@ -181,7 +182,7 @@ class PaymeWebhookView(APIView):
             return None
 
         gateway_account = _lookup_gateway_account(gateway_account_id, "payme")
-        if gateway_account is None or login != "Paycom" or password != gateway_account.secret_key:
+        if gateway_account is None or login != "Paycom" or not hmac.compare_digest(password, gateway_account.secret_key or ""):
             return None
         return gateway_account
 

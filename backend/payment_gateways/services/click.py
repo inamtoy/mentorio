@@ -10,6 +10,7 @@ range) — see payment_gateways/services/payme.py's docstring for the same
 from __future__ import annotations
 
 import hashlib
+import hmac
 from decimal import Decimal
 
 from django.db import transaction as db_transaction
@@ -60,7 +61,9 @@ def verify_signature(secret_key: str, params: dict) -> bool:
         parts.append(str(params.get("merchant_prepare_id", "")))
     parts += [str(params.get("amount", "")), action, str(params.get("sign_time", ""))]
     expected = _md5("".join(parts))
-    return expected == params.get("sign_string")
+    # Constant-time: a plain == leaks, through response timing, how many
+    # leading characters of a forged signature were right.
+    return hmac.compare_digest(expected, str(params.get("sign_string", "")))
 
 
 def _find_transaction(gateway_account, merchant_trans_id: str) -> GatewayTransaction:

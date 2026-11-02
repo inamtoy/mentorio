@@ -13,8 +13,15 @@ Group=deploy
 WorkingDirectory=/home/deploy/mentorio/backend
 Environment=DJANGO_SETTINGS_MODULE=config.settings.prod
 Environment=PYTHONUNBUFFERED=1
+# 3 processes x 4 threads: a request waiting on Postgres no longer holds a
+# whole worker, so a few slow requests can't freeze the API. --max-requests
+# recycles workers to cap slow memory growth on a 1.6 GB box. With threads,
+# --timeout only catches a hung worker process; per-request time is bounded
+# by nginx's proxy_read_timeout (nginx-proxy-snippet.conf).
 ExecStart=/home/deploy/mentorio/backend/.venv/bin/gunicorn config.wsgi:application \
-    --bind 127.0.0.1:8001 --workers 3 --timeout 120 --access-logfile -
+    --bind 127.0.0.1:8001 --workers 3 --worker-class gthread --threads 4 \
+    --timeout 60 --graceful-timeout 30 --max-requests 2000 --max-requests-jitter 200 \
+    --access-logfile -
 Restart=always
 RestartSec=3
 

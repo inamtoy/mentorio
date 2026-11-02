@@ -241,3 +241,23 @@ def test_cleanup_removes_stale_part_files(media_root):
 
     assert not partial.exists()
     assert recent.exists()
+
+
+def test_daily_upload_quota_stops_disk_filling(monkeypatch):
+    """foundation/file_storage.py::_enforce_daily_quota — without it one
+    account could fill the disk with 10 MB files in a loop."""
+    from foundation import file_storage
+
+    monkeypatch.setattr(file_storage, "DAILY_UPLOAD_MAX_FILES", 2)
+    _org, _group, _teacher_user, member_user, _outsider_user = _setup("91")
+    client = _client(member_user)
+
+    first = _upload(client, "a.pdf", PDF)
+    second = _upload(client, "b.pdf", PDF)
+    # Deleting doesn't give the quota back (upload-delete loops).
+    assert File.all_objects.using(BYPASS_ALIAS).filter(id=second.json()["data"]["id"]).update(deleted_at=timezone.now()) == 1
+    third = _upload(client, "c.pdf", PDF)
+
+    assert (first.status_code, second.status_code) == (201, 201)
+    assert third.status_code == 400
+    assert "upload limit" in str(third.json())

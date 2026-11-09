@@ -2631,8 +2631,8 @@
         "body": "Har bir xodim faqat o'ziga ruxsat berilgan bo'limlarni ko'radi. Har bir markaz ma'lumotlari boshqalardan ajratilgan, muhim amallar jurnalga yoziladi."
       }
     },
-    "rolesTitle": "Har kim uchun o'z kabineti",
-    "rolesSubtitle": "Bitta tizim — har bir rolga kerakli ekranlar.",
+    "rolesTitle": "Har kim uchun o'z o'rni",
+    "rolesSubtitle": "Xodimlar va o'quvchilar o'z kabinetida ishlaydi, ota-onalar Telegram orqali xabardor bo'ladi.",
     "roles": {
       "admin": {
         "title": "Markaz rahbari va administrator",
@@ -2648,7 +2648,7 @@
       },
       "parent": {
         "title": "Ota-ona",
-        "body": "Farzandining to'lovlari va darsga kelmagani haqida Telegram orqali xabar oladi."
+        "body": "Alohida kabinet kerak emas: farzandining to'lovlari va darsga kelmagani haqida Telegram orqali xabardor bo'ladi."
       }
     },
     "pricingTitle": "Narx",

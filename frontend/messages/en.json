@@ -2631,8 +2631,8 @@
         "body": "Each staff member sees only the sections they're allowed to. Every center's data is isolated, and sensitive actions are logged."
       }
     },
-    "rolesTitle": "A portal for everyone",
-    "rolesSubtitle": "One system — the right screens for each role.",
+    "rolesTitle": "A place for everyone",
+    "rolesSubtitle": "Staff and students work in their own portal; parents stay informed on Telegram.",
     "roles": {
       "admin": {
         "title": "Director and administrator",
@@ -2648,7 +2648,7 @@
       },
       "parent": {
         "title": "Parent",
-        "body": "Gets Telegram notifications about their child's payments and missed lessons."
+        "body": "No separate portal needed: parents get Telegram notifications about their child's payments and missed lessons."
       }
     },
     "pricingTitle": "Pricing",

@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import createIntlMiddleware from "next-intl/middleware";
+import { routing } from "@/i18n/routing";
 import { ROLE_PORTAL_MAP } from "@/lib/portals";
+
+// URL locales for the public pages only (see i18n/routing.ts).
+const intlMiddleware = createIntlMiddleware(routing);
 
 const PUBLIC_PATHS = ["/login", "/forgot-password"];
 
-// Public marketing pages (exact match). A signed-in visitor is sent on to
-// their own portal instead — the landing page is for prospects.
-const MARKETING_PATHS = ["/"];
+// Public marketing pages (exact match), one per locale: "/" (uz), "/ru",
+// "/en" — plus "/uz", which next-intl redirects to "/". A signed-in visitor
+// is sent on to their own portal instead; the landing page is for prospects.
+const MARKETING_PATHS = ["/", ...routing.locales.map((locale) => `/${locale}`)];
 
 // Needs a session (it changes the signed-in user's own password) but belongs
 // to no portal — every role may open it.
@@ -62,7 +68,7 @@ export function proxy(request: NextRequest) {
 
   if (MARKETING_PATHS.includes(pathname)) {
     if (hasSession && home) return NextResponse.redirect(new URL(home, request.url));
-    return NextResponse.next();
+    return intlMiddleware(request);
   }
 
   // Sign-in pages, portals and everything else stay out of search results

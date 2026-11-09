@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { getLocale, getTranslations } from "next-intl/server";
+import { notFound } from "next/navigation";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
   Award,
   BarChart2,
@@ -19,6 +20,8 @@ import {
   HeartHandshake,
   type LucideIcon,
 } from "lucide-react";
+import { LOCALES, isLocale } from "@/i18n/locales";
+import { landingPath } from "@/i18n/routing";
 import { SALES_TELEGRAM_URL, SITE_URL } from "@/lib/site";
 
 // Every feature listed here exists in the product (see the Landing.features
@@ -46,29 +49,49 @@ const ROLES: { key: string; icon: LucideIcon }[] = [
   { key: "parent", icon: HeartHandshake },
 ];
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("Landing");
+type Props = { params: Promise<{ locale: string }> };
+
+// Open Graph wants language_TERRITORY.
+const OG_LOCALES: Record<string, string> = { uz: "uz_UZ", ru: "ru_RU", en: "en_US" };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  if (!isLocale(locale)) return {};
+  const t = await getTranslations({ locale, namespace: "Landing" });
   const title = t("metaTitle");
   const description = t("metaDescription");
+  const url = landingPath(locale);
   return {
     title,
     description,
-    alternates: { canonical: "/" },
-    openGraph: { title, description, url: "/" },
+    alternates: {
+      canonical: url,
+      // hreflang for every language version; x-default = the Uzbek root.
+      languages: { ...Object.fromEntries(LOCALES.map((l) => [l, landingPath(l)])), "x-default": "/" },
+    },
+    openGraph: {
+      title,
+      description,
+      url,
+      locale: OG_LOCALES[locale],
+      alternateLocale: LOCALES.filter((l) => l !== locale).map((l) => OG_LOCALES[l]),
+    },
     twitter: { title, description },
   };
 }
 
-export default async function LandingPage() {
+export default async function LandingPage({ params }: Props) {
+  const { locale } = await params;
+  if (!isLocale(locale)) notFound();
+  setRequestLocale(locale);
   const t = await getTranslations("Landing");
-  const locale = await getLocale();
 
   // Structured data: what the product is — no ratings, offers or reviews.
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: "Mentorio",
-    url: SITE_URL,
+    url: `${SITE_URL}${landingPath(locale) === "/" ? "" : landingPath(locale)}`,
     applicationCategory: "EducationalApplication",
     operatingSystem: "Web",
     description: t("metaDescription"),

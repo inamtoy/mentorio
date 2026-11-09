@@ -1,5 +1,16 @@
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *  # noqa: F401,F403
-from .base import env
+from .base import SECRET_KEY, env
+
+# The base.py fallback key is in the (public) repo: a server started without
+# DJANGO_SECRET_KEY would sign JWTs and derive the payment-gateway
+# encryption key from a value anyone can read. Refuse to start instead.
+if SECRET_KEY.startswith("django-insecure") or len(SECRET_KEY) < 40:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY is missing or too short in production. Set a random value of 50+ characters "
+        "in backend/.env (python -c \"import secrets; print(secrets.token_urlsafe(50))\")."
+    )
 
 DEBUG = False
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])

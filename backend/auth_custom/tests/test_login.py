@@ -90,6 +90,27 @@ def test_login_with_wrong_password_is_rejected(user):
     assert response.json()["success"] is False
 
 
+def test_unknown_login_id_gets_same_reply_as_wrong_password(user, monkeypatch):
+    """No user enumeration: same status + message, and the password is still
+    hashed (so the reply isn't measurably faster for a login_id that doesn't
+    exist)."""
+    hashed = []
+    original = User.set_password
+    monkeypatch.setattr(User, "set_password", lambda self, raw: (hashed.append(raw), original(self, raw)))
+    client = APIClient()
+
+    wrong_password = client.post(
+        "/api/v1/auth/login/", {"login_id": user.login_id, "password": "wrong-password"}, format="json"
+    )
+    unknown_user = client.post(
+        "/api/v1/auth/login/", {"login_id": "no-such-login-id", "password": "wrong-password"}, format="json"
+    )
+
+    assert unknown_user.status_code == wrong_password.status_code == 401
+    assert unknown_user.json()["message"] == wrong_password.json()["message"]
+    assert hashed == ["wrong-password"]
+
+
 def test_login_for_suspended_account_is_rejected(user):
     user.status = "suspended"
     user.save(using=BYPASS_ALIAS, update_fields=["status"])

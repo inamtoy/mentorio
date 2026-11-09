@@ -60,6 +60,12 @@ class LoginView(APIView):
 
         user = User.objects.using(BYPASS_ALIAS).filter(login_id=login_id).first()
 
+        if user is None:
+            # Hash anyway so an unknown login_id costs as much time as a
+            # wrong password — otherwise the faster reply alone tells a
+            # scanner which login_ids exist (same trick as Django's
+            # ModelBackend.authenticate).
+            User().set_password(password)
         if user is None or not user.check_password(password):
             self._log_attempt(request, login_id, user, "failed", "invalid_credentials")
             raise AuthenticationFailed("Invalid login ID or password.")

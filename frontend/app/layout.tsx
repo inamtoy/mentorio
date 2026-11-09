@@ -5,11 +5,25 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { QueryProvider } from "./query-provider";
 import { ThemeApplier } from "@/components/layout/theme-applier";
+import { SITE_URL } from "@/lib/site";
+
+const TITLE = "Mentorio — Education Management System";
+const DESCRIPTION = "Modern education management platform for schools and learning centers";
 
 export const metadata: Metadata = {
-  title: "Mentorio — Education Management System",
-  description: "Modern education management platform for schools and learning centers",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
   icons: { icon: "/logo.png" },
+  openGraph: {
+    type: "website",
+    siteName: "Mentorio",
+    title: TITLE,
+    description: DESCRIPTION,
+    url: "/login",
+    images: [{ url: "/logo.png", width: 500, height: 500, alt: "Mentorio" }],
+  },
+  twitter: { card: "summary", title: TITLE, description: DESCRIPTION, images: ["/logo.png"] },
 };
 
 export default async function RootLayout({

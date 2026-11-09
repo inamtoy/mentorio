@@ -166,3 +166,60 @@ def test_blank_teacher_code_gets_the_next_sequential_code():
     assert response.json()["data"]["teacher_code"] == "TCH-0001"
     assert duplicate.status_code == 400
     assert "teacher_code" in duplicate.json()["data"]
+
+
+def test_generated_code_taken_by_a_concurrent_create_is_retried(monkeypatch):
+    """Two admins saving at once both read the same MAX and get the same
+    next code; the second insert hits uq_student_profiles_org_code. That used
+    to surface as a 500 — now the code is regenerated and the save succeeds."""
+    import common.serializers as mixin_module
+
+    org = _make_org()
+    client = _admin_client(org, "+998940000016")
+    real = mixin_module.generate_sequential_code
+    calls = []
+
+    def racing_generate(model_cls, organization, **kwargs):
+        calls.append(1)
+        code = real(model_cls, organization, **kwargs)
+        if len(calls) == 1:
+            # The "other admin" takes this exact code between our read and our insert.
+            StudentProfile.objects.using(BYPASS_ALIAS).create(
+                organization=org, user=_plain_user(org, "+998940000017"), student_code=code
+            )
+        return code
+
+    monkeypatch.setattr(mixin_module, "generate_sequential_code", racing_generate)
+
+    response = client.post(
+        "/api/v1/students/",
+        {"organization": str(org.id), "user": str(_plain_user(org, "+998940000018").id), "enrollment_date": "2026-10-01"},
+        format="json",
+    )
+
+    assert response.status_code == 201, response.json()
+    assert response.json()["data"]["student_code"] == "STU-0002"
+    assert len(calls) == 2
+
+
+def test_typed_code_taken_after_validation_is_a_400_not_a_500(monkeypatch):
+    """The same race for a hand-typed code: validate() saw it free, another
+    save took it before our insert. The admin gets the normal field error."""
+    from common.serializers import OptionalSequentialCodeMixin
+
+    org = _make_org()
+    client = _admin_client(org, "+998940000019")
+    StudentProfile.objects.using(BYPASS_ALIAS).create(
+        organization=org, user=_plain_user(org, "+998940000020"), student_code="STU-0500"
+    )
+    # Simulate "free at validation time": skip the pre-insert uniqueness check.
+    monkeypatch.setattr(OptionalSequentialCodeMixin, "validate", lambda self, attrs: attrs)
+
+    response = client.post(
+        "/api/v1/students/",
+        {"organization": str(org.id), "user": str(_plain_user(org, "+998940000021").id), "student_code": "STU-0500", "enrollment_date": "2026-10-01"},
+        format="json",
+    )
+
+    assert response.status_code == 400, response.json()
+    assert "student_code" in response.json()["data"]

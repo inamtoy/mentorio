@@ -6,6 +6,9 @@ import { ROLE_PORTAL_MAP } from "@/lib/portals";
 
 // URL locales for the public pages only (see i18n/routing.ts).
 const intlMiddleware = createIntlMiddleware(routing);
+// The header next-intl's middleware uses to hand the URL locale to
+// getRequestConfig's `requestLocale` (i18n/request.ts).
+const INTL_LOCALE_HEADER = "X-NEXT-INTL-LOCALE";
 
 const PUBLIC_PATHS = ["/login", "/forgot-password"];
 
@@ -68,6 +71,16 @@ export function proxy(request: NextRequest) {
 
   if (MARKETING_PATHS.includes(pathname)) {
     if (hasSession && home) return NextResponse.redirect(new URL(home, request.url));
+    if (pathname === "/") {
+      // "/" is a real route (app/(marketing)/page.tsx), not next-intl's
+      // rewrite to /uz: behind nginx that rewrite became an https proxy
+      // request to the standalone server's own plain-http port (500).
+      // Only the locale is passed on, so RootLayout renders <html lang="uz">
+      // whatever the portals' NEXT_LOCALE cookie says.
+      const headers = new Headers(request.headers);
+      headers.set(INTL_LOCALE_HEADER, routing.defaultLocale);
+      return NextResponse.next({ request: { headers } });
+    }
     return intlMiddleware(request);
   }
 

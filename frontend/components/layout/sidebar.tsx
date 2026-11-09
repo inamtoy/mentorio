@@ -33,28 +33,28 @@ const NAV_ITEMS = [
   {
     groupKey: "navGroupPeople",
     items: [
-      { href: "/students", labelKey: "navStudents", icon: Users },
-      { href: "/teachers", labelKey: "navTeachers", icon: GraduationCap },
+      { href: "/admin/students", labelKey: "navStudents", icon: Users },
+      { href: "/admin/teachers", labelKey: "navTeachers", icon: GraduationCap },
     ],
   },
   {
     groupKey: "navGroupAcademics",
     items: [
-      { href: "/courses", labelKey: "navCourses", icon: BookOpen },
-      { href: "/groups", labelKey: "navGroups", icon: Users2 },
-      { href: "/schedule", labelKey: "navSchedule", icon: Calendar },
-      { href: "/attendance", labelKey: "navAttendance", icon: ClipboardCheck },
-      { href: "/homework", labelKey: "navHomework", icon: ClipboardList },
-      { href: "/exams", labelKey: "navExams", icon: Award },
+      { href: "/admin/courses", labelKey: "navCourses", icon: BookOpen },
+      { href: "/admin/groups", labelKey: "navGroups", icon: Users2 },
+      { href: "/admin/schedule", labelKey: "navSchedule", icon: Calendar },
+      { href: "/admin/attendance", labelKey: "navAttendance", icon: ClipboardCheck },
+      { href: "/admin/homework", labelKey: "navHomework", icon: ClipboardList },
+      { href: "/admin/exams", labelKey: "navExams", icon: Award },
     ],
   },
   {
     groupKey: "navGroupAdministration",
     items: [
-      { href: "/finance", labelKey: "navFinance", icon: CreditCard },
-      { href: "/reports", labelKey: "navReports", icon: BarChart2 },
-      { href: "/notifications", labelKey: "navNotifications", icon: Bell },
-      { href: "/settings", labelKey: "navSettings", icon: Settings },
+      { href: "/admin/finance", labelKey: "navFinance", icon: CreditCard },
+      { href: "/admin/reports", labelKey: "navReports", icon: BarChart2 },
+      { href: "/admin/notifications", labelKey: "navNotifications", icon: Bell },
+      { href: "/admin/settings", labelKey: "navSettings", icon: Settings },
     ],
   },
 ];

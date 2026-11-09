@@ -5,9 +5,10 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 // The Admin portal used to live at the site root (`/students`, `/finance`,
 // ...) before `/` became the public landing page. Keeps admins' bookmarks
-// and browser history working. Temporary (307), not permanent: browsers
-// cache a 308 forever, and these root paths may be wanted for public pages
-// later.
+// and browser history working. Permanent 308: keeps the method and body,
+// and Next.js carries the query string over. Browsers cache a 308, so these
+// root paths can't be reused for public pages later without breaking
+// those cached redirects.
 const LEGACY_ADMIN_SECTIONS = [
   "attendance",
   "courses",
@@ -31,8 +32,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   async redirects() {
     return LEGACY_ADMIN_SECTIONS.flatMap((section) => [
-      { source: `/${section}`, destination: `/admin/${section}`, permanent: false },
-      { source: `/${section}/:path*`, destination: `/admin/${section}/:path*`, permanent: false },
+      { source: `/${section}`, destination: `/admin/${section}`, permanent: true },
+      { source: `/${section}/:path*`, destination: `/admin/${section}/:path*`, permanent: true },
     ]);
   },
 };

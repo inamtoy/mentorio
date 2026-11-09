@@ -19,7 +19,7 @@ CREATE TYPE auth.verification_status_enum AS ENUM ('pending', 'verified', 'expir
 -- TABLE: login_attempts
 -- Purpose: Track every login attempt for security monitoring.
 -- Why: Brute-force detection, compliance, security auditing.
--- Business Rules: Never deleted. Rate limiting based on failed attempts.
+-- Business Rules: Immutable; kept 30 days, then deleted (manage.py cleanup_login_attempts). Rate limiting based on failed attempts.
 -- Relationships: belongs to user (N:1)
 -- ============================================================================
 

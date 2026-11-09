@@ -27,34 +27,34 @@ const NAV_ITEMS = [
   {
     groupKey: "navGroupMain",
     items: [
-      { href: "/", labelKey: "navDashboard", icon: LayoutDashboard },
+      { href: "/admin", labelKey: "navDashboard", icon: LayoutDashboard },
     ],
   },
   {
     groupKey: "navGroupPeople",
     items: [
-      { href: "/students", labelKey: "navStudents", icon: Users },
-      { href: "/teachers", labelKey: "navTeachers", icon: GraduationCap },
+      { href: "/admin/students", labelKey: "navStudents", icon: Users },
+      { href: "/admin/teachers", labelKey: "navTeachers", icon: GraduationCap },
     ],
   },
   {
     groupKey: "navGroupAcademics",
     items: [
-      { href: "/courses", labelKey: "navCourses", icon: BookOpen },
-      { href: "/groups", labelKey: "navGroups", icon: Users2 },
-      { href: "/schedule", labelKey: "navSchedule", icon: Calendar },
-      { href: "/attendance", labelKey: "navAttendance", icon: ClipboardCheck },
-      { href: "/homework", labelKey: "navHomework", icon: ClipboardList },
-      { href: "/exams", labelKey: "navExams", icon: Award },
+      { href: "/admin/courses", labelKey: "navCourses", icon: BookOpen },
+      { href: "/admin/groups", labelKey: "navGroups", icon: Users2 },
+      { href: "/admin/schedule", labelKey: "navSchedule", icon: Calendar },
+      { href: "/admin/attendance", labelKey: "navAttendance", icon: ClipboardCheck },
+      { href: "/admin/homework", labelKey: "navHomework", icon: ClipboardList },
+      { href: "/admin/exams", labelKey: "navExams", icon: Award },
     ],
   },
   {
     groupKey: "navGroupAdministration",
     items: [
-      { href: "/finance", labelKey: "navFinance", icon: CreditCard },
-      { href: "/reports", labelKey: "navReports", icon: BarChart2 },
-      { href: "/notifications", labelKey: "navNotifications", icon: Bell },
-      { href: "/settings", labelKey: "navSettings", icon: Settings },
+      { href: "/admin/finance", labelKey: "navFinance", icon: CreditCard },
+      { href: "/admin/reports", labelKey: "navReports", icon: BarChart2 },
+      { href: "/admin/notifications", labelKey: "navNotifications", icon: Bell },
+      { href: "/admin/settings", labelKey: "navSettings", icon: Settings },
     ],
   },
 ];
@@ -91,7 +91,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
       {/* Logo */}
       <div className="flex items-center h-16 px-4 border-b border-border gap-3">
         {/* Logo links back to this portal's dashboard */}
-        <Link href="/" onClick={onMobileClose} className="flex items-center gap-3 min-w-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        <Link href="/admin" onClick={onMobileClose} className="flex items-center gap-3 min-w-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           {/* eslint-disable-next-line @next/next/no-img-element -- static local asset, matches the plain <img> convention already used for branding.logoUrl on the login page */}
           <img src="/logo.png" alt="Mentorio" className="flex-shrink-0 h-12 w-12 object-contain rounded-xl" />
           <span className={cn("text-xl font-bold text-card-foreground tracking-tight", collapsed && "lg:hidden")}>
@@ -125,7 +125,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
             <ul className="space-y-0.5">
               {group.items.map(({ href, labelKey, icon: Icon }) => {
                 const isActive =
-                  href === "/" ? pathname === "/" : pathname.startsWith(href);
+                  href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
                 const label = t(labelKey);
                 return (
                   <li key={href}>

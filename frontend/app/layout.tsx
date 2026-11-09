@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     siteName: "Mentorio",
     title: TITLE,
     description: DESCRIPTION,
-    url: "/login",
+    url: "/",
     images: [{ url: "/logo.png", width: 500, height: 500, alt: "Mentorio" }],
   },
   twitter: { card: "summary", title: TITLE, description: DESCRIPTION, images: ["/logo.png"] },

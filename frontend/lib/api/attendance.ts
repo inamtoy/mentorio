@@ -34,7 +34,7 @@ export interface ListAttendanceParams {
 // Unscoped (no group/studentProfile) callers are responsible for their own
 // date bound — this is a per-session record that accumulates without limit
 // over an org's lifetime, so an unbounded org-wide call risks paging through
-// years of history. See app/(admin)/attendance/page.tsx's default date
+// years of history. See app/admin/attendance/page.tsx's default date
 // filter for the one such caller in this app.
 //
 // A single group's (or single student's) attendance is left unbounded by

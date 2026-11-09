@@ -2565,5 +2565,97 @@
     "download": "Yuklab olish",
     "downloadFailed": "Faylni yuklab olib bo'lmadi",
     "remove": "Olib tashlash"
+  },
+  "Landing": {
+    "metaTitle": "Mentorio — o'quv markazlari uchun boshqaruv tizimi",
+    "metaDescription": "O'quvchilar, guruhlar, dars jadvali, davomat, uy vazifalari, imtihonlar, to'lovlar va hisobotlar — o'quv markazini boshqarish uchun bitta tizim. Payme, Click va Telegram bildirishnomalari bilan.",
+    "navFeatures": "Imkoniyatlar",
+    "navRoles": "Kimlar uchun",
+    "navPricing": "Narx",
+    "login": "Kirish",
+    "requestDemo": "Demo so'rash",
+    "heroEyebrow": "O'quv markazlari uchun LMS",
+    "heroTitle": "O'quv markazingizni bitta tizimda boshqaring",
+    "heroSubtitle": "O'quvchilar va guruhlardan tortib davomat, uy vazifalari, to'lovlar va hisobotlargacha — hammasi bir joyda. O'qituvchi, o'quvchi va ota-ona har biri o'z kabinetida yoki Telegram'da xabardor bo'ladi.",
+    "heroSecondary": "Imkoniyatlarni ko'rish",
+    "heroLanguages": "O'zbek, rus va ingliz tillarida",
+    "featuresTitle": "Markaz uchun kerakli hamma narsa",
+    "featuresSubtitle": "Har bir modul bir-biriga bog'langan: guruhga qo'shilgan o'quvchi darhol jadvalda, davomatda va hisob-kitobda ko'rinadi.",
+    "features": {
+      "people": {
+        "title": "O'quvchilar va o'qituvchilar",
+        "body": "Profillar, ota-ona va favqulodda aloqa ma'lumotlari, hujjatlar va status tarixi. O'quvchi kodlari avtomatik beriladi."
+      },
+      "groups": {
+        "title": "Kurslar va guruhlar",
+        "body": "Kurslarni yarating, guruhlarga o'qituvchi biriktiring va o'quvchilarni qo'shing."
+      },
+      "schedule": {
+        "title": "Dars jadvali",
+        "body": "Bir xonada, bir guruhda yoki bir o'qituvchida bir vaqtga ikki dars qo'yilsa, tizim darhol ogohlantiradi."
+      },
+      "attendance": {
+        "title": "Davomat",
+        "body": "O'qituvchi davomatni dars kuni belgilaydi. Davomati past o'quvchilar hisobotda alohida ko'rsatiladi."
+      },
+      "homework": {
+        "title": "Uy vazifalari",
+        "body": "Fayl biriktirilgan topshiriqlar, o'quvchi javoblari, ball va izoh bilan baholash."
+      },
+      "exams": {
+        "title": "Imtihonlar va baholar",
+        "body": "Imtihonlarni rejalashtiring, natijalarni kiriting — o'quvchi o'z baholarini kabinetida ko'radi."
+      },
+      "finance": {
+        "title": "Moliya",
+        "body": "Oylik hisob-fakturalar avtomatik yaratiladi. To'lovlar, xarajatlar va o'qituvchilar maoshi bir joyda."
+      },
+      "payments": {
+        "title": "Payme va Click",
+        "body": "O'quvchi hisob-fakturani Payme yoki Click orqali onlayn to'lashi mumkin."
+      },
+      "telegram": {
+        "title": "Telegram bildirishnomalari",
+        "body": "Yangi hisob-faktura, to'lov muddati yaqinlashgani va darsga kelmagani haqida o'quvchi va ota-onaga Telegram orqali xabar boradi."
+      },
+      "reports": {
+        "title": "Hisobotlar",
+        "body": "O'quvchilar, o'qituvchilar, davomat va moliya bo'yicha hisobotlar, CSV'ga eksport bilan."
+      },
+      "branches": {
+        "title": "Bir nechta filial",
+        "body": "Bitta markazning filiallarini bitta tizimda yuriting."
+      },
+      "security": {
+        "title": "Rollar va xavfsizlik",
+        "body": "Har bir xodim faqat o'ziga ruxsat berilgan bo'limlarni ko'radi. Har bir markaz ma'lumotlari boshqalardan ajratilgan, muhim amallar jurnalga yoziladi."
+      }
+    },
+    "rolesTitle": "Har kim uchun o'z o'rni",
+    "rolesSubtitle": "Xodimlar va o'quvchilar o'z kabinetida ishlaydi, ota-onalar Telegram orqali xabardor bo'ladi.",
+    "roles": {
+      "admin": {
+        "title": "Markaz rahbari va administrator",
+        "body": "O'quvchilar, o'qituvchilar, guruhlar, jadval, moliya va hisobotlarni boshqaradi."
+      },
+      "teacher": {
+        "title": "O'qituvchi",
+        "body": "O'z guruhlari, jadvali, davomati, uy vazifalari, imtihonlari va maoshini ko'radi."
+      },
+      "student": {
+        "title": "O'quvchi",
+        "body": "Jadval, uy vazifalari, baholar, davomat va to'lovlarini kuzatadi, onlayn to'lov qiladi."
+      },
+      "parent": {
+        "title": "Ota-ona",
+        "body": "Alohida kabinet kerak emas: farzandining to'lovlari va darsga kelmagani haqida Telegram orqali xabardor bo'ladi."
+      }
+    },
+    "pricingTitle": "Narx",
+    "pricingBody": "Narx markazingiz hajmiga qarab belgilanadi.",
+    "pricingCta": "Narx uchun bog'laning",
+    "ctaTitle": "Mentorio'ni o'z markazingizda ko'ring",
+    "ctaBody": "Biz bilan bog'laning — tizimni ko'rsatamiz va markazingiz uchun sozlab beramiz.",
+    "footerRights": "© {year} Mentorio"
   }
 }

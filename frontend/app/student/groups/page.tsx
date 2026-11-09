@@ -1,5 +1,6 @@
 'use client';
 
+import Link from "next/link";
 import { useMemo } from 'react';
 import { Users, Clock, MapPin, Calendar, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
@@ -78,20 +79,20 @@ function CourseCard({ course, locale }: { course: MyCourse; locale: Locale }) {
       </div>
 
       <div className="p-5 pt-4 mt-auto flex gap-2">
-        <a
+        <Link
           href="/student/schedule"
           className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium transition-colors"
         >
           <Calendar className="h-3.5 w-3.5" />
           {t('scheduleAction')}
-        </a>
-        <a
+        </Link>
+        <Link
           href="/student/homework"
           className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium transition-colors"
         >
           <FileText className="h-3.5 w-3.5" />
           {t('homeworkAction')}
-        </a>
+        </Link>
       </div>
     </div>
   );

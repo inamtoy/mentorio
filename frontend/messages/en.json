@@ -2565,5 +2565,97 @@
     "download": "Download",
     "downloadFailed": "Couldn't download the file",
     "remove": "Remove"
+  },
+  "Landing": {
+    "metaTitle": "Mentorio — management system for learning centers",
+    "metaDescription": "Students, groups, schedule, attendance, homework, exams, payments and reports — one system to run a learning center. With Payme, Click and Telegram notifications.",
+    "navFeatures": "Features",
+    "navRoles": "Who it's for",
+    "navPricing": "Pricing",
+    "login": "Sign in",
+    "requestDemo": "Request a demo",
+    "heroEyebrow": "LMS for learning centers",
+    "heroTitle": "Run your learning center in one system",
+    "heroSubtitle": "From students and groups to attendance, homework, payments and reports — all in one place. Teachers, students and parents stay informed in their own portal or on Telegram.",
+    "heroSecondary": "See features",
+    "heroLanguages": "In Uzbek, Russian and English",
+    "featuresTitle": "Everything a learning center needs",
+    "featuresSubtitle": "The modules are connected: a student added to a group shows up in the schedule, attendance and billing right away.",
+    "features": {
+      "people": {
+        "title": "Students and teachers",
+        "body": "Profiles, parent and emergency contacts, documents and status history. Student codes are assigned automatically."
+      },
+      "groups": {
+        "title": "Courses and groups",
+        "body": "Create courses, assign teachers to groups and enroll students."
+      },
+      "schedule": {
+        "title": "Schedule",
+        "body": "Warns you right away when a room, a group or a teacher is booked for two lessons at once."
+      },
+      "attendance": {
+        "title": "Attendance",
+        "body": "Teachers mark attendance on the day of the lesson. Students with low attendance are flagged in reports."
+      },
+      "homework": {
+        "title": "Homework",
+        "body": "Assignments with files, student submissions, grading with a score and feedback."
+      },
+      "exams": {
+        "title": "Exams and grades",
+        "body": "Schedule exams and enter results — students see their grades in their portal."
+      },
+      "finance": {
+        "title": "Finance",
+        "body": "Monthly invoices are created automatically. Payments, expenses and teacher salaries in one place."
+      },
+      "payments": {
+        "title": "Payme and Click",
+        "body": "Students can pay an invoice online with Payme or Click."
+      },
+      "telegram": {
+        "title": "Telegram notifications",
+        "body": "Students and parents get Telegram messages about new invoices, upcoming due dates and missed lessons."
+      },
+      "reports": {
+        "title": "Reports",
+        "body": "Reports on students, teachers, attendance and finance, with CSV export."
+      },
+      "branches": {
+        "title": "Multiple branches",
+        "body": "Run all of a center's branches in one system."
+      },
+      "security": {
+        "title": "Roles and security",
+        "body": "Each staff member sees only the sections they're allowed to. Every center's data is isolated, and sensitive actions are logged."
+      }
+    },
+    "rolesTitle": "A place for everyone",
+    "rolesSubtitle": "Staff and students work in their own portal; parents stay informed on Telegram.",
+    "roles": {
+      "admin": {
+        "title": "Director and administrator",
+        "body": "Manages students, teachers, groups, schedule, finance and reports."
+      },
+      "teacher": {
+        "title": "Teacher",
+        "body": "Sees their own groups, schedule, attendance, homework, exams and salary."
+      },
+      "student": {
+        "title": "Student",
+        "body": "Follows their schedule, homework, grades, attendance and payments, and pays online."
+      },
+      "parent": {
+        "title": "Parent",
+        "body": "No separate portal needed: parents get Telegram notifications about their child's payments and missed lessons."
+      }
+    },
+    "pricingTitle": "Pricing",
+    "pricingBody": "Pricing depends on the size of your center.",
+    "pricingCta": "Contact us for pricing",
+    "ctaTitle": "See Mentorio at your center",
+    "ctaBody": "Get in touch — we'll show you the system and set it up for your center.",
+    "footerRights": "© {year} Mentorio"
   }
 }

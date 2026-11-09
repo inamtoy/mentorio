@@ -19,7 +19,7 @@ export interface FinanceRevenueChartPoint {
 // No "Expenses" series — this backend has no expense data anywhere (only
 // Payment/Invoice records), same "don't invent" rule the Admin Dashboard's
 // own revenue chart already follows. Real, real-data-derived `data` is the
-// caller's responsibility (see app/(admin)/finance/page.tsx, its only
+// caller's responsibility (see app/admin/finance/page.tsx, its only
 // caller) — this component is purely presentational.
 export function FinanceRevenueChart({ data }: { data: FinanceRevenueChartPoint[] }) {
   const formatMoney = useFormatCurrency();

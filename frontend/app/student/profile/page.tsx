@@ -1,5 +1,6 @@
 'use client';
 
+import Link from "next/link";
 import { useState } from 'react';
 import {
   Users,
@@ -292,12 +293,12 @@ export default function StudentProfilePage() {
               </div>
             </div>
             <div className="pt-3">
-              <a href="/student/payments" className="block">
+              <Link href="/student/payments" className="block">
                 <Button className="w-full justify-center">
                   <CreditCard className="h-4 w-4" />
                   {t('goToPaymentsButton')}
                 </Button>
-              </a>
+              </Link>
             </div>
           </Card>
 

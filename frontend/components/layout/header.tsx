@@ -15,19 +15,19 @@ import { useMyRegionSettingsQuery } from "@/lib/queries/settings";
 // Maps pathname to an AdminNav translation key (falls back to
 // portalFallbackTitle) — see app/teacher/layout.tsx's PAGE_TITLE_KEYS.
 const PAGE_TITLE_KEYS: Record<string, string> = {
-  "/": "navDashboard",
-  "/students": "navStudents",
-  "/teachers": "navTeachers",
-  "/courses": "navCourses",
-  "/groups": "navGroups",
-  "/schedule": "navSchedule",
-  "/attendance": "navAttendance",
-  "/homework": "navHomework",
-  "/exams": "navExams",
-  "/finance": "navFinance",
-  "/reports": "navReports",
-  "/notifications": "navNotifications",
-  "/settings": "navSettings",
+  "/admin": "navDashboard",
+  "/admin/students": "navStudents",
+  "/admin/teachers": "navTeachers",
+  "/admin/courses": "navCourses",
+  "/admin/groups": "navGroups",
+  "/admin/schedule": "navSchedule",
+  "/admin/attendance": "navAttendance",
+  "/admin/homework": "navHomework",
+  "/admin/exams": "navExams",
+  "/admin/finance": "navFinance",
+  "/admin/reports": "navReports",
+  "/admin/notifications": "navNotifications",
+  "/admin/settings": "navSettings",
 };
 
 interface HeaderProps {
@@ -96,7 +96,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
 
       {/* Notifications */}
       <Link
-        href="/notifications"
+        href="/admin/notifications"
         className="relative h-9 w-9 flex items-center justify-center rounded-xl hover:bg-secondary text-muted-foreground transition-colors"
         aria-label={t("notificationsAriaLabel", { count: unreadCount })}
       >
@@ -137,7 +137,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
               <p className="text-xs text-muted-foreground">{authUser?.loginId}</p>
             </div>
             <Link
-              href="/settings"
+              href="/admin/settings"
               onClick={() => setDropdownOpen(false)}
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
             >
@@ -145,7 +145,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
               {t("profileLabel")}
             </Link>
             <Link
-              href="/settings"
+              href="/admin/settings"
               onClick={() => setDropdownOpen(false)}
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors"
             >

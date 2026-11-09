@@ -47,13 +47,13 @@ def _make_user(org, phone, role_slug):
 
 def _make_student(org, phone):
     user = _make_user(org, phone, "student")
-    profile = StudentProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, student_code=f"STU-{phone[-4:]}")
+    profile = StudentProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, student_code=f"STU-{phone[-9:]}")
     return user, profile
 
 
 def _make_teacher(org, phone):
     user = _make_user(org, phone, "teacher")
-    profile = TeacherProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, teacher_code=f"TCH-{phone[-4:]}")
+    profile = TeacherProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, teacher_code=f"TCH-{phone[-9:]}")
     return user, profile
 
 

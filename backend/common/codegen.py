@@ -37,8 +37,9 @@ def generate_sequential_code(model_cls, organization, *, prefix: str, code_field
     hand-typed codes ("EDU", "STU-TEST-001") can't break the sequence; the
     max is numeric, not lexicographic, so "STU-10000" follows "STU-9999".
     Soft-deleted rows count too (same unique-constraint gotcha as above).
-    Two simultaneous creates can still collide on the unique constraint —
-    acceptable for a hand-driven admin form, unlike invoice numbering.
+    Two simultaneous creates can read the same max and return the same
+    code; the caller must retry on the unique constraint
+    (common.serializers.OptionalSequentialCodeMixin does).
     """
     manager = model_cls.all_objects if hasattr(model_cls, "all_objects") else model_cls.objects
     last = manager.filter(

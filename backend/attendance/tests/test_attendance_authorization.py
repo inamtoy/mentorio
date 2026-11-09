@@ -48,7 +48,7 @@ def _make_teacher_login(org, phone):
     )
     role = Role.objects.using(BYPASS_ALIAS).get(organization=org, slug="teacher")
     UserRole.objects.using(BYPASS_ALIAS).create(user=user, role=role, organization=org)
-    profile = TeacherProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, teacher_code=f"TCH-{phone[-4:]}")
+    profile = TeacherProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, teacher_code=f"TCH-{phone[-9:]}")
     return user, profile
 
 
@@ -61,7 +61,7 @@ def _make_student_login(org, phone):
     )
     role = Role.objects.using(BYPASS_ALIAS).get(organization=org, slug="student")
     UserRole.objects.using(BYPASS_ALIAS).create(user=user, role=role, organization=org)
-    profile = StudentProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, student_code=f"STU-{phone[-4:]}")
+    profile = StudentProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, student_code=f"STU-{phone[-9:]}")
     return user, profile
 
 

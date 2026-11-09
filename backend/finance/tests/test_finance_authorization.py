@@ -45,7 +45,7 @@ def _make_student_login(client, org, phone):
     )
     role = Role.objects.using(BYPASS_ALIAS).get(organization=org, slug="student")
     UserRole.objects.using(BYPASS_ALIAS).create(user=user, role=role, organization=org)
-    profile = StudentProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, student_code=f"STU-{phone[-4:]}")
+    profile = StudentProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, student_code=f"STU-{phone[-9:]}")
     response = client.post("/api/v1/auth/login/", {"login_id": user.login_id, "password": "pw123456"}, format="json")
     assert response.status_code == 200
     return user, profile

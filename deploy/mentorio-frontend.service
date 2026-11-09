@@ -17,6 +17,10 @@ Environment=HOSTNAME=127.0.0.1
 ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=3
+# Node exits with 143 (128 + SIGTERM) when systemd stops it, e.g. on every
+# deploy's restart; without this, each deploy logs a spurious "Failed with
+# result 'exit-code'".
+SuccessExitStatus=143
 
 [Install]
 WantedBy=multi-user.target

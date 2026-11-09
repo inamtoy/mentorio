@@ -11,8 +11,9 @@ LOGIN_STATUS_CHOICES = [
 
 
 class LoginAttempt(UUIDPrimaryKeyMixin, CreatedAtMixin):
-    """Every login attempt, for brute-force detection and audit. Immutable,
-    never deleted — rate limiting reads recent rows, doesn't mutate them.
+    """Every login attempt, for brute-force detection and audit. Immutable —
+    rate limiting reads recent rows, doesn't mutate them. Kept 30 days, then
+    hard-deleted by `manage.py cleanup_login_attempts` (daily cron).
     """
 
     organization = models.ForeignKey(

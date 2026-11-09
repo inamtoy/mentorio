@@ -46,12 +46,12 @@ import { formatLocalizedDate } from "@/i18n/date-locale";
 import { isLocale, DEFAULT_LOCALE } from "@/i18n/locales";
 import { useFormatCurrency } from "@/i18n/format-currency";
 
-// Same 1-year bound app/(admin)/finance/page.tsx applies to its own
+// Same 1-year bound app/admin/finance/page.tsx applies to its own
 // unscoped invoice/payment queries — an org-wide call with no bound risks
 // paging through years of billing history (see lib/api/finance.ts's own
 // comment on this).
 const FINANCE_WINDOW_DAYS = 365;
-// Matches app/(admin)/attendance/page.tsx's own unscoped-query bound, same
+// Matches app/admin/attendance/page.tsx's own unscoped-query bound, same
 // reasoning (lib/api/attendance.ts's comment on org-wide calls).
 const ATTENDANCE_WINDOW_DAYS = 30;
 
@@ -178,10 +178,10 @@ export default function DashboardPage() {
   );
 
   const QUICK_ACTIONS = [
-    { label: t("quickActionNewStudent"), href: "/students", icon: UserPlus, color: "text-indigo-600", bg: "bg-indigo-50" },
-    { label: t("quickActionNewTeacher"), href: "/teachers", icon: GraduationCap, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: t("quickActionNewInvoice"), href: "/finance", icon: ReceiptText, color: "text-violet-600", bg: "bg-violet-50" },
-    { label: t("quickActionTakeAttendance"), href: "/attendance", icon: ClipboardCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: t("quickActionNewStudent"), href: "/admin/students", icon: UserPlus, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: t("quickActionNewTeacher"), href: "/admin/teachers", icon: GraduationCap, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: t("quickActionNewInvoice"), href: "/admin/finance", icon: ReceiptText, color: "text-violet-600", bg: "bg-violet-50" },
+    { label: t("quickActionTakeAttendance"), href: "/admin/attendance", icon: ClipboardCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
   ];
 
   return (

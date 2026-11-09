@@ -4,20 +4,24 @@ import { ROLE_PORTAL_MAP } from "@/lib/portals";
 
 const PUBLIC_PATHS = ["/login", "/forgot-password"];
 
+// Public marketing pages (exact match). A signed-in visitor is sent on to
+// their own portal instead — the landing page is for prospects.
+const MARKETING_PATHS = ["/"];
+
 // Needs a session (it changes the signed-in user's own password) but belongs
 // to no portal — every role may open it.
 const ANY_ROLE_PATHS = ["/change-password"];
 
-// Path prefixes that belong to a specific portal and the roles allowed in
-// it. The admin portal is everything NOT claimed by one of the others
-// (route group `(admin)` maps to `/`), so it's handled as a fallback rather
-// than listed here.
+// Path prefixes that belong to a specific portal and the roles allowed in it.
+// Anything outside these (and outside the public paths above) is not a
+// portal page: it is let through so Next.js can 404 it, or so the
+// next.config.ts redirects from the pre-/admin URLs can apply.
 const PORTAL_GUARDS: { prefix: string; roles: string[] }[] = [
+  { prefix: "/admin", roles: ["center_admin", "admin"] },
   { prefix: "/super-admin", roles: ["super_admin"] },
   { prefix: "/teacher", roles: ["teacher"] },
   { prefix: "/student", roles: ["student"] },
 ];
-const ADMIN_ROLES = ["center_admin", "admin"];
 const AUTH_COOKIES = ["access_token", "refresh_token", "user_role"];
 
 // Slash-boundary-aware prefix match — plain `pathname.startsWith(prefix)`
@@ -52,34 +56,42 @@ function isUnderPrefix(pathname: string, prefix: string): boolean {
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  if (PUBLIC_PATHS.some((path) => isUnderPrefix(pathname, path))) {
-    return NextResponse.next();
-  }
-
   const hasSession = request.cookies.has("access_token") || request.cookies.has("refresh_token");
   const role = request.cookies.get("user_role")?.value;
   const home = role ? ROLE_PORTAL_MAP[role] : undefined;
+
+  if (MARKETING_PATHS.includes(pathname)) {
+    if (hasSession && home) return NextResponse.redirect(new URL(home, request.url));
+    return NextResponse.next();
+  }
+
+  // Sign-in pages, portals and everything else stay out of search results
+  // (robots.txt already disallows crawling them; this covers links found
+  // elsewhere).
+  if (PUBLIC_PATHS.some((path) => isUnderPrefix(pathname, path))) {
+    return noindex(NextResponse.next());
+  }
+
+  const guard = PORTAL_GUARDS.find((g) => isUnderPrefix(pathname, g.prefix));
+  const needsSession = guard || ANY_ROLE_PATHS.some((path) => isUnderPrefix(pathname, path));
+  if (!needsSession) {
+    return noindex(NextResponse.next());
+  }
 
   if (!hasSession || !role || !home) {
     return redirectToLogin(request);
   }
 
-  if (ANY_ROLE_PATHS.some((path) => isUnderPrefix(pathname, path))) {
-    return NextResponse.next();
-  }
-
-  // Not under any of the three named portals = it's the Admin portal
-  // (route group `(admin)` maps to `/`), which has no dedicated prefix
-  // of its own to match against.
-  const guard = PORTAL_GUARDS.find((g) => isUnderPrefix(pathname, g.prefix));
-  const allowed = guard ? guard.roles.includes(role) : ADMIN_ROLES.includes(role);
-
-  if (!allowed) {
+  if (guard && !guard.roles.includes(role)) {
     return NextResponse.redirect(new URL(home, request.url));
   }
 
-  return NextResponse.next();
+  return noindex(NextResponse.next());
+}
+
+function noindex(response: NextResponse) {
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return response;
 }
 
 function redirectToLogin(request: NextRequest) {

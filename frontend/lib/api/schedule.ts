@@ -56,7 +56,7 @@ export interface ListLessonsParams {
 
 // Unbounded (no date_from at all) callers are responsible for their own
 // window — a lesson accumulates every calendar date the org has ever held
-// class, with no natural cap. See app/(admin)/schedule/page.tsx's List View
+// class, with no natural cap. See app/admin/schedule/page.tsx's List View
 // for the one such caller in this app, and its default bound.
 //
 // A dateFrom-only caller (no dateTo) is a *different*, easy-to-miss trap:

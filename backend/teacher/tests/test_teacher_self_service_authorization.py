@@ -39,7 +39,7 @@ def _make_user(org, phone, role_slug):
 
 def _make_teacher(org, phone):
     user = _make_user(org, phone, "teacher")
-    profile = TeacherProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, teacher_code=f"TCH-{phone[-4:]}")
+    profile = TeacherProfile.objects.using(BYPASS_ALIAS).create(organization=org, user=user, teacher_code=f"TCH-{phone[-9:]}")
     return user, profile
 
 

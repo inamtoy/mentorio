@@ -48,7 +48,7 @@ def _make_teacher(org, phone):
         organization=org, first_name="T", last_name="Teacher", password="pw123456", phone=phone, status="active",
     )
     return TeacherProfile.objects.using(BYPASS_ALIAS).create(
-        organization=org, user=user, teacher_code=f"TCH-{phone[-4:]}"
+        organization=org, user=user, teacher_code=f"TCH-{phone[-9:]}"
     )
 
 

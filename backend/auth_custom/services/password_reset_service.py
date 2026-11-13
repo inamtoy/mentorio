@@ -49,25 +49,29 @@ INVALID_CODE_MESSAGE = "The code is incorrect or has expired. Start the reset ag
 
 MSG_SHARE_CONTACT = (
     "🔐 <b>Mentorio: parolni tiklash</b>\n\n"
-    "Shaxsingizni tasdiqlash uchun pastdagi <b>«📱 Raqamni yuborish»</b> tugmasini bosing. "
-    "Raqamingiz Mentorio profilingizdagi raqam bilan solishtiriladi."
+    "Shaxsingizni tasdiqlash uchun quyidagi <b>«📱 Raqamni yuborish»</b> tugmasini bosing. "
+    "Telefon raqamingiz Mentorio profilingizdagi raqam bilan solishtiriladi."
 )
 MSG_NOT_VERIFIED = (
-    "❌ Raqamni tasdiqlab bo'lmadi.\n\n"
-    "Sabablari:\n"
-    "• havola eskirgan (5 daqiqa amal qiladi);\n"
-    "• Telegram raqamingiz Mentorio profilingizdagi raqamdan farq qiladi.\n\n"
-    "Saytda qaytadan urinib ko'ring yoki markaz administratoriga murojaat qiling."
+    "❌ Telefon raqamingizni tasdiqlab bo'lmadi.\n\n"
+    "Ehtimoliy sabablar:\n"
+    "• havolaning amal qilish muddati tugagan (5 daqiqa amal qiladi);\n"
+    "• Telegram'dagi telefon raqamingiz Mentorio profilingizdagi raqamdan farq qiladi.\n\n"
+    "Iltimos, saytda parolni tiklashni qaytadan boshlang yoki o'quv markazi administratoriga murojaat qiling."
 )
-MSG_TOO_MANY_CODES = "Kod juda ko'p marta so'raldi. Saytda parolni tiklashni qaytadan boshlang."
+MSG_TOO_MANY_CODES = "Tasdiqlash kodi juda ko'p marta so'raldi. Iltimos, saytda parolni tiklashni qaytadan boshlang."
+# Sent just before the code: it carries the keyboard removal, so the code
+# message itself can carry the inline "copy" button (one markup per message).
+MSG_VERIFIED = "✅ Telefon raqamingiz tasdiqlandi."
 MSG_CODE = (
-    "Tasdiqlash kodi: <b>{code}</b>\n\n"
-    "Kodni Mentorio saytidagi oynaga kiriting. Kod 5 daqiqa amal qiladi.\n"
-    "Kodni hech kimga bermang — Mentorio xodimlari uni hech qachon so'ramaydi."
+    "Parolni tiklash uchun tasdiqlash kodi: <code>{code}</code>\n\n"
+    "Kodni Mentorio saytidagi tegishli maydonga kiriting. Kod 5 daqiqa amal qiladi.\n\n"
+    "⚠️ Kodni hech kimga bermang. Mentorio xodimlari uni hech qachon so'ramaydi."
 )
+COPY_CODE_BUTTON = "📋 Kodni nusxalash"
 MSG_PASSWORD_CHANGED = (
-    "✅ Mentorio parolingiz o'zgartirildi va barcha qurilmalardagi seanslar yopildi.\n\n"
-    "Agar buni siz qilmagan bo'lsangiz, darhol markaz administratoriga murojaat qiling."
+    "✅ Mentorio hisobingiz paroli muvaffaqiyatli o'zgartirildi. Barcha qurilmalardagi seanslar yakunlandi.\n\n"
+    "⚠️ Agar bu amalni siz bajarmagan bo'lsangiz, zudlik bilan o'quv markazi administratoriga murojaat qiling."
 )
 
 SHARE_CONTACT_KEYBOARD = {
@@ -231,9 +235,18 @@ def handle_contact(chat_id: int, sender: dict, contact: dict) -> None:
             reset.expires_at = now + settings.PASSWORD_RESET_CODE_LIFETIME
             reset.save(using=BYPASS_ALIAS, update_fields=["code_hash", "codes_sent", "expires_at"])
             _link_telegram_account(reset.user, chat_id, sender, contact)
-            reply, markup = MSG_CODE.format(code=code), REMOVE_KEYBOARD
+            reply, markup = MSG_CODE.format(code=code), copy_code_keyboard(code)
 
+    if code is not None:
+        telegram_client.send_quietly(chat_id, MSG_VERIFIED, reply_markup=REMOVE_KEYBOARD)
     telegram_client.send_quietly(chat_id, reply, reply_markup=markup)
+
+
+def copy_code_keyboard(code: str) -> dict:
+    """Inline button that copies the code to the clipboard (Bot API
+    `copy_text`). The <code> formatting in MSG_CODE is the fallback: tapping
+    it copies too, on clients too old for the button."""
+    return {"inline_keyboard": [[{"text": COPY_CODE_BUTTON, "copy_text": {"text": code}}]]}
 
 
 def _link_telegram_account(user, chat_id: int, sender: dict, contact: dict) -> None:

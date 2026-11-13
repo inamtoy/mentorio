@@ -88,7 +88,7 @@ def _own_contact(phone="998901234567", user_id=TG_USER_ID):
 
 
 def _code_from(sent_messages):
-    match = re.search(r"<b>(\d{6})</b>", sent_messages[-1][1])
+    match = re.search(r"<code>(\d{6})</code>", sent_messages[-1][1])
     assert match, f"no code in last bot message: {sent_messages[-1][1]!r}"
     return match.group(1)
 
@@ -109,6 +109,18 @@ def _run_bot_flow(client, user, sent):
 
 
 # ─── tests ────────────────────────────────────────────────────────────────────
+
+
+def test_code_message_has_a_copy_button_and_the_contact_keyboard_is_removed_first(user, sent):
+    _token, code = _run_bot_flow(APIClient(), user, sent)
+
+    _chat, verified_text, verified_markup = sent[-2]
+    assert verified_text == password_reset_service.MSG_VERIFIED
+    assert verified_markup == password_reset_service.REMOVE_KEYBOARD
+
+    _chat, _text, markup = sent[-1]
+    [[button]] = markup["inline_keyboard"]
+    assert button["copy_text"] == {"text": code}
 
 
 def test_full_reset_changes_password_and_ends_every_session(user, sent):

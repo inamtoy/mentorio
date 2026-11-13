@@ -21,14 +21,28 @@ from auth_custom.services.phone import digits_only, phone_key, phones_match
 from auth_custom.services.session_service import BYPASS_ALIAS
 from common.db import PhoneKey
 from foundation.models import User
+from foundation.services import primary_role_slug
 from notifications.models import ParentTelegramLink
 from student.models import StudentParent
 
 
+@dataclass(frozen=True)
+class LinkedUser:
+    name: str
+    role: str | None  # primary role slug (student, teacher, center_admin, super_admin, ...)
+    organization: str
+
+
+@dataclass(frozen=True)
+class LinkedChild:
+    name: str
+    organization: str
+
+
 @dataclass
 class LinkResult:
-    users: list[str] = field(default_factory=list)  # full names
-    children: list[str] = field(default_factory=list)  # children's full names, via parent records
+    users: list[LinkedUser] = field(default_factory=list)
+    children: list[LinkedChild] = field(default_factory=list)  # via parent records
 
     @property
     def linked_anything(self) -> bool:
@@ -48,12 +62,13 @@ def link_by_phone(*, chat_id: int, sender: dict, contact: dict) -> LinkResult:
         User.objects.using(BYPASS_ALIAS)
         .annotate(phone_key=PhoneKey("phone"))
         .filter(phone_key=key, status="active")
+        .select_related("organization")
     )
     parents = (
         StudentParent.objects.using(BYPASS_ALIAS)
         .annotate(phone_key=PhoneKey("phone"))
         .filter(phone_key=key, student_profile__deleted_at__isnull=True)
-        .select_related("student_profile__user")
+        .select_related("student_profile__user", "organization")
     )
 
     with transaction.atomic(using=BYPASS_ALIAS):
@@ -69,7 +84,13 @@ def link_by_phone(*, chat_id: int, sender: dict, contact: dict) -> LinkResult:
                     "notifications_enabled": True,
                 },
             )
-            result.users.append(user.get_full_name())
+            result.users.append(
+                LinkedUser(
+                    name=user.get_full_name(),
+                    role=primary_role_slug(user, using=BYPASS_ALIAS),
+                    organization=user.organization.name,
+                )
+            )
 
         for parent in parents:
             ParentTelegramLink.objects.using(BYPASS_ALIAS).update_or_create(
@@ -83,7 +104,9 @@ def link_by_phone(*, chat_id: int, sender: dict, contact: dict) -> LinkResult:
                     "active": True,
                 },
             )
-            result.children.append(parent.student_profile.user.get_full_name())
+            result.children.append(
+                LinkedChild(name=parent.student_profile.user.get_full_name(), organization=parent.organization.name)
+            )
 
     return result
 

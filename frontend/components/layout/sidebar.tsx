@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 // Labels are AdminNav translation keys, resolved at render time via t()
 // (see app/teacher/layout.tsx for the identical pattern this mirrors).
 
-const NAV_ITEMS = [
+export const NAV_ITEMS = [
   {
     groupKey: "navGroupMain",
     items: [

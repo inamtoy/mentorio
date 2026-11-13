@@ -102,6 +102,7 @@
     "expandSidebar": "Yon panelni kengaytirish",
     "collapseSidebar": "Yon panelni yig'ish",
     "quickSearchPlaceholder": "Tezkor qidiruv...",
+    "quickSearchNoResults": "Sahifa topilmadi",
     "notificationsAriaLabel": "Bildirishnomalar ({count} ta o'qilmagan)",
     "signOut": "Chiqish",
     "roleStudent": "Talaba"
@@ -389,6 +390,7 @@
     "expandSidebar": "Yon panelni kengaytirish",
     "collapseSidebar": "Yon panelni yig'ish",
     "quickSearchPlaceholder": "Tezkor qidiruv...",
+    "quickSearchNoResults": "Sahifa topilmadi",
     "notificationsAriaLabel": "Bildirishnomalar ({count} ta o'qilmagan)",
     "signOut": "Chiqish",
     "roleTeacher": "O'qituvchi"
@@ -858,6 +860,7 @@
     "expandSidebar": "Yon panelni kengaytirish",
     "collapseSidebar": "Yon panelni yig'ish",
     "quickSearchPlaceholder": "Tezkor qidiruv...",
+    "quickSearchNoResults": "Sahifa topilmadi",
     "openMenuAriaLabel": "Menyuni ochish",
     "notificationsAriaLabel": "Bildirishnomalar ({count} ta o'qilmagan)",
     "signOut": "Chiqish",
@@ -1722,6 +1725,7 @@
     "expandSidebar": "Yon panelni kengaytirish",
     "collapseSidebar": "Yon panelni yig'ish",
     "quickSearchPlaceholder": "Tezkor qidiruv...",
+    "quickSearchNoResults": "Sahifa topilmadi",
     "notificationsAriaLabel": "Bildirishnomalar ({count} ta o'qilmagan)",
     "signOut": "Chiqish",
     "navGroupAcademics": "O'quv jarayoni",

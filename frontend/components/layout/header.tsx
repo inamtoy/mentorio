@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Search, Menu, ChevronDown, Settings, LogOut, User } from "lucide-react";
+import { Bell, Menu, ChevronDown, Settings, LogOut, User } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { cn, getInitials } from "@/lib/utils";
+import { QuickSearch } from "@/components/layout/quick-search";
+import { NAV_ITEMS } from "@/components/layout/sidebar";
 import { useNotificationsQuery } from "@/lib/queries/notifications";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useLogout } from "@/lib/hooks/use-logout";
@@ -85,14 +87,11 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
       <div className="flex-1" />
 
       {/* Search */}
-      <div className="relative hidden md:block">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder={t("quickSearchPlaceholder")}
-          className="h-9 w-60 pl-9 pr-4 rounded-xl border border-border bg-secondary text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:bg-card transition-all"
-        />
-      </div>
+      <QuickSearch
+        items={NAV_ITEMS.flatMap((g) => g.items).map(({ href, labelKey, icon }) => ({ href, label: t(labelKey), icon }))}
+        placeholder={t("quickSearchPlaceholder")}
+        noResultsLabel={t("quickSearchNoResults")}
+      />
 
       {/* Notifications */}
       <Link

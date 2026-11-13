@@ -276,13 +276,13 @@ export default function SuperAdminDashboardPage() {
           </div>
           <div className="hidden sm:flex flex-col items-end gap-2">
             <div className="bg-white/20 rounded-full px-4 py-1.5 text-sm font-medium backdrop-blur-sm">
-              🏢 {t('centersBadge', { count: orgs.length })}
+              {t('centersBadge', { count: orgs.length })}
             </div>
             <div className="bg-white/20 rounded-full px-4 py-1.5 text-sm font-medium backdrop-blur-sm">
-              💰 {t('revenueBadge', { amount: formatCurrency(monthlyRevenue, PLATFORM_CURRENCY) })}
+              {t('revenueBadge', { amount: formatCurrency(monthlyRevenue, PLATFORM_CURRENCY) })}
             </div>
             <div className="bg-white/20 rounded-full px-4 py-1.5 text-sm font-medium backdrop-blur-sm">
-              📋 {t('activeSubsBadge', { count: activeSubscriptions })}
+              {t('activeSubsBadge', { count: activeSubscriptions })}
             </div>
           </div>
         </div>

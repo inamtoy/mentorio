@@ -102,6 +102,7 @@
     "expandSidebar": "Развернуть боковую панель",
     "collapseSidebar": "Свернуть боковую панель",
     "quickSearchPlaceholder": "Быстрый поиск...",
+    "quickSearchNoResults": "Страницы не найдены",
     "notificationsAriaLabel": "Уведомления ({count} непрочитано)",
     "signOut": "Выйти",
     "roleStudent": "Студент"
@@ -389,6 +390,7 @@
     "expandSidebar": "Развернуть боковую панель",
     "collapseSidebar": "Свернуть боковую панель",
     "quickSearchPlaceholder": "Быстрый поиск...",
+    "quickSearchNoResults": "Страницы не найдены",
     "notificationsAriaLabel": "Уведомления ({count} непрочитано)",
     "signOut": "Выйти",
     "roleTeacher": "Преподаватель"
@@ -858,6 +860,7 @@
     "expandSidebar": "Развернуть боковую панель",
     "collapseSidebar": "Свернуть боковую панель",
     "quickSearchPlaceholder": "Быстрый поиск...",
+    "quickSearchNoResults": "Страницы не найдены",
     "openMenuAriaLabel": "Открыть меню",
     "notificationsAriaLabel": "Уведомления ({count} непрочитано)",
     "signOut": "Выйти",
@@ -1722,6 +1725,7 @@
     "expandSidebar": "Развернуть боковую панель",
     "collapseSidebar": "Свернуть боковую панель",
     "quickSearchPlaceholder": "Быстрый поиск...",
+    "quickSearchNoResults": "Страницы не найдены",
     "notificationsAriaLabel": "Уведомления ({count} непрочитано)",
     "signOut": "Выйти",
     "navGroupAcademics": "Учебный процесс",

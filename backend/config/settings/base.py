@@ -226,7 +226,12 @@ TELEGRAM_BOT_USERNAME = env("TELEGRAM_BOT_USERNAME", default="")
 # came from Telegram. Unused in local polling mode.
 TELEGRAM_WEBHOOK_SECRET = env("TELEGRAM_WEBHOOK_SECRET", default="")
 
-PASSWORD_RESET_TOKEN_LIFETIME = timedelta(minutes=15)
+# How long the browser's bot link stays usable (open the bot, share the
+# contact), and how long the 6-digit code is valid once the bot has sent it.
+# The bot copy in password_reset_service states both — keep them in sync
+# (test_bot_copy_states_the_real_lifetimes checks it).
+PASSWORD_RESET_TOKEN_LIFETIME = timedelta(minutes=5)
+PASSWORD_RESET_CODE_LIFETIME = timedelta(minutes=5)
 PASSWORD_RESET_MAX_CODE_ATTEMPTS = 5
 PASSWORD_RESET_MAX_CODES_PER_REQUEST = 3
 PASSWORD_RESET_MAX_REQUESTS_PER_HOUR = 5

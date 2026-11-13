@@ -79,15 +79,39 @@ export async function LandingContent({ locale }: { locale: Locale }) {
   const t = await getTranslations({ locale, namespace: "Landing" });
 
   // Structured data: what the product is — no ratings, offers or reviews.
+  // WebSite + Organization tell Google the site's name is "Mentorio" (the
+  // name it shows in results and matches a bare "mentorio" search against)
+  // and which logo belongs to it; SoftwareApplication describes the product.
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "Mentorio",
-    url: `${SITE_URL}${landingPath(locale) === "/" ? "" : landingPath(locale)}`,
-    applicationCategory: "EducationalApplication",
-    operatingSystem: "Web",
-    description: t("metaDescription"),
-    inLanguage: locale,
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${SITE_URL}/#website`,
+        name: "Mentorio",
+        alternateName: ["Mentorio.uz", "mentorio.uz"],
+        url: `${SITE_URL}/`,
+        inLanguage: [...LOCALES],
+        publisher: { "@id": `${SITE_URL}/#organization` },
+      },
+      {
+        "@type": "Organization",
+        "@id": `${SITE_URL}/#organization`,
+        name: "Mentorio",
+        url: `${SITE_URL}/`,
+        logo: `${SITE_URL}/logo.png`,
+      },
+      {
+        "@type": "SoftwareApplication",
+        name: "Mentorio",
+        url: `${SITE_URL}${landingPath(locale) === "/" ? "" : landingPath(locale)}`,
+        applicationCategory: "EducationalApplication",
+        operatingSystem: "Web",
+        description: t("metaDescription"),
+        inLanguage: locale,
+        publisher: { "@id": `${SITE_URL}/#organization` },
+      },
+    ],
   };
 
   return (

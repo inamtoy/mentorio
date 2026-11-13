@@ -55,14 +55,14 @@ MSG_SHARE_CONTACT = (
 MSG_NOT_VERIFIED = (
     "❌ Raqamni tasdiqlab bo'lmadi.\n\n"
     "Sabablari:\n"
-    "• havola eskirgan (15 daqiqa amal qiladi);\n"
+    "• havola eskirgan (5 daqiqa amal qiladi);\n"
     "• Telegram raqamingiz Mentorio profilingizdagi raqamdan farq qiladi.\n\n"
     "Saytda qaytadan urinib ko'ring yoki markaz administratoriga murojaat qiling."
 )
 MSG_TOO_MANY_CODES = "Kod juda ko'p marta so'raldi. Saytda parolni tiklashni qaytadan boshlang."
 MSG_CODE = (
     "Tasdiqlash kodi: <b>{code}</b>\n\n"
-    "Kodni Mentorio saytidagi oynaga kiriting. Kod 15 daqiqa amal qiladi.\n"
+    "Kodni Mentorio saytidagi oynaga kiriting. Kod 5 daqiqa amal qiladi.\n"
     "Kodni hech kimga bermang — Mentorio xodimlari uni hech qachon so'ramaydi."
 )
 MSG_PASSWORD_CHANGED = (
@@ -225,7 +225,11 @@ def handle_contact(chat_id: int, sender: dict, contact: dict) -> None:
             code = f"{secrets.randbelow(1_000_000):06d}"
             reset.code_hash = _hash_code(reset, code)
             reset.codes_sent += 1
-            reset.save(using=BYPASS_ALIAS, update_fields=["code_hash", "codes_sent"])
+            # The code gets its own full window from the moment it is sent
+            # (as the bot message promises), not whatever is left of the
+            # link's. A new code replaces the old hash, so the old one dies.
+            reset.expires_at = now + settings.PASSWORD_RESET_CODE_LIFETIME
+            reset.save(using=BYPASS_ALIAS, update_fields=["code_hash", "codes_sent", "expires_at"])
             _link_telegram_account(reset.user, chat_id, sender, contact)
             reply, markup = MSG_CODE.format(code=code), REMOVE_KEYBOARD
 

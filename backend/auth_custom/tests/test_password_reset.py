@@ -224,6 +224,52 @@ def test_expired_request_is_rejected(user, sent):
     assert _confirm(client, token, code).status_code == 400
 
 
+def test_start_reports_the_link_lifetime(user, settings):
+    data = _start(APIClient(), user.login_id).json()["data"]
+
+    assert data["expires_in_seconds"] == int(settings.PASSWORD_RESET_TOKEN_LIFETIME.total_seconds())
+    reset = PasswordReset.objects.using(BYPASS_ALIAS).get(user=user)
+    # created_at is set by the DB, expires_at by Python — allow clock skew.
+    assert abs(reset.expires_at - reset.created_at - settings.PASSWORD_RESET_TOKEN_LIFETIME) < timedelta(seconds=5)
+
+
+def test_code_gets_its_own_full_window_from_when_it_is_sent(user, sent, settings):
+    """A contact shared just before the link lapses still yields a code that
+    lives the full code lifetime — what the bot message promises."""
+    client = APIClient()
+    token = _start(client, user.login_id).json()["data"]["token"]
+    _bot(f"/start {token}")
+    PasswordReset.objects.using(BYPASS_ALIAS).filter(user=user).update(
+        expires_at=timezone.now() + timedelta(seconds=2)
+    )
+
+    before = timezone.now()
+    _bot(contact=_own_contact())
+    code = _code_from(sent)
+    reset = PasswordReset.objects.using(BYPASS_ALIAS).get(user=user)
+
+    lifetime = settings.PASSWORD_RESET_CODE_LIFETIME
+    assert before + lifetime <= reset.expires_at <= timezone.now() + lifetime
+    assert _confirm(client, token, code).status_code == 200
+
+
+def test_code_expires_after_its_lifetime(user, sent):
+    client = APIClient()
+    token, code = _run_bot_flow(client, user, sent)
+    # As if the code lifetime had passed since the bot sent it.
+    PasswordReset.objects.using(BYPASS_ALIAS).filter(user=user).update(expires_at=timezone.now())
+
+    assert _confirm(client, token, code).status_code == 400
+
+
+def test_bot_copy_states_the_real_lifetimes(settings):
+    link_minutes = int(settings.PASSWORD_RESET_TOKEN_LIFETIME.total_seconds() // 60)
+    code_minutes = int(settings.PASSWORD_RESET_CODE_LIFETIME.total_seconds() // 60)
+
+    assert f"({link_minutes} daqiqa amal qiladi)" in password_reset_service.MSG_NOT_VERIFIED
+    assert f"Kod {code_minutes} daqiqa amal qiladi." in password_reset_service.MSG_CODE
+
+
 def test_too_many_requests_per_hour_are_throttled(user, sent, settings):
     settings.PASSWORD_RESET_MAX_REQUESTS_PER_HOUR = 2
     client = APIClient()

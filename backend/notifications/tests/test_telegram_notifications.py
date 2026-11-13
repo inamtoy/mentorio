@@ -190,6 +190,26 @@ def test_contact_links_the_students_account_and_every_parent_record_with_that_nu
     assert "farzandingiz" in sent[-1][1]
 
 
+def test_linked_reply_names_each_accounts_real_role(sent):
+    """Staff share numbers with the bot too (e.g. after a password reset):
+    a teacher must never be told it's their "student account"."""
+    org = _make_org()
+    phone = _random_phone()
+    _make_user(org, phone, "teacher", first_name="Olim", last_name="Karimov")
+
+    _share_own_contact(_tg_digits(phone), chat_id=STUDENT_CHAT, from_id=STUDENT_TG)
+
+    reply = sent[-1][1]
+    assert "Olim Karimov — o'qituvchi («Org»)" in reply
+    assert "o'quvchi" not in reply
+
+
+def test_role_label_falls_back_for_unknown_roles():
+    assert telegram_bot.role_label("student") == "o'quvchi"
+    assert telegram_bot.role_label("custom_role") == telegram_bot.DEFAULT_ROLE_LABEL
+    assert telegram_bot.role_label(None) == telegram_bot.DEFAULT_ROLE_LABEL
+
+
 def test_unknown_number_links_nothing(sent):
     _make_student(_make_org())
     _share_own_contact(_tg_digits(_random_phone()), chat_id=STUDENT_CHAT, from_id=STUDENT_TG)
@@ -263,7 +283,7 @@ def test_marking_absent_notifies_the_student_inbox_and_both_telegram_chats(sent)
     parent_row = _deliveries(student_parent=parent).get()
     assert (student_row.chat_id, parent_row.chat_id) == (STUDENT_CHAT, PARENT_CHAT)
     assert student_row.notification_id == notification.id
-    assert "Ali Valiyev" in parent_row.text and "kelmadi" in parent_row.text
+    assert "Ali Valiyev" in parent_row.text and "qatnashmadi" in parent_row.text
     assert {student_row.status, parent_row.status} == {"pending"}
 
 
@@ -307,7 +327,7 @@ def test_student_language_is_used_for_their_message_and_uzbek_for_parents(sent):
     _mark(_login(teacher), group, student, "absent")
 
     assert "Пропуск" in _notifications(recipient=student.user).get().title
-    assert "kelmadi" in _deliveries(organization=org, student_parent__isnull=False).get().text
+    assert "qatnashmadi" in _deliveries(organization=org, student_parent__isnull=False).get().text
 
 
 def test_no_telegram_link_still_fills_the_inbox(sent):

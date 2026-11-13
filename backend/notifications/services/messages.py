@@ -40,19 +40,20 @@ def format_date(value: date) -> str:
 
 _INVOICE_ISSUED = {
     "uz": (
-        "Yangi to'lov",
-        "{group}: {amount} to'lash kerak. Muddat: {due}.",
-        "{student} uchun yangi to'lov ({group}): {amount}. Muddat: {due}.",
+        "Yangi to'lov hisobi",
+        "«{group}» guruhi bo'yicha {amount} miqdorida to'lov hisoblandi. To'lov muddati: {due}.",
+        "Farzandingiz {student} uchun «{group}» guruhi bo'yicha {amount} miqdorida to'lov hisoblandi. "
+        "To'lov muddati: {due}.",
     ),
     "ru": (
-        "Новый счёт",
-        "{group}: к оплате {amount}. Срок: {due}.",
-        "Новый счёт за {student} ({group}): {amount}. Срок: {due}.",
+        "Новый счёт на оплату",
+        "По группе «{group}» выставлен счёт на сумму {amount}. Срок оплаты: {due}.",
+        "Для {student} по группе «{group}» выставлен счёт на сумму {amount}. Срок оплаты: {due}.",
     ),
     "en": (
         "New invoice",
-        "{group}: {amount} to pay. Due: {due}.",
-        "New invoice for {student} ({group}): {amount}. Due: {due}.",
+        "An invoice of {amount} has been issued for the {group} group. Due date: {due}.",
+        "An invoice of {amount} has been issued for {student} ({group} group). Due date: {due}.",
     ),
 }
 
@@ -60,19 +61,20 @@ _INVOICE_ISSUED = {
 
 _INVOICE_DUE_SOON = {
     "uz": (
-        "To'lov muddati yaqin",
-        "{group}: {amount} ni {due} gacha to'lang.",
-        "{student} uchun {amount} ({group}) {due} gacha to'lanishi kerak.",
+        "To'lov muddati yaqinlashmoqda",
+        "«{group}» guruhi bo'yicha {amount} miqdoridagi to'lovni {due} sanasigacha amalga oshirishingizni so'raymiz.",
+        "Farzandingiz {student} uchun «{group}» guruhi bo'yicha {amount} miqdoridagi to'lovni {due} sanasigacha "
+        "amalga oshirishingizni so'raymiz.",
     ),
     "ru": (
-        "Скоро срок оплаты",
-        "{group}: оплатите {amount} до {due}.",
-        "За {student} ({group}) нужно оплатить {amount} до {due}.",
+        "Приближается срок оплаты",
+        "Просим оплатить {amount} по группе «{group}» до {due}.",
+        "Просим оплатить {amount} за {student} по группе «{group}» до {due}.",
     ),
     "en": (
         "Payment due soon",
-        "{group}: please pay {amount} by {due}.",
-        "{amount} for {student} ({group}) is due by {due}.",
+        "Please pay {amount} for the {group} group by {due}.",
+        "Please pay {amount} for {student} ({group} group) by {due}.",
     ),
 }
 
@@ -80,22 +82,21 @@ _INVOICE_DUE_SOON = {
 
 _STUDENT_ABSENT = {
     "uz": (
-        "Darsga kelmadi",
-        "Siz {date} kuni {group} darsiga kelmadingiz.",
-        "{student} {date} kuni {group} darsiga kelmadi.",
+        "Darsga qatnashmaganlik haqida xabarnoma",
+        "Siz {date} kuni «{group}» guruhidagi darsga qatnashmadingiz.",
+        "Farzandingiz {student} {date} kuni «{group}» guruhidagi darsga qatnashmadi.",
     ),
     "ru": (
         "Пропуск занятия",
-        "Вы пропустили занятие {group} {date}.",
-        "{student} пропустил(а) занятие {group} {date}.",
+        "Вы не присутствовали на занятии группы «{group}» {date}.",
+        "{student} не присутствовал(а) на занятии группы «{group}» {date}.",
     ),
     "en": (
         "Missed class",
-        "You missed the {group} class on {date}.",
-        "{student} missed the {group} class on {date}.",
+        "You did not attend the {group} class on {date}.",
+        "{student} did not attend the {group} class on {date}.",
     ),
 }
-
 
 def _render(table: dict, language: str | None, *, for_parent: bool, **values) -> Text:
     title, to_student, to_parent = table[_lang(language)]

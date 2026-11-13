@@ -34,22 +34,43 @@ CONNECT_PARAM = "connect"
 # ─── Bot copy (Uzbek — the bot speaks to every center's users) ───────────────
 
 MSG_WELCOME = (
-    "Assalomu alaykum! Bu <b>Mentorio</b> rasmiy boti.\n\n"
-    "📬 To'lovlar va davomat haqida xabar olish uchun pastdagi <b>«📱 Raqamni yuborish»</b> tugmasini bosing. "
-    "Raqamingiz o'quv markazidagi raqam bilan solishtiriladi.\n\n"
-    "🔐 Parolni tiklash uchun Mentorio kirish sahifasida <b>Forgot password?</b> tugmasini bosing."
+    "Assalomu alaykum! Siz <b>Mentorio</b> — o'quv markazlarini boshqarish tizimining rasmiy botidasiz.\n\n"
+    "📬 To'lovlar va davomat bo'yicha xabarnomalarni olish uchun quyidagi <b>«📱 Raqamni yuborish»</b> tugmasini bosing. "
+    "Telefon raqamingiz o'quv markazida ro'yxatga olingan raqam bilan solishtiriladi.\n\n"
+    "🔐 Parolni tiklash uchun Mentorio tizimining kirish sahifasida <b>«Forgot password?»</b> havolasini bosing."
 )
-MSG_NOT_OWN_CONTACT = "Iltimos, boshqa odamning kontaktini emas, pastdagi tugma orqali <b>o'z raqamingizni</b> yuboring."
-MSG_LINKED = "✅ Bildirishnomalar ulandi:\n{lines}\n\nO'chirish uchun /stop yuboring."
-MSG_LINKED_USER = "• {name} — o'quvchi hisobingiz"
-MSG_LINKED_CHILD = "• {name} — farzandingiz"
+MSG_NOT_OWN_CONTACT = (
+    "Iltimos, boshqa shaxsning kontaktini emas, quyidagi tugma orqali <b>o'z telefon raqamingizni</b> yuboring."
+)
+MSG_LINKED = (
+    "✅ Telegram hisobingiz Mentorio tizimiga muvaffaqiyatli ulandi.\n\n"
+    "{lines}\n\n"
+    "Xabarnomalarni o'chirish uchun /stop buyrug'ini yuboring."
+)
+MSG_LINKED_USER = "• {name} — {role} («{organization}»)"
+MSG_LINKED_CHILD = "• {name} — farzandingiz («{organization}»)"
 MSG_NOT_FOUND = (
-    "❌ Bu raqam hech bir o'quv markazida topilmadi.\n\n"
-    "Markaz administratoridan raqamingizni o'quvchi yoki ota-ona sifatida qo'shishini so'rang, so'ng qayta urinib ko'ring."
+    "❌ Ushbu telefon raqami Mentorio tizimidagi o'quv markazlarida ro'yxatdan o'tmagan.\n\n"
+    "Iltimos, o'quv markazi administratoriga murojaat qilib, raqamingizni o'quvchi yoki ota-ona sifatida "
+    "qo'shishni so'rang, so'ngra qayta urinib ko'ring."
 )
-MSG_STOPPED = "🔕 Bildirishnomalar o'chirildi. Qayta yoqish uchun /start yuboring."
-MSG_NOTHING_TO_STOP = "Bu chatda yoqilgan bildirishnoma yo'q."
+MSG_STOPPED = "🔕 Xabarnomalar o'chirildi. Qayta yoqish uchun /start buyrug'ini yuboring."
+MSG_NOTHING_TO_STOP = "Ushbu chat uchun faol xabarnomalar mavjud emas."
 
+# How each linked account is described. The bot links every active account
+# with the shared number (staff too), so the label must come from the
+# account's real role — never assume "student".
+ROLE_LABELS = {
+    "student": "o'quvchi",
+    "teacher": "o'qituvchi",
+    "center_admin": "o'quv markazi administratori",
+    "super_admin": "platforma administratori",
+}
+DEFAULT_ROLE_LABEL = "foydalanuvchi"
+
+
+def role_label(slug: str | None) -> str:
+    return ROLE_LABELS.get(slug or "", DEFAULT_ROLE_LABEL)
 
 def handle_update(update: dict) -> None:
     """Never raises for bad input: a malformed update is simply ignored."""
@@ -99,8 +120,16 @@ def _handle_contact(chat_id: int, sender: dict, contact: dict) -> None:
     if not result.linked_anything:
         reply = MSG_NOT_FOUND
     else:
-        lines = [MSG_LINKED_USER.format(name=html.escape(name)) for name in result.users]
-        lines += [MSG_LINKED_CHILD.format(name=html.escape(name)) for name in result.children]
+        lines = [
+            MSG_LINKED_USER.format(
+                name=html.escape(user.name), role=role_label(user.role), organization=html.escape(user.organization)
+            )
+            for user in result.users
+        ]
+        lines += [
+            MSG_LINKED_CHILD.format(name=html.escape(child.name), organization=html.escape(child.organization))
+            for child in result.children
+        ]
         reply = MSG_LINKED.format(lines="\n".join(lines))
     telegram_client.send_quietly(chat_id, reply, reply_markup=password_reset_service.REMOVE_KEYBOARD)
 

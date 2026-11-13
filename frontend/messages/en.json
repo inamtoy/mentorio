@@ -102,6 +102,7 @@
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar",
     "quickSearchPlaceholder": "Quick search...",
+    "quickSearchNoResults": "No pages found",
     "notificationsAriaLabel": "Notifications ({count} unread)",
     "signOut": "Sign Out",
     "roleStudent": "Student"
@@ -389,6 +390,7 @@
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar",
     "quickSearchPlaceholder": "Quick search...",
+    "quickSearchNoResults": "No pages found",
     "notificationsAriaLabel": "Notifications ({count} unread)",
     "signOut": "Sign Out",
     "roleTeacher": "Teacher"
@@ -858,6 +860,7 @@
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar",
     "quickSearchPlaceholder": "Quick search...",
+    "quickSearchNoResults": "No pages found",
     "openMenuAriaLabel": "Open menu",
     "notificationsAriaLabel": "Notifications ({count} unread)",
     "signOut": "Sign Out",
@@ -1722,6 +1725,7 @@
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar",
     "quickSearchPlaceholder": "Quick search...",
+    "quickSearchNoResults": "No pages found",
     "notificationsAriaLabel": "Notifications ({count} unread)",
     "signOut": "Sign Out",
     "navGroupAcademics": "Academics",
